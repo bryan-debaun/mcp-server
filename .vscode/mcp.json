@@ -1,0 +1,11 @@
+{
+    "servers": {
+        "bryan-debaun-mcp": {
+            "type": "stdio",
+            "command": "node",
+            "args": [
+                "${workspaceFolder}/dist/index.js"
+            ]
+        }
+    }
+}
