@@ -1,5 +1,5 @@
 {
-    "name": "@omega575/mcp-server",
+    "name": "@bryan-debaun/mcp-server",
     "version": "0.1.0",
     "description": "Extensible MCP server for VS Code Copilot with GitHub Issues tools",
     "type": "module",
@@ -19,7 +19,7 @@
         "copilot",
         "github"
     ],
-    "author": "omega575",
+    "author": "bryan-debaun",
     "license": "MIT",
     "engines": {
         "node": ">=20.0.0"

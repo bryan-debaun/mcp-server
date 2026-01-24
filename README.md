@@ -1,4 +1,4 @@
-# @omega575/mcp-server
+# @bryan-debaun/mcp-server
 
 An extensible Model Context Protocol (MCP) server for VS Code Copilot with GitHub Issues tools.
 
@@ -37,7 +37,7 @@ An extensible Model Context Protocol (MCP) server for VS Code Copilot with GitHu
 1. **Clone the repository**:
 
    ```bash
-   git clone https://github.com/omega575/mcp-server.git
+   git clone https://github.com/bryan-debaun/mcp-server.git
    cd mcp-server
    ```
 
@@ -62,7 +62,7 @@ Create or update `.vscode/mcp.json` in your workspace:
 ```json
 {
   "servers": {
-    "omega575-mcp": {
+    "bryan-debaun-mcp": {
       "type": "stdio",
       "command": "node",
       "args": ["C:/Users/brndb/mcp-server/dist/index.js"]
@@ -78,7 +78,7 @@ Add to your VS Code user settings (use Command Palette → "MCP: Open User Confi
 ```json
 {
   "servers": {
-    "omega575-mcp": {
+    "bryan-debaun-mcp": {
       "type": "stdio",
       "command": "node",
       "args": ["C:/Users/brndb/mcp-server/dist/index.js"]
@@ -94,8 +94,8 @@ Once configured, the MCP tools are available in VS Code Copilot chat:
 1. Open Copilot Chat (`Ctrl+Alt+I`)
 2. Enable the MCP server from the Tools picker
 3. Ask questions like:
-   - "List open issues in omega575/mcp-server"
-   - "Show me issue #2 in omega575/mcp-server"
+   - "List open issues in bryan-debaun/mcp-server"
+   - "Show me issue #2 in bryan-debaun/mcp-server"
    - "Create an issue titled 'Bug fix' in owner/repo"
    - "Close issue #5 in owner/repo with comment 'Fixed in PR #10'"
 

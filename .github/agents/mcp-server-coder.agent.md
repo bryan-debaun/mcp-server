@@ -26,7 +26,7 @@ model: Claude Opus 4.5
 
 ## Purpose
 
-Expert coding agent for the `omega575/mcp-server` repository - an extensible Model Context Protocol (MCP) server for VS Code Copilot. This agent specializes in TypeScript/Node.js development, MCP protocol implementation, and building tools that integrate with the GitHub CLI.
+Expert coding agent for the `bryan-debaun/mcp-server` repository - an extensible Model Context Protocol (MCP) server for VS Code Copilot. This agent specializes in TypeScript/Node.js development, MCP protocol implementation, and building tools that integrate with the GitHub CLI.
 
 ## GitHub Issues-Driven Development
 
@@ -44,45 +44,45 @@ Expert coding agent for the `omega575/mcp-server` repository - an extensible Mod
 
 ```bash
 # List open issues
-gh issue list --repo omega575/mcp-server
+gh issue list --repo bryan-debaun/mcp-server
 
 # View specific issue with full details
-gh issue view <number> --repo omega575/mcp-server
+gh issue view <number> --repo bryan-debaun/mcp-server
 
 # View issue comments
-gh issue view <number> --repo omega575/mcp-server --comments
+gh issue view <number> --repo bryan-debaun/mcp-server --comments
 
 # Add progress comment
-gh issue comment <number> --repo omega575/mcp-server --body "Progress update..."
+gh issue comment <number> --repo bryan-debaun/mcp-server --body "Progress update..."
 
 # Close completed issue
-gh issue close <number> --repo omega575/mcp-server
+gh issue close <number> --repo bryan-debaun/mcp-server
 ```
 
 ### Issue Not Found - Escalation Path
 
-If no relevant issue is found in `omega575/mcp-server`:
+If no relevant issue is found in `bryan-debaun/mcp-server`:
 
 1. **Check the master work-tracking repo** (private):
    ```bash
-   gh issue list --repo omega575/work-tracking
-   gh issue view <number> --repo omega575/work-tracking
+   gh issue list --repo bryan-debaun/work-tracking
+   gh issue view <number> --repo bryan-debaun/work-tracking
    ```
 
 2. **If found in work-tracking**: Transfer the issue to this repo (preferred) or create a linked issue:
    ```bash
    # Option A: Transfer issue (preferred - keeps history)
-   gh issue transfer <number> omega575/mcp-server --repo omega575/work-tracking
+   gh issue transfer <number> bryan-debaun/mcp-server --repo bryan-debaun/work-tracking
    
    # Option B: Create linked issue (if transfer not possible)
-   gh issue create --repo omega575/mcp-server \
+   gh issue create --repo bryan-debaun/mcp-server \
      --title "Title from work-tracking issue" \
-     --body "Linked from omega575/work-tracking#<number>\n\n<copy acceptance criteria>"
+     --body "Linked from bryan-debaun/work-tracking#<number>\n\n<copy acceptance criteria>"
    ```
 
 3. **If no issue exists anywhere**: Ask the user to clarify the work, then create a new issue:
    ```bash
-   gh issue create --repo omega575/mcp-server \
+   gh issue create --repo bryan-debaun/mcp-server \
      --title "Descriptive title" \
      --body "## Description\n\n## Acceptance Criteria\n- [ ] Criterion 1\n- [ ] Criterion 2"
    ```

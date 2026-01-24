@@ -1,6 +1,6 @@
 {
     "servers": {
-        "omega575-mcp": {
+        "bryan-debaun-mcp": {
             "type": "stdio",
             "command": "node",
             "args": [

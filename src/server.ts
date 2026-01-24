@@ -7,7 +7,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 export function createServer(): McpServer {
     const server = new McpServer(
         {
-            name: "omega575-mcp-server",
+            name: "bryan-debaun-mcp-server",
             version: "0.1.0"
         },
         {
