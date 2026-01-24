@@ -147,7 +147,3 @@ To add a new tool category (e.g., Git operations):
 2. Implement tools following the pattern in `github-issues/`
 3. Create a registration function: `registerGitTools(server)`
 4. Import and call it in `src/tools/index.ts`
-
-## License
-
-MIT

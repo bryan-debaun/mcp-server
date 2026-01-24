@@ -183,6 +183,8 @@ If gaps are found, **comment on the issue** to document them before proceeding.
    git push
    ```
 
+6. **Merging PRs**: As an admin with `enforce_admins: false`, you can merge PRs without waiting for approval. GitHub won't allow you to approve your own PR, but you can bypass the approval requirement and merge directly.
+
 ### Commit Message Format
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/):
@@ -229,6 +231,24 @@ gh pr create --draft --title "Title" --body "Body"
 # View PR status
 gh pr status
 ```
+
+### Branch Protection
+
+When setting up or modifying branch protection, **never enforce for admins** (`enforce_admins: false`). This allows the repo owner to bypass approval requirements and merge their own PRs.
+
+> **Note**: GitHub never allows users to approve their own PRs. However, with `enforce_admins: false`, admins can merge directly even without the required approval count being met.
+
+```bash
+# Set branch protection (enforce_admins must be false)
+$body = '{"required_status_checks":null,"enforce_admins":false,"required_pull_request_reviews":{"required_approving_review_count":1},"restrictions":null}'
+echo $body | gh api repos/bryan-debaun/<repo>/branches/main/protection -X PUT --input -
+```
+
+**Required settings:**
+- `enforce_admins: false` - Allow admins to bypass (required for solo approval)
+- `required_approving_review_count: 1` - Require at least one approval
+- `allow_force_pushes: false` - Prevent force pushes (default)
+- `allow_deletions: false` - Prevent branch deletion (default)
 
 ## Tech Stack
 
