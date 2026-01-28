@@ -46,7 +46,7 @@ The project needs an integration with Spotify to publish playback (Now Playing) 
 
 - Prefer containerized deployment (Docker) to a low-cost provider (Fly.io, Render, Railway, DigitalOcean). Platform must provide TLS and secret management.
 - See ADR 0003: `docs/adr/0003-hosting-render.md` for an initial Render hosting plan and deploy guidance.
-- Add `/health` and `/metrics` endpoints and document a minimal deployment runbook.
+- Add `/healthz` and `/metrics` endpoints and document a minimal deployment runbook.
 
 ## Security Model
 

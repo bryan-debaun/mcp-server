@@ -34,8 +34,8 @@ Render will detect `render.yaml` and build using Docker if present. The applicat
 Health & Readiness
 ------------------
 
-- Configure the service health check path to: `/health`.
-- Implement `/health` to return HTTP 200 only when:
+- Configure the service health check path to: `/healthz`.
+- Implement `/healthz` to return HTTP 200 only when:
   - Server process is running
   - Critical subsystems (Spotify token store if persisted, metrics exporter) are reachable or in acceptable state
 - Add `/metrics` as a Prometheus-compatible endpoint for metrics scraping or export.
@@ -59,7 +59,7 @@ Logging & Monitoring
 
 - Use Render's log streaming in the dashboard for debugging and live logs.
 - Add metric counters for: `poll_success_total`, `poll_failure_total`, `intent_success_total`, `intent_failure_total`, `token_refresh_success_total`, `token_refresh_failure_total`.
-- Configure an external monitor (UptimeRobot, Pingdom) to check `/health` and alert on failures.
+- Configure an external monitor (UptimeRobot, Pingdom) to check `/healthz` and alert on failures.
 
 Deployment Workflow
 -------------------
@@ -77,7 +77,7 @@ Troubleshooting
 ---------------
 
 - App not starting: Check `npm run build` and `npm run start` locally to reproduce build/start errors.
-- Health check failing: Inspect `/health` logic and logs; ensure necessary environment variables are set.
+- Health check failing: Inspect `/healthz` logic and logs; ensure necessary environment variables are set.
 - Token refresh failing: Confirm `SPOTIFY_CLIENT_SECRET` and `SPOTIFY_CLIENT_ID` are correct and that the `SPOTIFY_REDIRECT_URI` configured in the Spotify app matches the deployed redirect.
 
 Security Notes

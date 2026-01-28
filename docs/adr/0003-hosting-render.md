@@ -12,7 +12,7 @@ We need a low-friction hosting option for the personal MCP server so that the us
 
 - Use **Render** as the initial hosting platform for the MCP server. Render provides easy GitHub integration, automatic TLS, an approachable dashboard for environment variables (secrets), and a simple deployment model that suits a personal, low-traffic service.
 - Deploy the MCP server as a single **Web Service** using a Docker-based build described in `Dockerfile` and `render.yaml`.
-- Use `/health` as the liveness/readiness probe endpoint and expose `/metrics` for observability integrations.
+- Use `/healthz` as the liveness/readiness probe endpoint and expose `/metrics` for observability integrations.
 - Keep control endpoints internal or process-protected; expose only read-only endpoints (e.g., `GET /api/playback`) to the public website.
 
 ## Rationale
@@ -31,7 +31,7 @@ We need a low-friction hosting option for the personal MCP server so that the us
 
 - Use Render's GitHub integration to auto-deploy on pushes to `main`, or use a GitHub Actions workflow that calls Render's API if explicit control is desired.
 - Build steps: `npm ci && npm run build`; start command: `npm run start` (starts `node dist/index.js`).
-- Platform health check path: `/health`.
+- Platform health check path: `/healthz`.
 
 ## Environment variables (recommended)
 
@@ -52,7 +52,7 @@ Set the following in Render's dashboard (as secure env vars):
 
 ## Rollout Plan
 
-1. Add Dockerfile, `render.yaml`, and CI workflow; implement `/health` and `/metrics` routes.
+1. Add Dockerfile, `render.yaml`, and CI workflow; implement `/healthz` and `/metrics` routes.
 2. Connect repo to Render via the Dashboard (GitHub OAuth connector) and set secrets.
 3. Perform canary deploy (initial traffic) and verify `/api/playback` returns expected schema.
 4. Configure custom domain and enable TLS.
@@ -60,7 +60,7 @@ Set the following in Render's dashboard (as secure env vars):
 ## Acceptance Criteria
 
 - MCP server builds and runs on Render using the `Dockerfile` and `render.yaml`.
-- `/health` returns 200 when the server is healthy.
+- `/healthz` returns 200 when the server is healthy.
 - `/api/playback` returns the schema in `docs/models/playback.schema.json` and is reachable over HTTPS.
 - Secrets are configured in Render and no secrets are committed to the repo.
 - Deploys are automated via Render's GitHub integration or a documented CI workflow.
