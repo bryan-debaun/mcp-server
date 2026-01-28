@@ -20,6 +20,9 @@ coverage/
 .env
 .env.local
 
+# Docs
+/docs/handoffs/
+
 # Logs
 *.log
 npm-debug.log*
