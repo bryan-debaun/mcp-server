@@ -20,6 +20,17 @@ async function main(): Promise<void> {
     // Connect server to transport
     await server.connect(transport);
 
+    // Start HTTP server if a PORT is provided (Render/hosting) or explicitly enabled
+    try {
+        const port = process.env.PORT ? Number(process.env.PORT) : undefined;
+        if (port) {
+            const { startHttpServer } = await import("./http/server.js");
+            await startHttpServer(port);
+        }
+    } catch (err) {
+        console.error("Failed to start HTTP server:", err);
+    }
+
     // Log to stderr (stdout is reserved for MCP protocol)
     console.error("MCP server started on stdio transport");
 }

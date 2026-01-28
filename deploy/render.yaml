@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: mcp-server
+    env: docker
+    plan: starter
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "8080"
+    healthCheckPath: /health
