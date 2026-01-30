@@ -37,7 +37,7 @@ jobs:
       PR_HEAD_REF: ${{ github.head_ref }}
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
-      - name: Trigger Render deploy for this branch
+      - name: Trigger / find PR preview service and deploy for this branch
         id: trigger
         run: |
           set -e
@@ -46,32 +46,53 @@ jobs:
             exit 0;
           fi
 
-          # Attempt to create a deploy
-          resp=$(curl -s -X POST "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
-            -H "Authorization: Bearer ${RENDER_API_KEY}" \
-            -H "Content-Type: application/json" \
-            -d "{}")
-          echo "Trigger response:" >&2; echo "$resp" | jq . >&2 || true
+          pr_num="${{ github.event.pull_request.number }}"
+          head_ref="${{ github.head_ref }}"
+          head_sha="${{ github.event.pull_request.head.sha }}"
 
-          # Try common locations for deploy id
-          deploy_id=$(echo "$resp" | jq -r '.id // .deploy.id // empty')
+          echo "Looking for a preview service for PR #${pr_num} (branch=${head_ref})"
+          services=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" "https://api.render.com/v1/services?limit=200") || true
 
-          # If no deploy id returned, fall back to recent deploys list and pick the latest
-          if [ -z "$deploy_id" ]; then
-            echo "No deploy id returned by trigger; fetching recent deploys...";
-            deploys=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" \
-              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys?limit=20")
-            echo "Recent deploys:" >&2; echo "$deploys" | jq . >&2 || true
-            # Prefer a deploy that matches the PR head ref
-            deploy_id=$(echo "$deploys" | jq -r --arg branch "$PR_HEAD_REF" 'map(select(.branch == $branch))[0].id // .[0].id // empty')
-            if [ -n "$deploy_id" ]; then
-              echo "Using deploy id: $deploy_id";
-            else
-              echo "No deploy id available; will skip deploy polling and attempt domain resolution.";
-            fi
+          # Prefer a service whose name or default domain contains the PR number or branch
+          preview_service_id=$(echo "$services" | jq -r --arg pr "$pr_num" --arg branch "$head_ref" '
+            .[] | select((.name // "" | test("pr-?"+$pr)) or (.serviceDetails.defaultDomain // "" | test("-pr-"+$pr)) or (.name // "" | test($branch)) ) | .id // empty' | head -n1)
+
+          # If not found, try match by repo and branch presence
+          if [ -z "$preview_service_id" ]; then
+            repo_full="${{ github.repository }}"
+            preview_service_id=$(echo "$services" | jq -r --arg repo "$repo_full" --arg branch "$head_ref" '
+              .[] | select((.repo // "" | contains($repo)) or (.serviceDetails.repo // "" | contains($repo))) | select(.name | test($branch) or (.serviceDetails.defaultDomain // "" | test($branch))) | .id // empty' | head -n1)
           fi
 
-          echo "deploy_id=$deploy_id" >>"$GITHUB_OUTPUT"
+          if [ -n "$preview_service_id" ]; then
+            echo "Found preview service id: $preview_service_id";
+            service_to_use=$preview_service_id;
+          else
+            echo "No explicit preview service found; will use production service id: $RENDER_SERVICE_ID";
+            service_to_use=$RENDER_SERVICE_ID;
+          fi
+
+          # Try to find a recent deploy on the chosen service that matches our PR commit or branch
+          deploy_id=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" "https://api.render.com/v1/services/${service_to_use}/deploys?limit=20" | jq -r --arg commit "$head_sha" --arg branch "$head_ref" 'map(select(.commit.id == $commit or .branch == $branch))[0].id // empty') || true
+
+          if [ -n "$deploy_id" ]; then
+            echo "Found existing deploy for PR: $deploy_id";
+          else
+            # Try triggering a deploy on the selected service (may be a no-op for preview services)
+            echo "Triggering deploy on service: $service_to_use";
+            resp=$(curl -s -X POST "https://api.render.com/v1/services/${service_to_use}/deploys" \
+              -H "Authorization: Bearer ${RENDER_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d "{}") || true
+            echo "Trigger response:" >&2; echo "$resp" | jq . >&2 || true
+            deploy_id=$(echo "$resp" | jq -r '.id // .deploy.id // empty')
+          fi
+
+          if [ -z "$deploy_id" ]; then
+            echo "No deploy id available for service ${service_to_use}; will continue to domain resolution and perform a health check directly";
+          else
+            echo "deploy_id=$deploy_id" >>"$GITHUB_OUTPUT";
+          fi
 
       - name: Wait for deploy to complete (poll)
         id: poll
@@ -83,9 +104,23 @@ jobs:
             exit 0;
           fi
 
-          for i in $(seq 1 60); do
-            dep=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" \
-              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys/${deploy_id}")
+          # Short polling loop focused on the PR's service/deploy (retries: 12, interval: 15s -> 3 minutes)
+          for i in $(seq 1 12); do
+            if [ -z "$deploy_id" ]; then
+              echo "No deploy id to poll for service ${service_to_use}; will attempt to find a recent deploy matching PR commit/branch";
+              dep=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" "https://api.render.com/v1/services/${service_to_use}/deploys?limit=20")
+              deploy_id=$(echo "$dep" | jq -r --arg commit "$PR_HEAD_SHA" --arg branch "$PR_HEAD_REF" 'map(select(.commit.id == $commit or .branch == $branch))[0].id // empty') || true
+              if [ -n "$deploy_id" ]; then
+                echo "Found candidate deploy id: $deploy_id";
+              fi
+            fi
+
+            if [ -z "$deploy_id" ]; then
+              echo "No deploy id found yet (attempt $i); sleeping and will retry";
+              sleep 15; continue;
+            fi
+
+            dep=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" "https://api.render.com/v1/services/${service_to_use}/deploys/${deploy_id}")
             status=$(echo "$dep" | jq -r '.status // empty')
             deploy_branch=$(echo "$dep" | jq -r '.branch // empty')
             deploy_commit=$(echo "$dep" | jq -r '.commit // .commitHash // .buildCommit // empty')
@@ -110,21 +145,20 @@ jobs:
                 exit 1;
               fi
 
-              # Otherwise, look for a newer deploy matching our PR head ref
-              echo "Deploy $deploy_id failed but does not match PR; searching for a recent deploy for branch $PR_HEAD_REF...";
-              recent=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" \
-                "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys?limit=20")
+              # If this is unrelated or older, try to find a more recent deploy on this service matching the PR
+              echo "Deploy $deploy_id failed but not tied to PR; searching service ${service_to_use} for newer PR deploys...";
+              recent=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" "https://api.render.com/v1/services/${service_to_use}/deploys?limit=50")
               new_id=$(echo "$recent" | jq -r --arg branch "$PR_HEAD_REF" 'map(select(.branch == $branch))[0].id // empty')
               if [ -n "$new_id" ] && [ "$new_id" != "$deploy_id" ]; then
-                echo "Found newer PR deploy id: $new_id; switching to poll that one";
+                echo "Found newer PR deploy id on service ${service_to_use}: $new_id; switching to poll that one";
                 deploy_id="$new_id";
                 continue;
               fi
 
-              echo "No newer PR deploy found; continuing to wait for a suitable deploy (attempt $i)";
+              echo "No newer PR deploy found on service ${service_to_use}; will retry (attempt $i)";
             fi
 
-            sleep 10
+            sleep 15
           done
 
       - name: Resolve service domain
