@@ -2,6 +2,10 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
+# Allow passing DATABASE_URL at build time for Prisma codegen
+ARG DATABASE_URL
+ENV DATABASE_URL=$DATABASE_URL
+
 # Install build deps
 COPY package*.json ./
 RUN npm ci
