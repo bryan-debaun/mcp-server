@@ -34,6 +34,8 @@ jobs:
       RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
       HEALTH_PATH: /healthz
       PREVIEW_DOMAIN: ${{ secrets.PREVIEW_DOMAIN }}
+      PR_HEAD_REF: ${{ github.head_ref }}
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - name: Trigger Render deploy for this branch
         id: trigger
@@ -58,11 +60,12 @@ jobs:
           if [ -z "$deploy_id" ]; then
             echo "No deploy id returned by trigger; fetching recent deploys...";
             deploys=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" \
-              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys?limit=10")
+              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys?limit=20")
             echo "Recent deploys:" >&2; echo "$deploys" | jq . >&2 || true
-            deploy_id=$(echo "$deploys" | jq -r '.[0].id // empty')
+            # Prefer a deploy that matches the PR head ref
+            deploy_id=$(echo "$deploys" | jq -r --arg branch "$PR_HEAD_REF" 'map(select(.branch == $branch))[0].id // .[0].id // empty')
             if [ -n "$deploy_id" ]; then
-              echo "Using latest deploy id: $deploy_id";
+              echo "Using deploy id: $deploy_id";
             else
               echo "No deploy id available; will skip deploy polling and attempt domain resolution.";
             fi
@@ -79,12 +82,48 @@ jobs:
             echo "No deploy id to poll; skipping deploy polling step.";
             exit 0;
           fi
-          for i in $(seq 1 30); do
-            status=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" \
-              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys/${deploy_id}" | jq -r '.status')
-            echo "deploy status: $status"
-            if [ "$status" = "success" ]; then break; fi
-            if [ "$status" = "failed" ]; then echo "Deploy failed"; exit 1; fi
+
+          for i in $(seq 1 60); do
+            dep=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" \
+              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys/${deploy_id}")
+            status=$(echo "$dep" | jq -r '.status // empty')
+            deploy_branch=$(echo "$dep" | jq -r '.branch // empty')
+            deploy_commit=$(echo "$dep" | jq -r '.commit // .commitHash // .buildCommit // empty')
+            created_at=$(echo "$dep" | jq -r '.createdAt // .created_at // empty')
+            echo "Deploy id: $deploy_id, status: $status, branch: $deploy_branch, commit: $deploy_commit, created: $created_at"
+
+            if [ "$status" = "success" ]; then
+              echo "Deploy $deploy_id succeeded";
+              break;
+            fi
+
+            if [ "$status" = "failed" ] || [ "$status" = "build_failed" ]; then
+              # If this failed deploy corresponds to our PR (branch or commit), treat as terminal failure
+              if [ -n "$PR_HEAD_REF" ] && [ "$deploy_branch" = "$PR_HEAD_REF" ]; then
+                echo "Deploy $deploy_id failed for PR branch $PR_HEAD_REF; failing check.";
+                echo "$dep" | jq .;
+                exit 1;
+              fi
+              if [ -n "$PR_HEAD_SHA" ] && [ "$deploy_commit" = "$PR_HEAD_SHA" ]; then
+                echo "Deploy $deploy_id failed for PR commit $PR_HEAD_SHA; failing check.";
+                echo "$dep" | jq .;
+                exit 1;
+              fi
+
+              # Otherwise, look for a newer deploy matching our PR head ref
+              echo "Deploy $deploy_id failed but does not match PR; searching for a recent deploy for branch $PR_HEAD_REF...";
+              recent=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" \
+                "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys?limit=20")
+              new_id=$(echo "$recent" | jq -r --arg branch "$PR_HEAD_REF" 'map(select(.branch == $branch))[0].id // empty')
+              if [ -n "$new_id" ] && [ "$new_id" != "$deploy_id" ]; then
+                echo "Found newer PR deploy id: $new_id; switching to poll that one";
+                deploy_id="$new_id";
+                continue;
+              fi
+
+              echo "No newer PR deploy found; continuing to wait for a suitable deploy (attempt $i)";
+            fi
+
             sleep 10
           done
 
