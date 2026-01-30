@@ -39,6 +39,8 @@ model Invite {
   invitedBy  Int?
   inviter    User?    @relation(fields: [invitedBy], references: [id])
   accepted   Boolean  @default(false)
+  acceptedAt DateTime?
+  expiresAt  DateTime?
   createdAt  DateTime @default(now())
 }
 

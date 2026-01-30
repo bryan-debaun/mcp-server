@@ -15,10 +15,10 @@ const config = {
  * Registers the update-issue tool with the MCP server.
  */
 export function registerUpdateIssueTool(server: McpServer): void {
-    server.registerTool(
+    (server as any).registerTool(
         name,
         config,
-        async (args): Promise<CallToolResult> => {
+        async (args: any): Promise<CallToolResult> => {
             try {
                 const { repo, issueNumber, title, body, labels, comment } = args as {
                     repo: string;
