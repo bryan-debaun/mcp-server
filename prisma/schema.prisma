@@ -1,0 +1,62 @@
+// Prisma schema for MCP Server
+// Models: User, Role, Invite, AccessRequest, AuditLog
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Note: Prisma 7 requires the datasource URL to be configured in `prisma.config.ts`.
+// See `prisma.config.ts` for local dev config and CI usage.
+
+model Role {
+  id        Int     @id @default(autoincrement())
+  name      String  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  email      String   @unique
+  name       String?
+  roleId     Int?
+  role       Role?    @relation(fields: [roleId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  invites    Invite[]
+  auditLogs  AuditLog[]
+}
+
+model Invite {
+  id         Int      @id @default(autoincrement())
+  email      String
+  token      String   @unique
+  invitedBy  Int?
+  inviter    User?    @relation(fields: [invitedBy], references: [id])
+  accepted   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model AccessRequest {
+  id         Int      @id @default(autoincrement())
+  userEmail  String
+  reason     String?
+  reviewed   Boolean  @default(false)
+  reviewerId Int?
+  reviewedAt DateTime?
+  createdAt  DateTime @default(now())
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  action     String
+  actorId    Int?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  metadata   Json?
+  createdAt  DateTime @default(now())
+}
