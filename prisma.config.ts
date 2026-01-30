@@ -8,6 +8,6 @@ export default defineConfig({
     },
     migrations: {
         // Seed command used by `prisma db seed`
-        seed: 'ts-node prisma/seed.ts',
+        seed: "node --loader ts-node/esm prisma/seed.ts",
     },
 })
