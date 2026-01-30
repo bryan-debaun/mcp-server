@@ -67,6 +67,22 @@ Deployment Workflow
 - Option A (recommended): Use Render's GitHub integration (auto-deploy on push to `main`).
 - Option B (optional): Use GitHub Actions to run tests and call Render's API to trigger a deploy (requires `RENDER_API_KEY` and `RENDER_SERVICE_ID`).
 
+Canary Verification (manual)
+----------------------------
+After a preview or production deploy, perform these quick checks to validate the service:
+
+1. Health check
+   - `curl -i https://<service-url>/healthz` — expect `200` and JSON body containing `status: "ok"`.
+
+2. Façade test
+   - `curl -i https://<service-url>/api/playback` — expect `200` and a valid playback JSON schema.
+
+3. Metrics validation
+   - `curl -sS https://<service-url>/metrics | head -n 20` — verify presence of `http_requests_total` and `mcp_poll_success_total`.
+
+4. Logs
+   - Inspect Render logs for errors or repeated restarts. If restart loops or token refresh failures occur, roll back the deployment.
+
 Rollback Plan
 -------------
 
