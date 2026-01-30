@@ -1,10 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { prisma, testConnection } from '../../src/db'
 
+const RUN_DB_TESTS = process.env.RUN_DB_INTEGRATION === 'true'
+
 describe('DB integration', () => {
-    beforeAll(async () => {
-        // Ensure connection is ready
-    })
+    if (!RUN_DB_TESTS) {
+        it.skip('skipped - requires RUN_DB_INTEGRATION=true', () => { })
+        return
+    }
+
 
     afterAll(async () => {
         await prisma.$disconnect()

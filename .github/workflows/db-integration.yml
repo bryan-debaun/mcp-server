@@ -9,6 +9,8 @@ on:
 jobs:
   db-integration:
     runs-on: ubuntu-latest
+    env:
+      RUN_DB_INTEGRATION: 'true'
     services:
       postgres:
         image: postgres:15
