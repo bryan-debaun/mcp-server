@@ -10,6 +10,11 @@
             "key": "base_url",
             "value": "https://bad-mcp.onrender.com",
             "type": "string"
+        },
+        {
+            "key": "invite_token",
+            "value": "",
+            "type": "string"
         }
     ],
     "item": [
@@ -92,6 +97,84 @@
                         "exec": [
                             "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
                             "pm.test('Contains http_requests_total', function () { pm.expect(pm.response.text()).to.include('http_requests_total'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Invite Accept (POST)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\"token\":\"{{invite_token}}\",\"name\":\"Test User\",\"password\":\"password123\"}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/invites/accept",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "invites",
+                        "accept"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 201 or 200', function () { pm.expect(pm.response.status).to.be.oneOf([200,201]); });",
+                            "pm.test('Has user in response', function () { var json = pm.response.json(); pm.expect(json).to.have.property('user'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Invite Accept (GET)",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/invites/accept?token={{invite_token}}",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "invites",
+                        "accept"
+                    ],
+                    "query": [
+                        {
+                            "key": "token",
+                            "value": "{{invite_token}}"
+                        }
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200 or 201', function () { pm.expect(pm.response.status).to.be.oneOf([200,201]); });",
+                            "pm.test('Has user in response', function () { var json = pm.response.json(); pm.expect(json).to.have.property('user'); });"
                         ]
                     }
                 }
