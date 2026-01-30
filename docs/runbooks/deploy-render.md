@@ -23,6 +23,16 @@ Set these in Render Dashboard > Environment > Environment Variables (secure):
 - `MCP_API_KEY` (optional; for protected control endpoints used by internal tools)
 - `NODE_ENV=production`
 
+Supabase / Auth-related (required for admin & JWT validation):
+
+- `DATABASE_URL` (Postgres connection string used by Prisma)
+- `SUPABASE_SERVICE_ROLE_KEY` (full-privilege service role key; store securely and rotate regularly)
+- `SUPABASE_JWKS_URL` (JWKS endpoint used to validate Supabase-issued JWTs)
+- `SUPABASE_AUD` (expected JWT audience / client id)
+- `SUPABASE_ISS` (expected JWT issuer)
+
+Add these to the Render service environment and to GitHub Actions secrets (for CI jobs that run DB migrations and integration tests). For local development, use `.env` files and the local Postgres from `docker-compose.yml` with seeded data.
+
 Build & Start
 -------------
 
@@ -45,6 +55,16 @@ Secrets & Token Management
 
 - Store Spotify client secret and any refresh tokens in Render's secrets; never commit to repo.
 - Document reauthorization procedure in `docs/runbooks/spotify.md` (how to re-run the OAuth flow and update secrets in Render).
+
+Supabase JWT / JWKS configuration
+
+- Store Supabase-related secrets in Render: `SUPABASE_JWKS_URL`, `SUPABASE_AUD`, `SUPABASE_ISS`, `SUPABASE_SERVICE_ROLE_KEY`, and `DATABASE_URL`.
+- Configure the JWT middleware to validate tokens using the JWKS endpoint (`SUPABASE_JWKS_URL`) and by verifying `aud` and `iss` claims against `SUPABASE_AUD` and `SUPABASE_ISS`.
+- For local development and tests, include a mock JWKS JSON file (e.g., `test/fixtures/mock-jwks.json`) and helper utilities to generate test tokens signed with a test key (do **not** commit private keys). Tests should exercise authorized vs unauthorized flows using these fixtures.
+- The `SUPABASE_SERVICE_ROLE_KEY` is highly sensitive (server-only). Use it for admin CLI operations or server-to-server calls only; never expose it in client code or logs. When rotating the service role key: update Render secrets, update CI secrets, and redeploy; verify any long-lived sessions/tokens are revoked as part of rotation.
+- Add the required GitHub Actions secrets (for example, `DATABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`) so CI jobs can run migrations and integration tests against ephemeral test databases.
+
+See ADR: `docs/adr/0003-auth-supabase-prisma.md` for the design rationale and additional details.
 
 Domain & TLS
 ------------
