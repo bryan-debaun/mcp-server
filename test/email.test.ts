@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { sendInviteEmail } from '../src/email'
+import { sendInviteEmail } from '../src/email.js'
 
 describe('sendInviteEmail', () => {
     it('logs invite URL when no SENDGRID_API_KEY', async () => {

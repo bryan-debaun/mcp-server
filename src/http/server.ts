@@ -4,6 +4,7 @@ import { registerHealthRoute } from "./health-route.js";
 import { registerPlaybackRoute } from "./playback-route.js";
 import { registerMetricsRoute, httpRequestsTotal, httpRequestDurationSeconds } from "./metrics-route.js";
 import { registerAdminRoute } from './admin-route.js'
+import { registerInviteRoutes } from './invite-route.js'
 
 export function createHttpApp() {
     const app = express();
@@ -26,6 +27,8 @@ export function createHttpApp() {
     registerMetricsRoute(app);
     // Register admin routes
     registerAdminRoute(app)
+    // Public invite routes
+    registerInviteRoutes(app)
 
     // Basic 404 handler
     app.use((_req, res) => res.status(404).json({ error: "not found" }));

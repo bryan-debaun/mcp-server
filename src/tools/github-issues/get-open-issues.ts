@@ -15,10 +15,10 @@ const config = {
  * Registers the get-open-issues tool with the MCP server.
  */
 export function registerGetOpenIssuesTool(server: McpServer): void {
-    server.registerTool(
+    (server as any).registerTool(
         name,
         config,
-        async (args): Promise<CallToolResult> => {
+        async (args: any): Promise<CallToolResult> => {
             try {
                 const { repo, labels, limit } = args as {
                     repo: string;

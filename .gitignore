@@ -20,6 +20,12 @@ coverage/
 .env
 .env.local
 
+# Compiled test artifacts
+test/**/*.js
+test/**/*.js.map
+test/**/*.d.ts
+test/**/*.d.ts.map
+
 # Docs
 /docs/handoffs/
 

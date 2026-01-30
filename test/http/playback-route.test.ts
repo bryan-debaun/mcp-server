@@ -1,4 +1,5 @@
 import request from "supertest";
+import { describe, it, expect } from 'vitest'
 import { createHttpApp } from "../../src/http/server";
 
 describe("GET /api/playback", () => {
