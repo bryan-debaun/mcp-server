@@ -2,6 +2,7 @@ import { Application, Request, Response } from 'express'
 import { jwtMiddleware } from '../auth/jwt.js'
 import { requireAdmin } from '../auth/requireAdmin.js'
 import { listUsers, createInvite, setUserRole, listAccessRequests, approveAccessRequest } from '../services/admin-service.js'
+import { sendInviteEmail } from "../email.js"
 
 export function registerAdminRoute(app: Application) {
     const base = '/api/admin'
@@ -16,8 +17,21 @@ export function registerAdminRoute(app: Application) {
         if (!email) return res.status(400).json({ error: 'email is required' })
         const invitedBy = (req as any).user?.sub ? undefined : undefined
         const invite = await createInvite(email, invitedBy)
-        // stubbed email flow: return token in response for dev only
-        res.status(201).json({ invite })
+
+        // attempt to send invite email; don't fail the request if sending fails
+        try {
+            await sendInviteEmail(email, invite.token)
+        } catch (err) {
+            console.error('failed to send invite email', err)
+        }
+
+        // Safety: don't expose the invite token in production responses by default
+        const resp: any = { id: invite.id, email: invite.email }
+        if (process.env.SHOW_INVITE_TOKEN === '1') {
+            resp.token = invite.token
+        }
+
+        res.status(201).json(resp)
     })
 
     app.patch(`${base}/users/:id`, jwtMiddleware, requireAdmin, async (req: Request, res: Response) => {

@@ -6,9 +6,9 @@ import { generateKeyPair, exportJWK, SignJWT } from 'jose'
 
 let publicJwk: any
 let privateKey: CryptoKey
-let jwksUrl = 'https://example.local/.well-known/jwks.json'
-let issuer = 'https://nanodcvcpklffksxofbm.supabase.co'
-let audience = 'authenticated'
+const jwksUrl = 'https://example.local/.well-known/jwks.json'
+const issuer = 'https://nanodcvcpklffksxofbm.supabase.co'
+const audience = 'authenticated'
 
 beforeAll(async () => {
     // generate keys for test

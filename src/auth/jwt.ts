@@ -2,8 +2,6 @@ import { Request, Response, NextFunction } from 'express'
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose'
 
 const jwksUrl = process.env.SUPABASE_JWKS_URL
-const issuer = process.env.SUPABASE_ISS
-const audience = process.env.SUPABASE_AUD
 
 if (!jwksUrl) {
     console.warn('SUPABASE_JWKS_URL not set; JWT middleware will not validate tokens')
