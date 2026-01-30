@@ -139,33 +139,42 @@ jobs:
             exit 0;
           fi
 
-          # Try to resolve from the service details directly
+          # Try to resolve from the production service details directly
           srv=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" \
             "https://api.render.com/v1/services/${RENDER_SERVICE_ID}")
-          echo "$srv" | jq .
+          echo "Prod service details:" >&2; echo "$srv" | jq . >&2 || true
           domain=$(echo "$srv" | jq -r '.serviceDetails.defaultDomain // .defaultDomain // .serviceDetails.url // empty')
 
-          # If not present, try to find a matching deploy by branch (PR head ref) or latest deploy
+          # If not present or doesn't look like the PR preview, attempt discovery across account-level services
           if [ -z "$domain" ]; then
-            head_ref="${{ github.head_ref }}"
+            echo "No domain in production service details; searching account-level services for a PR preview...";
+
+            services=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" "https://api.render.com/v1/services?limit=200")
+            echo "Service list fetched" >&2; echo "$services" | jq . >&2 || true
+
+            repo_full="${{ github.repository }}"
             pr_num="${{ github.event.pull_request.number }}"
+            head_ref="${{ github.head_ref }}"
 
-            echo "No domain in service details; searching recent deploys for branch: $head_ref"
-            deploys=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" \
-              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys?limit=20")
-            echo "$deploys" | jq . || true
+            # Try match by repo or service name containing pr number or branch
+            domain=$(echo "$services" | jq -r --arg repo "$repo_full" --arg pr "$pr_num" --arg branch "$head_ref" '
+              .[] | select((.repo // "" | contains($repo)) or (.serviceDetails.repo // "" | contains($repo)) or (.name // "" | test("pr-?"+$pr))) | (.serviceDetails.defaultDomain // .serviceDetails.url // .defaultDomain // .url // empty) | select(.)' | head -n1)
 
-            # Try to find deploy with matching branch
-            domain=$(echo "$deploys" | jq -r --arg branch "$head_ref" '
-              map(select(.branch == $branch))[0] | (.serviceDetails.url // .url // .serviceDetails.defaultDomain // empty)')
+            # If still not found, try service where defaultDomain contains -pr-<pr>
+            if [ -z "$domain" ]; then
+              domain=$(echo "$services" | jq -r --arg pr "$pr_num" '.[] | select((.serviceDetails.defaultDomain // .defaultDomain // "") | test("-pr-"+$pr)) | (.serviceDetails.defaultDomain // .defaultDomain // .serviceDetails.url // .url) | select(.)' | head -n1)
+            fi
 
-            # Fallback to latest deploy's domain
-            if [ -z "$domain" ] || [ "$domain" = "null" ]; then
-              domain=$(echo "$deploys" | jq -r '.[0] | (.serviceDetails.url // .url // .serviceDetails.defaultDomain // empty)')
+            # As another fallback, try to find a recent deploy under the production service that matches our branch
+            if [ -z "$domain" ]; then
+              echo "No matching preview service found; searching production deploys for branch: $head_ref";
+              deploys=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" \
+                "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys?limit=50")
+              domain=$(echo "$deploys" | jq -r --arg branch "$head_ref" 'map(select(.branch == $branch))[0] | (.serviceDetails.url // .url // .serviceDetails.defaultDomain // empty)')
             fi
 
             # Final guess based on PR number and base if still not found
-            if [ -z "$domain" ] || [ "$domain" = "null" ]; then
+            if [ -z "$domain" ]; then
               base="${{ secrets.PREVIEW_DOMAIN_BASE }}"
               if [ -z "$base" ]; then base="bad-mcp"; fi
               if [ -n "$pr_num" ]; then
@@ -179,9 +188,11 @@ jobs:
           domain=${domain#https://}; domain=${domain#http://}; domain=${domain%/}
 
           if [ -z "$domain" ]; then
-            echo "::error::Could not resolve preview domain. Please pass PREVIEW_DOMAIN as a secret.";
+            echo "::error::Could not resolve preview domain. Please pass PREVIEW_DOMAIN as a secret or set PREVIEW_DOMAIN_BASE to a suitable value.";
             exit 1;
           fi
+
+          echo "Selected preview domain: $domain" >&2
           echo "service_domain=$domain" >>"$GITHUB_OUTPUT"
 
       - name: Health check
