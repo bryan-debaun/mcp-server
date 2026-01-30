@@ -1,0 +1,101 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "PlaybackState",
+    "type": "object",
+    "properties": {
+        "source": {
+            "type": "string",
+            "const": "spotify"
+        },
+        "timestamp": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "is_playing": {
+            "type": "boolean"
+        },
+        "progress_ms": {
+            "type": [
+                "integer",
+                "null"
+            ]
+        },
+        "track": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "artists": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "album": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "duration_ms": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "id",
+                "title",
+                "artists",
+                "duration_ms"
+            ]
+        },
+        "device": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "volume_percent": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                }
+            }
+        },
+        "repeat_state": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "enum": [
+                "track",
+                "context",
+                "off",
+                null
+            ]
+        },
+        "shuffle_state": {
+            "type": [
+                "boolean",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "source",
+        "timestamp",
+        "is_playing"
+    ]
+}
