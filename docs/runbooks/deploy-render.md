@@ -33,6 +33,12 @@ Supabase / Auth-related (required for admin & JWT validation):
 
 Add these to the Render service environment and to GitHub Actions secrets (for CI jobs that run DB migrations and integration tests). For local development, use `.env` files and the local Postgres from `docker-compose.yml` with seeded data.
 
+JWT middleware and test fixtures
+
+- The codebase provides a JWT middleware that validates Supabase-issued JWTs using the JWKS endpoint and verifies `iss` and `aud` claims.
+- For tests, we generate an ephemeral RSA key pair and stub the JWKS endpoint so tests can sign and validate tokens without network access.
+- Ensure `SUPABASE_JWKS_URL`, `SUPABASE_AUD`, and `SUPABASE_ISS` are set for CI so the middleware tests run in the DB Integration job or unit tests.
+
 Build & Start
 -------------
 
