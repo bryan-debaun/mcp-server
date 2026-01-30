@@ -16,7 +16,10 @@
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
-        "types": ["vitest", "node"]
+        "types": [
+            "vitest",
+            "node"
+        ]
     },
     "include": [
         "src/**/*"

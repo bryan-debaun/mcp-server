@@ -69,6 +69,7 @@ Deployment Workflow
 
 Canary Verification (manual)
 ----------------------------
+
 After a preview or production deploy, perform these quick checks to validate the service:
 
 1. Health check
