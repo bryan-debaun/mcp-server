@@ -1,6 +1,3 @@
-// Terraform skeleton for Supabase project
-// Fill provider config and variables as needed
-
 terraform {
   required_providers {
     supabase = {
@@ -11,12 +8,26 @@ terraform {
 }
 
 provider "supabase" {
-  // Configure authentication (e.g., via env var SUPABASE_ACCESS_TOKEN)
+  # Authentication is provided via the environment variable:
+  #   SUPABASE_ACCESS_TOKEN (use a token with appropriate privileges)
+  access_token = var.supabase_access_token
 }
 
-// Example placeholder resource
-// resource "supabase_project" "mcp" {
-//   name = var.project_name
-// }
+# NOTE: The resources below are _examples_ and intentionally commented out.
+# Replace, enable, and adapt them to your organization/project needs.
 
-// Add resources: project, db, secrets, policies, etc.
+# resource "supabase_project" "mcp" {
+#   name = var.project_name
+#   org_id = var.organization_id # optional: if your account has multiple orgs
+#   # region = var.region
+# }
+
+# resource "supabase_database" "mcp_db" {
+#   project_id = supabase_project.mcp.id
+#   # Add any database instance configuration here
+# }
+
+# You can also add APIs, policies, and service roles via the provider resources.
+# See the Supabase Terraform provider docs for complete resources and attributes.
+
+# Outputs should be defined to expose values for CI / Render secrets (below).
