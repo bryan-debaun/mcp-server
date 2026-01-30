@@ -173,6 +173,27 @@ jobs:
               domain=$(echo "$deploys" | jq -r --arg branch "$head_ref" 'map(select(.branch == $branch))[0] | (.serviceDetails.url // .url // .serviceDetails.defaultDomain // empty)')
             fi
 
+            # Final attempt: iterate account services and inspect their recent deploys for a matching commit or branch
+            if [ -z "$domain" ]; then
+              echo "Attempting cross-service deploy search for matching PR commit: $PR_HEAD_SHA or branch: $head_ref";
+              services=$(echo "$services" | jq -c '.[]')
+              for svc in $services; do
+                sid=$(echo "$svc" | jq -r '.id // empty')
+                sname=$(echo "$svc" | jq -r '.name // empty')
+                sdomain=$(echo "$svc" | jq -r '(.serviceDetails.defaultDomain // .defaultDomain // .serviceDetails.url // .url // empty)')
+                echo "Checking service: id=$sid name=$sname domain=$sdomain" >&2
+                if [ -z "$sid" ]; then continue; fi
+                dep_list=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" "https://api.render.com/v1/services/${sid}/deploys?limit=10")
+                match=$(echo "$dep_list" | jq -r --arg commit "$PR_HEAD_SHA" --arg branch "$head_ref" '
+                  map(select(.commit.id == $commit or .commit.hash == $commit or .branch == $branch))[0].id // empty')
+                if [ -n "$match" ]; then
+                  echo "Found matching deploy on service $sid (service name: $sname): deploy=$match" >&2
+                  domain=${sdomain}
+                  break
+                fi
+              done
+            fi
+
             # Final guess based on PR number and base if still not found
             if [ -z "$domain" ]; then
               base="${{ secrets.PREVIEW_DOMAIN_BASE }}"
