@@ -3,6 +3,7 @@ import cors from "cors";
 import { registerHealthRoute } from "./health-route.js";
 import { registerPlaybackRoute } from "./playback-route.js";
 import { registerMetricsRoute, httpRequestsTotal, httpRequestDurationSeconds } from "./metrics-route.js";
+import { registerAdminRoute } from './admin-route.js'
 
 export function createHttpApp() {
     const app = express();
@@ -23,6 +24,8 @@ export function createHttpApp() {
     registerHealthRoute(app);
     registerPlaybackRoute(app);
     registerMetricsRoute(app);
+    // Register admin routes
+    registerAdminRoute(app)
 
     // Basic 404 handler
     app.use((_req, res) => res.status(404).json({ error: "not found" }));
