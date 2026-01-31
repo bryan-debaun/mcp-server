@@ -290,6 +290,46 @@
             ]
         },
         {
+            "name": "Admin - Debug Headers",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "X-INTERNAL-KEY",
+                        "value": "{{internal_admin_key}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/admin/_debug/headers",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "admin",
+                        "_debug",
+                        "headers"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                            "pm.test('Has ip', function () { var json = pm.response.json(); pm.expect(json).to.have.property('ip'); });",
+                            "pm.test('Has jwksUrl flag', function () { var json = pm.response.json(); pm.expect(json).to.have.property('jwksUrl'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
             "name": "Root 404",
             "request": {
                 "method": "GET",
