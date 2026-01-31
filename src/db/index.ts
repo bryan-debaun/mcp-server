@@ -6,51 +6,53 @@ import 'dotenv/config'
 // Otherwise, export a minimal stub so tests can import and mock methods.
 export const prisma: any = {}
 
-// A promise that resolves when the Prisma initialization flow completes.
-// Tests can await this to avoid races where the module's async init hasn't finished.
-export let prismaReady: Promise<void> = Promise.resolve()
+let prismaReadyPromise: Promise<void> | null = null
 
-const dbUrl = process.env.DATABASE_URL
-if (!dbUrl) {
-    // No DB configured; provide stub methods used in tests and safe no-op model stubs to avoid
-    // runtime TypeErrors when server is running without a database (e.g., preview environments).
-    // Read methods return empty results; write methods throw to indicate missing DB.
-    prisma.$queryRaw = async () => { throw new Error('DATABASE_URL not configured') }
-    prisma.$disconnect = async () => { /* noop */ }
+export async function initPrisma() {
+    if (prismaReadyPromise) return prismaReadyPromise
 
-    // Model stubs
-    prisma.user = {
-        findMany: async (_opts?: any) => [],
-        findUnique: async (_opts?: any) => null,
-        create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
-        update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+    const dbUrl = process.env.DATABASE_URL
+    if (!dbUrl) {
+        // No DB configured; provide stub methods used in tests and safe no-op model stubs to avoid
+        // runtime TypeErrors when server is running without a database (e.g., preview environments).
+        // Read methods return empty results; write methods throw to indicate missing DB.
+        prisma.$queryRaw = async () => { throw new Error('DATABASE_URL not configured') }
+        prisma.$disconnect = async () => { /* noop */ }
+
+        // Model stubs
+        prisma.user = {
+            findMany: async (_opts?: any) => [],
+            findUnique: async (_opts?: any) => null,
+            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
+            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+        }
+
+        prisma.invite = {
+            findMany: async (_opts?: any) => [],
+            findUnique: async (_opts?: any) => null,
+            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
+            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+        }
+
+        prisma.role = {
+            findUnique: async (_opts?: any) => null,
+            create: async (_data?: any) => ({ id: 1, name: 'user' }),
+        }
+
+        prisma.auditLog = {
+            create: async (_data?: any) => ({ id: 1 })
+        }
+
+        prisma.accessRequest = {
+            findMany: async (_opts?: any) => [],
+            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+        }
+
+        prismaReadyPromise = Promise.resolve()
+        return prismaReadyPromise
     }
 
-    prisma.invite = {
-        findMany: async (_opts?: any) => [],
-        findUnique: async (_opts?: any) => null,
-        create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
-        update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-    }
-
-    prisma.role = {
-        findUnique: async (_opts?: any) => null,
-        create: async (_data?: any) => ({ id: 1, name: 'user' }),
-    }
-
-    prisma.auditLog = {
-        create: async (_data?: any) => ({ id: 1 })
-    }
-
-    prisma.accessRequest = {
-        findMany: async (_opts?: any) => [],
-        update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-    }
-    // No async initialization required when no DB is configured
-    prismaReady = Promise.resolve()
-} else {
-    // Try to initialize PrismaClient using dynamic ESM imports (avoids `require` in ESM runtime).
-    prismaReady = (async () => {
+    prismaReadyPromise = (async () => {
         try {
             const pkg = await import('@prisma/client') as any
             const { PrismaClient } = pkg
@@ -58,7 +60,6 @@ if (!dbUrl) {
             const { PrismaPg } = adapterPkg
             const adapter = new PrismaPg({ connectionString: dbUrl })
             const real = new PrismaClient({ adapter })
-            // Copy own enumerable properties first
             // Copy own instance properties and functions (via descriptors) so that
             // instance-defined methods (if any) are bound correctly.
             const descriptors = Object.getOwnPropertyDescriptors(real)
@@ -119,12 +120,18 @@ if (!dbUrl) {
             findMany: async (_opts?: any) => [],
             update: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
         }
-    })();
+    })()
+
+    return prismaReadyPromise
+}
+
+export function prismaReady() {
+    return prismaReadyPromise ?? Promise.resolve()
 }
 
 export async function testConnection() {
     // Wait for the async Prisma initialization to complete to avoid races in tests/CI
-    await prismaReady
+    await initPrisma()
     // Basic connectivity check
     const res = await (prisma as any).$queryRaw`SELECT 1 as ok`
     return res

@@ -10,8 +10,8 @@ describe('Prisma init', () => {
         process.env.DATABASE_URL = 'postgresql://test'
         vi.doMock('@prisma/client', () => ({ PrismaClient: class { constructor() { } async $queryRaw() { return [{ ok: 1 }] } } }))
         vi.doMock('@prisma/adapter-pg', () => ({ PrismaPg: class { constructor(_opts: any) { } } }))
-        const { testConnection, prismaReady } = await import('../../src/db/index')
-        await prismaReady
+        const { testConnection, initPrisma } = await import('../../src/db/index')
+        await initPrisma()
         await expect(testConnection()).resolves.toBeTruthy()
     })
 
