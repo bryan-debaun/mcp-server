@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose'
-import { prisma } from '../db/index.js'
 
 const jwksUrl = process.env.SUPABASE_JWKS_URL
 
@@ -8,11 +7,6 @@ if (!jwksUrl) {
     console.warn('SUPABASE_JWKS_URL not set; JWT middleware will not validate tokens')
 }
 
-function getRequestIp(req: Request): string {
-    const xff = (req.headers['x-forwarded-for'] || '') as string
-    if (xff) return xff.split(',')[0].trim()
-    return req.ip || 'unknown'
-}
 
 export async function verifySupabaseJwt(token: string): Promise<JWTPayload> {
     let _jwksUrl = process.env.SUPABASE_JWKS_URL
@@ -65,26 +59,11 @@ export async function jwtMiddleware(req: Request, res: Response, next: NextFunct
         // Allow service role key to bypass JWT signature verification for server-to-server calls.
         // Hardening: require either an internal header key OR the request IP to be in ADMIN_IP_ALLOWLIST.
         const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-        const internalKey = process.env.INTERNAL_ADMIN_KEY
-        const allowlist = (process.env.ADMIN_IP_ALLOWLIST || '').split(',').map(s => s.trim()).filter(Boolean)
 
         if (serviceRoleKey && auth === `Bearer ${serviceRoleKey}`) {
-            const clientIp = getRequestIp(req)
-            const headerOk = internalKey ? req.headers['x-internal-key'] === internalKey : false
-            const ipOk = allowlist.length > 0 ? allowlist.includes(clientIp) : false
-
-            if (!headerOk && !ipOk) {
-                console.warn('Service role key used from disallowed source', { ip: clientIp })
-                return res.status(401).json({ error: 'Unauthorized' })
-            }
-
-            // Audit the service key usage
-            try {
-                await prisma.auditLog.create({ data: { action: 'service-role-bypass', metadata: { ip: clientIp, path: req.path, method: req.method } } })
-            } catch (e) {
-                console.error('failed to write audit log for service-role-bypass', e)
-            }
-
+            // Mark the request as coming from a service role. Authorization checks (header + IP allowlist)
+            // are enforced in the `requireAdmin` middleware which will reject with 403 if the request
+            // is not allowed. We avoid writing audit logs here to centralize auditing/metrics in one place.
             (req as any).user = { sub: 'service', role: 'admin', service: true }
             return next()
         }

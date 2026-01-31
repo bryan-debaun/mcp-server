@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { jwtMiddleware, verifySupabaseJwt } from '../../src/auth/jwt'
+import { requireAdmin } from '../../src/auth/requireAdmin'
 import express from 'express'
 import request from 'supertest'
 import { generateKeyPair, exportJWK, SignJWT } from 'jose'
@@ -122,7 +123,7 @@ describe('JWT middleware', () => {
     })
 
     it('throws helpful error when JWKS primary and fallback fail', async () => {
-        vi.stubGlobal('fetch', async (url: string) => {
+        vi.stubGlobal('fetch', async (_url: string) => {
             return { ok: false, status: 404, statusText: 'Not Found', text: async () => 'notfound' }
         })
 
@@ -147,56 +148,43 @@ describe('JWT middleware', () => {
         const app = express()
         const serviceKey = 'super-secret-service-key'
         process.env.SUPABASE_SERVICE_ROLE_KEY = serviceKey
-        app.use(jwtMiddleware)
-        app.get('/whoami', (req, res) => res.json({ user: (req as any).user }))
+        app.get('/whoami', jwtMiddleware, (req, res) => res.json({ user: (req as any).user }))
 
-        const res = await request(app).get('/whoami').set('Authorization', `Bearer ${serviceKey}`)
-        expect(res.status).toBe(401)
+        // requireAdmin is applied; without proper header/IP it should be forbidden
+        app.get('/admin', jwtMiddleware, requireAdmin, (req, res) => res.json({ ok: true }))
+
+        const res = await request(app).get('/admin').set('Authorization', `Bearer ${serviceKey}`)
+        expect(res.status).toBe(403)
         delete process.env.SUPABASE_SERVICE_ROLE_KEY
     })
 
-    it('allows service key when ip is allowlisted and writes audit log', async () => {
+    it('allows service key when ip is allowlisted and header present and writes audit log + metric', async () => {
         const app = express()
         const serviceKey = 'super-secret-service-key'
         process.env.SUPABASE_SERVICE_ROLE_KEY = serviceKey
-        // Mock prisma.auditLog.create
+
+        // Mock prisma.auditLog.create and metric
         const p = await import('../../src/db/index.js') as any
         p.prisma.auditLog = { create: vi.fn().mockResolvedValue({ id: 1 }) }
 
-        // allowlist the loopback IP used by supertest
         process.env.ADMIN_IP_ALLOWLIST = '::ffff:127.0.0.1'
+        const m = await import('../../src/http/metrics-route.js') as any
+        const incSpy = vi.spyOn(m.serviceRoleBypassTotal, 'inc').mockImplementation(() => { })
 
-        app.use(jwtMiddleware)
-        app.get('/whoami', (req, res) => res.json({ user: (req as any).user }))
+        app.get('/admin', jwtMiddleware, requireAdmin, (req, res) => res.json({ ok: true }))
 
-        const res = await request(app).get('/whoami').set('Authorization', `Bearer ${serviceKey}`)
-        expect(res.status).toBe(200)
-        expect(res.body.user.role).toBe('admin')
+        const res = await request(app).get('/admin').set('Authorization', `Bearer ${serviceKey}`).set('x-internal-key', 'my-internal-key')
+        expect(res.status).toBe(403)
+
+        // Now set internal key as well
+        process.env.INTERNAL_ADMIN_KEY = 'my-internal-key'
+        const res2 = await request(app).get('/admin').set('Authorization', `Bearer ${serviceKey}`).set('x-internal-key', 'my-internal-key')
+        expect(res2.status).toBe(200)
         expect(p.prisma.auditLog.create).toHaveBeenCalled()
+        expect(incSpy).toHaveBeenCalled()
 
         delete process.env.SUPABASE_SERVICE_ROLE_KEY
         delete process.env.ADMIN_IP_ALLOWLIST
-    })
-
-    it('allows service key when INTERNAL_ADMIN_KEY header is present and writes audit log', async () => {
-        const app = express()
-        const serviceKey = 'super-secret-service-key'
-        const internalKey = 'my-internal-key'
-        process.env.SUPABASE_SERVICE_ROLE_KEY = serviceKey
-        process.env.INTERNAL_ADMIN_KEY = internalKey
-
-        const p = await import('../../src/db/index.js') as any
-        p.prisma.auditLog = { create: vi.fn().mockResolvedValue({ id: 2 }) }
-
-        app.use(jwtMiddleware)
-        app.get('/whoami', (req, res) => res.json({ user: (req as any).user }))
-
-        const res = await request(app).get('/whoami').set('Authorization', `Bearer ${serviceKey}`).set('x-internal-key', internalKey)
-        expect(res.status).toBe(200)
-        expect(res.body.user.role).toBe('admin')
-        expect(p.prisma.auditLog.create).toHaveBeenCalled()
-
-        delete process.env.SUPABASE_SERVICE_ROLE_KEY
         delete process.env.INTERNAL_ADMIN_KEY
     })
 })
