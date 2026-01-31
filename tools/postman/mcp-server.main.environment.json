@@ -11,6 +11,31 @@
             "key": "invite_token",
             "value": "",
             "enabled": true
+        },
+        {
+            "key": "admin_jwt",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "invite_email",
+            "value": "new@example.com",
+            "enabled": true
+        },
+        {
+            "key": "internal_admin_key",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "admin_ip_allowlist",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "admin_debug_enabled",
+            "value": "0",
+            "enabled": true
         }
     ],
     "timestamp": 0,

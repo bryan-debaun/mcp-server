@@ -8,13 +8,13 @@ vi.mock('../../src/auth/jwt', () => ({
     verifySupabaseJwt: async () => { return {} }
 }))
 
-// Mock admin service to avoid hitting a real database
-vi.mock('../../src/services/admin-service', () => ({
-    listUsers: async (): Promise<any[]> => [{ id: 1, email: 'admin@example.com' }],
-    createInvite: async (email: string, invitedBy?: number) => ({ id: 1, email, token: 'invite-token', invitedBy }),
-    setUserRole: async (id: number, role: string) => ({ id, role }),
-    listAccessRequests: async (): Promise<any[]> => [],
-    approveAccessRequest: async () => ({ id: 1, reviewed: true })
+// Mock local tool client
+vi.mock('../../src/tools/local', () => ({
+    callTool: async (name: string, args: any) => {
+        if (name === 'list-users') return [{ id: 1, email: 'admin@example.com' }]
+        if (name === 'create-invite') return { id: 1, email: args.email, token: 'invite-token', invitedBy: args.invitedBy }
+        throw new Error('tool unknown')
+    }
 }))
 
 // Mock email sender so tests don't actually attempt to send mail
@@ -25,12 +25,12 @@ vi.mock('../../src/email', () => ({
 import { registerAdminRoute } from '../../src/http/admin-route'
 
 // Simple stub to inject an admin user
-function adminStub(req: Request, _res: Response, next: NextFunction) {
+function adminStub(req: any, _res: Response, next: NextFunction) {
     req.user = { sub: 1, role: 'admin' }
     next()
 }
 
-function userStub(req: Request, _res: Response, next: NextFunction) {
+function userStub(req: any, _res: Response, next: NextFunction) {
     req.user = { sub: 2, role: 'user' }
     next()
 }
@@ -73,6 +73,16 @@ describe('Admin routes', () => {
         expect(sendInviteEmail).toHaveBeenCalledWith('new@example.com', 'invite-token')
         expect(res.body.email).toBe('new@example.com')
         expect(res.body.token).toBeUndefined()
+    })
+
+    it('forbids non-admin from creating invites', async () => {
+        const app = express()
+        app.use(express.json())
+        app.use(userStub)
+        registerAdminRoute(app)
+
+        const res = await request(app).post('/api/admin/users').send({ email: 'nope@example.com' })
+        expect(res.status).toBe(403)
     })
 
     it('includes token when SHOW_INVITE_TOKEN=1', async () => {

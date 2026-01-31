@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { jwtMiddleware, verifySupabaseJwt } from '../../src/auth/jwt'
+import { requireAdmin } from '../../src/auth/requireAdmin'
 import express from 'express'
 import request from 'supertest'
 import { generateKeyPair, exportJWK, SignJWT } from 'jose'
@@ -85,5 +86,105 @@ describe('JWT middleware', () => {
         await new Promise((r) => setTimeout(r, 1100))
 
         await expect(verifySupabaseJwt(token)).rejects.toThrow()
+    })
+
+    it('falls back to anon-key endpoint when primary JWKS URL returns non-200', async () => {
+        // stub fetch: primary returns 401, fallback returns keys
+        vi.stubGlobal('fetch', async (url: string) => {
+            if (url.toString().startsWith('https://primary.local')) {
+                return { ok: false, status: 401, statusText: 'Unauthorized', text: async () => 'nope' }
+            }
+            if (url.toString().includes('/auth/v1/keys')) {
+                return { ok: true, status: 200, json: async () => ({ keys: [publicJwk] }) }
+            }
+            return { ok: false, status: 404 }
+        })
+
+        process.env.SUPABASE_JWKS_URL = 'https://primary.local/jwks'
+        process.env.SUPABASE_ISS = issuer
+        process.env.SUPABASE_AUD = audience
+        process.env.SUPABASE_ANON_KEY = 'anon-key'
+
+        const sig = await new SignJWT({ role: 'authenticated' })
+            .setProtectedHeader({ alg: 'RS256', kid: publicJwk.kid })
+            .setIssuer(issuer)
+            .setAudience(audience)
+            .setSubject('user-3')
+            .setIssuedAt()
+            .setExpirationTime('2h')
+            .sign(privateKey as any)
+
+        const payload = await verifySupabaseJwt(sig)
+        expect(payload.sub).toBe('user-3')
+
+        // cleanup
+        delete process.env.SUPABASE_ANON_KEY
+        vi.unstubAllGlobals()
+    })
+
+    it('throws helpful error when JWKS primary and fallback fail', async () => {
+        vi.stubGlobal('fetch', async (_url: string) => {
+            return { ok: false, status: 404, statusText: 'Not Found', text: async () => 'notfound' }
+        })
+
+        process.env.SUPABASE_JWKS_URL = 'https://primary.local/jwks'
+        process.env.SUPABASE_ISS = issuer
+        process.env.SUPABASE_AUD = audience
+
+        const token = await new SignJWT({ role: 'authenticated' })
+            .setProtectedHeader({ alg: 'RS256', kid: publicJwk.kid })
+            .setIssuer(issuer)
+            .setAudience(audience)
+            .setSubject('user-4')
+            .setIssuedAt()
+            .setExpirationTime('2h')
+            .sign(privateKey as any)
+
+        await expect(verifySupabaseJwt(token)).rejects.toThrow(/JWKS fetch failed/)
+        vi.unstubAllGlobals()
+    })
+
+    it('rejects service role key when not allowed by header or IP allowlist', async () => {
+        const app = express()
+        const serviceKey = 'super-secret-service-key'
+        process.env.SUPABASE_SERVICE_ROLE_KEY = serviceKey
+        app.get('/whoami', jwtMiddleware, (req, res) => res.json({ user: (req as any).user }))
+
+        // requireAdmin is applied; without proper header/IP it should be forbidden
+        app.get('/admin', jwtMiddleware, requireAdmin, (req, res) => res.json({ ok: true }))
+
+        const res = await request(app).get('/admin').set('Authorization', `Bearer ${serviceKey}`)
+        expect(res.status).toBe(403)
+        delete process.env.SUPABASE_SERVICE_ROLE_KEY
+    })
+
+    it('allows service key when ip is allowlisted and header present and writes audit log + metric', async () => {
+        const app = express()
+        const serviceKey = 'super-secret-service-key'
+        process.env.SUPABASE_SERVICE_ROLE_KEY = serviceKey
+
+        // Mock prisma.auditLog.create and metric
+        const p = await import('../../src/db/index.js') as any
+        p.prisma.auditLog = { create: vi.fn().mockResolvedValue({ id: 1 }) }
+
+        process.env.ADMIN_IP_ALLOWLIST = '::ffff:127.0.0.1'
+        const m = await import('../../src/http/metrics-route.js') as any
+        const incSpy = vi.spyOn(m.serviceRoleBypassTotal, 'inc').mockImplementation(() => { })
+
+        app.get('/admin', jwtMiddleware, requireAdmin, (req, res) => res.json({ ok: true }))
+
+        const res = await request(app).get('/admin').set('Authorization', `Bearer ${serviceKey}`).set('x-internal-key', 'my-internal-key')
+        expect(res.status).toBe(403)
+
+        // Now set internal key as well
+        process.env.INTERNAL_ADMIN_KEY = 'my-internal-key'
+        const res2 = await request(app).get('/admin').set('Authorization', `Bearer ${serviceKey}`).set('x-internal-key', 'my-internal-key')
+        expect(res2.status).toBe(200)
+        expect(p.prisma.auditLog.create).toHaveBeenCalled()
+        expect(incSpy).toHaveBeenCalled()
+
+        delete process.env.SUPABASE_SERVICE_ROLE_KEY
+        delete process.env.ADMIN_IP_ALLOWLIST
+        delete process.env.INTERNAL_ADMIN_KEY
     })
 })

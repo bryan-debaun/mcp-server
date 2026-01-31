@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerGitHubIssuesTools } from "./github-issues/index.js";
+import { registerDbTools } from "./db/index.js";
 
 /**
  * Registers all tool categories with the MCP server.
@@ -13,6 +14,9 @@ import { registerGitHubIssuesTools } from "./github-issues/index.js";
 export function registerTools(server: McpServer): void {
     // GitHub Issues tools
     registerGitHubIssuesTools(server);
+
+    // Database tools
+    registerDbTools(server);
 
     // Future tool categories can be added here:
     // registerGitTools(server);

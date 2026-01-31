@@ -1,5 +1,4 @@
 import { Application, Request, Response } from 'express'
-import { acceptInvite } from '../services/admin-service.js'
 import { z } from 'zod'
 
 // Simple IP-based rate limiter for invite acceptance to help prevent brute force
@@ -32,7 +31,8 @@ export function registerInviteRoutes(app: Application) {
         if (!parsed.success) return res.status(400).json({ error: 'invalid body' })
 
         try {
-            const user = await acceptInvite(parsed.data.token, { name: parsed.data.name, password: parsed.data.password })
+            const { callTool } = await import('../tools/local.js')
+            const user = await callTool('accept-invite', { token: parsed.data.token, name: parsed.data.name, password: parsed.data.password })
             return res.status(201).json({ user })
         } catch (err: any) {
             if (err.message === 'invalid token') return res.status(404).json({ error: 'invalid token' })
@@ -51,7 +51,8 @@ export function registerInviteRoutes(app: Application) {
         const token = String(req.query.token || '')
         if (!token) return res.status(400).json({ error: 'token is required' })
         try {
-            const user = await acceptInvite(token)
+            const { callTool } = await import('../tools/local.js')
+            const user = await callTool('accept-invite', { token })
             return res.status(200).json({ user })
         } catch (err: any) {
             if (err.message === 'invalid token') return res.status(404).json({ error: 'invalid token' })
