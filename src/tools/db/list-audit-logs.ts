@@ -1,25 +1,25 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { CreateInviteInputSchema } from "./schemas.js";
-import { createInvite } from "../../services/admin-service.js";
+import { ListAuditLogsInputSchema } from "./schemas.js";
+import { prisma } from "../../db/index.js";
 import { createSuccessResult, createErrorResult } from "../github-issues/results.js";
 
-const name = "db/create-invite";
+const name = "db/list-audit-logs";
 const config = {
-    title: "Create Invite",
-    description: "Create an invite for a user by email",
-    inputSchema: CreateInviteInputSchema
+    title: "List Audit Logs",
+    description: "List audit logs",
+    inputSchema: ListAuditLogsInputSchema
 };
 
-export function registerCreateInviteTool(server: McpServer): void {
+export function registerListAuditLogsTool(server: McpServer): void {
     (server as any).registerTool(
         name,
         config,
         async (args: any): Promise<CallToolResult> => {
             try {
-                const { email, invitedBy } = args as { email: string; invitedBy?: number };
-                const invite = await createInvite(email, invitedBy);
-                return createSuccessResult(invite);
+                const { limit } = args as { limit?: number };
+                const logs = await prisma.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: limit || 50 });
+                return createSuccessResult(logs);
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
                 return createErrorResult(message);

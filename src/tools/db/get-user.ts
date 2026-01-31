@@ -1,24 +1,26 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { AcceptInviteInputSchema } from "./schemas.js";
-import { acceptInvite } from "../../services/admin-service.js";
+import { GetUserInputSchema } from "./schemas.js";
+import { prisma } from "../../db/index.js";
 import { createSuccessResult, createErrorResult } from "../github-issues/results.js";
 
-const name = "db/accept-invite";
+const name = "db/get-user";
 const config = {
-    title: "Accept Invite",
-    description: "Accept an invite token to create a user",
-    inputSchema: AcceptInviteInputSchema
+    title: "Get User",
+    description: "Get a user by id or email",
+    inputSchema: GetUserInputSchema
 };
 
-export function registerAcceptInviteTool(server: McpServer): void {
+export function registerGetUserTool(server: McpServer): void {
     (server as any).registerTool(
         name,
         config,
         async (args: any): Promise<CallToolResult> => {
             try {
-                const { token, name: displayName, password } = args as { token: string; name?: string; password?: string };
-                const user = await acceptInvite(token, { name: displayName, password });
+                const { id, email } = args as { id?: number; email?: string };
+                if (!id && !email) throw new Error('id or email is required');
+                const user = await prisma.user.findUnique({ where: id ? { id } : { email } as any, include: { role: true } });
+                if (!user) throw new Error('user not found');
                 return createSuccessResult(user);
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
