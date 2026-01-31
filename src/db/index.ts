@@ -6,58 +6,96 @@ import 'dotenv/config'
 // Otherwise, export a minimal stub so tests can import and mock methods.
 export const prisma: any = {}
 
-const dbUrl = process.env.DATABASE_URL
-if (!dbUrl) {
-    // No DB configured; provide stub methods used in tests and safe no-op model stubs to avoid
-    // runtime TypeErrors when server is running without a database (e.g., preview environments).
-    // Read methods return empty results; write methods throw to indicate missing DB.
-    prisma.$queryRaw = async () => { throw new Error('DATABASE_URL not configured') }
-    prisma.$disconnect = async () => { /* noop */ }
+let prismaReadyPromise: Promise<void> | null = null
 
-    // Model stubs
-    prisma.user = {
-        findMany: async (_opts?: any) => [],
-        findUnique: async (_opts?: any) => null,
-        create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
-        update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+export async function initPrisma() {
+    if (prismaReadyPromise) return prismaReadyPromise
+
+    const dbUrl = process.env.DATABASE_URL
+    if (!dbUrl) {
+        // No DB configured; provide stub methods used in tests and safe no-op model stubs to avoid
+        // runtime TypeErrors when server is running without a database (e.g., preview environments).
+        // Read methods return empty results; write methods throw to indicate missing DB.
+        prisma.$queryRaw = async () => { throw new Error('DATABASE_URL not configured') }
+        prisma.$disconnect = async () => { /* noop */ }
+
+        // Model stubs
+        prisma.user = {
+            findMany: async (_opts?: any) => [],
+            findUnique: async (_opts?: any) => null,
+            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
+            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+        }
+
+        prisma.invite = {
+            findMany: async (_opts?: any) => [],
+            findUnique: async (_opts?: any) => null,
+            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
+            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+        }
+
+        prisma.role = {
+            findUnique: async (_opts?: any) => null,
+            create: async (_data?: any) => ({ id: 1, name: 'user' }),
+        }
+
+        prisma.auditLog = {
+            create: async (_data?: any) => ({ id: 1 })
+        }
+
+        prisma.accessRequest = {
+            findMany: async (_opts?: any) => [],
+            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+        }
+
+        prismaReadyPromise = Promise.resolve()
+        return prismaReadyPromise
     }
 
-    prisma.invite = {
-        findMany: async (_opts?: any) => [],
-        findUnique: async (_opts?: any) => null,
-        create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
-        update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-    }
+    prismaReadyPromise = (async () => {
+        try {
+            const pkg = await import('@prisma/client') as any
+            const { PrismaClient } = pkg
+            const adapterPkg = await import('@prisma/adapter-pg') as any
+            const { PrismaPg } = adapterPkg
+            const adapter = new PrismaPg({ connectionString: dbUrl })
+            const real = new PrismaClient({ adapter })
+            // Copy own instance properties and functions (via descriptors) so that
+            // instance-defined methods (if any) are bound correctly.
+            const descriptors = Object.getOwnPropertyDescriptors(real)
+            for (const [k, d] of Object.entries(descriptors)) {
+                if (typeof (d as any).value === 'function') {
+                    (prisma as any)[k] = (d as any).value.bind(real)
+                } else {
+                    Object.defineProperty(prisma, k, d as PropertyDescriptor)
+                }
+            }
+            // Also bind prototype methods (e.g., $queryRaw) so callers can invoke them directly on the
+            // exported `prisma` object. This ensures mocked PrismaClients in tests (which often
+            // define methods on prototypes) behave correctly.
+            const proto = Object.getPrototypeOf(real)
+            for (const k of Object.getOwnPropertyNames(proto)) {
+                const v = (proto as any)[k]
+                if (typeof v === 'function') {
+                    (prisma as any)[k] = v.bind(real)
+                }
+            }
 
-    prisma.role = {
-        findUnique: async (_opts?: any) => null,
-        create: async (_data?: any) => ({ id: 1, name: 'user' }),
-    }
+            // Ensure commonly used raw query helpers are always available and callable as template-tag
+            // functions. Some Prisma client internals expose these via non-enumerable or lazy accessors
+            // so we explicitly forward them to the real client to avoid runtime "not a function" errors
+            // in CI and runtime environments.
+            (prisma as any).$queryRaw = (...args: any[]) => (real as any).$queryRaw(...args);
+            (prisma as any).$executeRaw = (...args: any[]) => (real as any).$executeRaw(...args);
+            (prisma as any).$disconnect = (real as any).$disconnect?.bind(real) ?? (async () => { });
 
-    prisma.auditLog = {
-        create: async (_data?: any) => ({ id: 1 })
-    }
+            console.error('PrismaClient initialized successfully')
+            return
+        } catch (err) {
+            console.error('failed to initialize PrismaClient dynamically; falling back to stub', err)
+        }
 
-    prisma.accessRequest = {
-        findMany: async (_opts?: any) => [],
-        update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-    }
-} else {
-    // Try to synchronously initialize PrismaClient. If this fails (e.g. `@prisma/client`
-    // not generated), log and fall back to stub to avoid crashing at module load.
-    try {
-        // Use static import (top-level) pattern to get synchronous init when possible
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const pkg = require('@prisma/client') as any
-        const { PrismaClient } = pkg
-        // Adapter import is ESM compatible; require it similarly
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const { PrismaPg } = require('@prisma/adapter-pg') as any
-        const adapter = new PrismaPg({ connectionString: dbUrl })
-        const real = new PrismaClient({ adapter })
-        Object.assign(prisma, real)
-    } catch (err) {
-        console.error('failed to initialize PrismaClient synchronously; falling back to stub', err)
+        // Fallback stubs when PrismaClient cannot be initialized
         prisma.$queryRaw = async () => { throw new Error('PrismaClient not initialized') }
         prisma.$disconnect = async () => { /* noop */ }
 
@@ -91,11 +129,19 @@ if (!dbUrl) {
             findMany: async (_opts?: any) => [],
             update: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
         }
-    }
+    })()
+
+    return prismaReadyPromise
+}
+
+export function prismaReady() {
+    return prismaReadyPromise ?? Promise.resolve()
 }
 
 export async function testConnection() {
+    // Wait for the async Prisma initialization to complete to avoid races in tests/CI
+    await initPrisma()
     // Basic connectivity check
-    const res = await prisma.$queryRaw`SELECT 1 as ok`
+    const res = await (prisma as any).$queryRaw`SELECT 1 as ok`
     return res
 }
