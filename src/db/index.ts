@@ -80,6 +80,15 @@ export async function initPrisma() {
                     (prisma as any)[k] = v.bind(real)
                 }
             }
+
+            // Ensure commonly used raw query helpers are always available and callable as template-tag
+            // functions. Some Prisma client internals expose these via non-enumerable or lazy accessors
+            // so we explicitly forward them to the real client to avoid runtime "not a function" errors
+            // in CI and runtime environments.
+            ;(prisma as any).$queryRaw = (...args: any[]) => (real as any).$queryRaw(...args)
+            ;(prisma as any).$executeRaw = (...args: any[]) => (real as any).$executeRaw(...args)
+            (prisma as any).$disconnect = (real as any).$disconnect?.bind(real) ?? (async () => {})
+
             console.error('PrismaClient initialized successfully')
             return
         } catch (err) {
