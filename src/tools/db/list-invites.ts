@@ -4,7 +4,7 @@ import { ListInvitesInputSchema } from "./schemas.js";
 import { prisma } from "../../db/index.js";
 import { createSuccessResult, createErrorResult } from "../github-issues/results.js";
 
-const name = "db/list-invites";
+const name = "list-invites";
 const config = {
     title: "List Invites",
     description: "List invites in the database",

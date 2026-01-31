@@ -4,7 +4,7 @@ import { AcceptInviteInputSchema } from "./schemas.js";
 import { acceptInvite } from "../../services/admin-service.js";
 import { createSuccessResult, createErrorResult } from "../github-issues/results.js";
 
-const name = "db/accept-invite";
+const name = "accept-invite";
 const config = {
     title: "Accept Invite",
     description: "Accept an invite token to create a user",

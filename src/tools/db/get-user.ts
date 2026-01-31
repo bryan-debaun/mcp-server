@@ -4,7 +4,7 @@ import { GetUserInputSchema } from "./schemas.js";
 import { prisma } from "../../db/index.js";
 import { createSuccessResult, createErrorResult } from "../github-issues/results.js";
 
-const name = "db/get-user";
+const name = "get-user";
 const config = {
     title: "Get User",
     description: "Get a user by id or email",

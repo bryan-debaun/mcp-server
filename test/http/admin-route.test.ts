@@ -11,8 +11,8 @@ vi.mock('../../src/auth/jwt', () => ({
 // Mock local tool client
 vi.mock('../../src/tools/local', () => ({
     callTool: async (name: string, args: any) => {
-        if (name === 'db/list-users') return [{ id: 1, email: 'admin@example.com' }]
-        if (name === 'db/create-invite') return { id: 1, email: args.email, token: 'invite-token', invitedBy: args.invitedBy }
+        if (name === 'list-users') return [{ id: 1, email: 'admin@example.com' }]
+        if (name === 'create-invite') return { id: 1, email: args.email, token: 'invite-token', invitedBy: args.invitedBy }
         throw new Error('tool unknown')
     }
 }))

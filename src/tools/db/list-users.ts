@@ -4,7 +4,7 @@ import { ListUsersInputSchema } from "./schemas.js";
 import { prisma } from "../../db/index.js";
 import { createSuccessResult, createErrorResult } from "../github-issues/results.js";
 
-const name = "db/list-users";
+const name = "list-users";
 const config = {
     title: "List Users",
     description: "List users in the database",

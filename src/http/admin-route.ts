@@ -11,7 +11,7 @@ export function registerAdminRoute(app: Application) {
     app.get(`${base}/users`, jwtMiddleware, requireAdmin, async (_req: Request, res: Response) => {
         // Use local db tool to list users so DB access flows through MCP tools
         const { callTool } = await import('../tools/local.js')
-        const users = await callTool('db/list-users', {})
+        const users = await callTool('list-users', {})
         res.json(users)
     })
 
@@ -24,7 +24,7 @@ export function registerAdminRoute(app: Application) {
         const { callTool } = await import('../tools/local.js')
         let invite: any
         try {
-            invite = await callTool('db/create-invite', { email, invitedBy })
+            invite = await callTool('create-invite', { email, invitedBy })
         } catch (err: any) {
             console.error('create invite tool failed', err)
             return res.status(500).json({ error: 'failed to create invite' })

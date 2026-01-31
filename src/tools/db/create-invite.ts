@@ -4,7 +4,7 @@ import { CreateInviteInputSchema } from "./schemas.js";
 import { createInvite } from "../../services/admin-service.js";
 import { createSuccessResult, createErrorResult } from "../github-issues/results.js";
 
-const name = "db/create-invite";
+const name = "create-invite";
 const config = {
     title: "Create Invite",
     description: "Create an invite for a user by email",

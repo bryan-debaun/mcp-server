@@ -4,7 +4,7 @@ import { ListAuditLogsInputSchema } from "./schemas.js";
 import { prisma } from "../../db/index.js";
 import { createSuccessResult, createErrorResult } from "../github-issues/results.js";
 
-const name = "db/list-audit-logs";
+const name = "list-audit-logs";
 const config = {
     title: "List Audit Logs",
     description: "List audit logs",

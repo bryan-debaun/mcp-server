@@ -32,7 +32,7 @@ export function registerInviteRoutes(app: Application) {
 
         try {
             const { callTool } = await import('../tools/local.js')
-            const user = await callTool('db/accept-invite', { token: parsed.data.token, name: parsed.data.name, password: parsed.data.password })
+            const user = await callTool('accept-invite', { token: parsed.data.token, name: parsed.data.name, password: parsed.data.password })
             return res.status(201).json({ user })
         } catch (err: any) {
             if (err.message === 'invalid token') return res.status(404).json({ error: 'invalid token' })
@@ -52,7 +52,7 @@ export function registerInviteRoutes(app: Application) {
         if (!token) return res.status(400).json({ error: 'token is required' })
         try {
             const { callTool } = await import('../tools/local.js')
-            const user = await callTool('db/accept-invite', { token })
+            const user = await callTool('accept-invite', { token })
             return res.status(200).json({ user })
         } catch (err: any) {
             if (err.message === 'invalid token') return res.status(404).json({ error: 'invalid token' })
