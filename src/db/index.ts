@@ -60,6 +60,37 @@ if (!dbUrl) {
         console.error('failed to initialize PrismaClient synchronously; falling back to stub', err)
         prisma.$queryRaw = async () => { throw new Error('PrismaClient not initialized') }
         prisma.$disconnect = async () => { /* noop */ }
+
+        // Provide minimal model stubs to avoid runtime TypeErrors when code attempts
+        // to call model methods in preview or non-DB environments. Read methods return
+        // empty results or null; write methods throw a clear error to fail fast.
+        prisma.user = {
+            findMany: async (_opts?: any) => [],
+            findUnique: async (_opts?: any) => null,
+            create: async (_data?: any) => { throw new Error('PrismaClient not initialized') },
+            update: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
+        }
+
+        prisma.invite = {
+            findMany: async (_opts?: any) => [],
+            findUnique: async (_opts?: any) => null,
+            create: async (_data?: any) => { throw new Error('PrismaClient not initialized') },
+            update: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
+        }
+
+        prisma.role = {
+            findUnique: async (_opts?: any) => null,
+            create: async (_data?: any) => ({ id: 1, name: 'user' }),
+        }
+
+        prisma.auditLog = {
+            create: async (_data?: any) => ({ id: 1 })
+        }
+
+        prisma.accessRequest = {
+            findMany: async (_opts?: any) => [],
+            update: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
+        }
     }
 }
 

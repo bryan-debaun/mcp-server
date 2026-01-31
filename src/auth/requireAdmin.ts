@@ -22,7 +22,9 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
 
         // Audit and metrics for service role bypass
         try {
-            prisma.auditLog.create({ data: { action: 'service-role-bypass', metadata: { ip: clientIp, path: req.path, method: req.method } } }).catch(() => { /* noop */ })
+            if (prisma && prisma.auditLog && typeof prisma.auditLog.create === 'function') {
+                prisma.auditLog.create({ data: { action: 'service-role-bypass', metadata: { ip: clientIp, path: req.path, method: req.method } } }).catch(() => { /* noop */ })
+            }
         } catch (e) {
             console.error('failed to write audit log for service-role-bypass', e)
         }
