@@ -4,7 +4,7 @@ import { createHttpApp } from "../../src/http/server";
 
 describe("GET /healthz", () => {
     it("returns status ok and runtime info", async () => {
-        const app = createHttpApp();
+        const app = await createHttpApp();
         const res = await request(app).get("/healthz").expect(200);
         expect(res.body).toHaveProperty("status", "ok");
         expect(res.body).toHaveProperty("uptime_seconds");
