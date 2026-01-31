@@ -21,6 +21,16 @@
             "key": "invite_email",
             "value": "new@example.com",
             "enabled": true
+        },
+        {
+            "key": "internal_admin_key",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "admin_ip_allowlist",
+            "value": "::ffff:127.0.0.1",
+            "enabled": true
         }
     ],
     "timestamp": 0,

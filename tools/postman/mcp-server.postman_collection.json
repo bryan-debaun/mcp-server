@@ -25,6 +25,16 @@
             "key": "invite_email",
             "value": "new@example.com",
             "type": "string"
+        },
+        {
+            "key": "internal_admin_key",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "admin_ip_allowlist",
+            "value": "",
+            "type": "string"
         }
     ],
     "item": [
@@ -198,6 +208,10 @@
                     {
                         "key": "Authorization",
                         "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "X-INTERNAL-KEY",
+                        "value": "{{internal_admin_key}}"
                     }
                 ],
                 "url": {
@@ -232,6 +246,10 @@
                     {
                         "key": "Authorization",
                         "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "X-INTERNAL-KEY",
+                        "value": "{{internal_admin_key}}"
                     },
                     {
                         "key": "Content-Type",
