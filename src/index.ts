@@ -33,6 +33,17 @@ async function main(): Promise<void> {
 
     // Log to stderr (stdout is reserved for MCP protocol)
     console.error("MCP server started on stdio transport");
+
+    // Warn if admin debug is enabled in what looks like production
+    const adminDebug = (process.env.ADMIN_DEBUG_ENABLED || '').toLowerCase()
+    const env = process.env.NODE_ENV || 'development'
+    if (adminDebug === '1' || adminDebug === 'true') {
+        if (env === 'production') {
+            console.warn('ADMIN_DEBUG_ENABLED is set in production - this exposes diagnostic endpoints. Consider disabling this in production.')
+        } else {
+            console.error('ADMIN_DEBUG_ENABLED is enabled for this process; debug endpoints will be registered (preview/staging only)')
+        }
+    }
 }
 
 main().catch((error) => {
