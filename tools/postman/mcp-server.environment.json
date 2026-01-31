@@ -6,6 +6,21 @@
             "key": "base_url",
             "value": "https://bad-mcp-pr-7.onrender.com",
             "enabled": true
+        },
+        {
+            "key": "invite_token",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "admin_jwt",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "invite_email",
+            "value": "new@example.com",
+            "enabled": true
         }
     ],
     "timestamp": 0,

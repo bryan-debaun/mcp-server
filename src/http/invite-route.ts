@@ -1,5 +1,4 @@
 import { Application, Request, Response } from 'express'
-import { acceptInvite } from '../services/admin-service.js'
 import { z } from 'zod'
 
 // Simple IP-based rate limiter for invite acceptance to help prevent brute force

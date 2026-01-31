@@ -15,6 +15,16 @@
             "key": "invite_token",
             "value": "",
             "type": "string"
+        },
+        {
+            "key": "admin_jwt",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "invite_email",
+            "value": "new@example.com",
+            "type": "string"
         }
     ],
     "item": [
@@ -175,6 +185,87 @@
                         "exec": [
                             "pm.test('Status is 200 or 201', function () { pm.expect(pm.response.status).to.be.oneOf([200,201]); });",
                             "pm.test('Has user in response', function () { var json = pm.response.json(); pm.expect(json).to.have.property('user'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Admin - List Users",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/admin/users",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "admin",
+                        "users"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                            "pm.test('Body is array', function () { var json = pm.response.json(); pm.expect(Array.isArray(json)).to.be.true; });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Admin - Create Invite",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\"email\":\"{{invite_email}}\"}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/admin/users",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "admin",
+                        "users"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                            "pm.test('Has email in body', function () { var json = pm.response.json(); pm.expect(json).to.have.property('email'); });"
                         ]
                     }
                 }

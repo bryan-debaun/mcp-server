@@ -25,12 +25,12 @@ vi.mock('../../src/email', () => ({
 import { registerAdminRoute } from '../../src/http/admin-route'
 
 // Simple stub to inject an admin user
-function adminStub(req: Request, _res: Response, next: NextFunction) {
+function adminStub(req: any, _res: Response, next: NextFunction) {
     req.user = { sub: 1, role: 'admin' }
     next()
 }
 
-function userStub(req: Request, _res: Response, next: NextFunction) {
+function userStub(req: any, _res: Response, next: NextFunction) {
     req.user = { sub: 2, role: 'user' }
     next()
 }
