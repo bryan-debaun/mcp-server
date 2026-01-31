@@ -6,10 +6,18 @@ import { registerMetricsRoute, httpRequestsTotal, httpRequestDurationSeconds } f
 import { registerAdminRoute } from './admin-route.js'
 import { registerInviteRoutes } from './invite-route.js'
 
-export function createHttpApp() {
+export async function createHttpApp() {
     const app = express();
     app.use(cors());
     app.use(express.json());
+
+    // Diagnostic request logging to help debug hosting/proxy issues
+    app.use((req, res, next) => {
+        try {
+            console.error(`incoming request: ${req.method} ${req.path} authPresent=${!!req.headers.authorization}`);
+        } catch (e) { /* noop */ }
+        next();
+    });
 
     // HTTP instrumentation middleware
     app.use((req, res, next) => {
@@ -30,11 +38,25 @@ export function createHttpApp() {
     // Public invite routes
     registerInviteRoutes(app)
 
+
+
     // MCP HTTP transport (HTTP Stream + SSE fallback)
     try {
-        import('./mcp-http.js').then(({ registerMcpHttp }) => registerMcpHttp(app)).catch((err) => console.error('failed to register MCP HTTP transport', err))
+        const mod = await import('./mcp-http.js');
+        try {
+            mod.registerMcpHttp(app);
+            console.error('registered MCP HTTP transport (routes mounted at /mcp)');
+            try {
+                const routes = (app as any)._router?.stack?.filter((l: any) => l.route).map((l: any) => ({ path: l.route.path, methods: l.route.methods }));
+                console.error('registered routes:', JSON.stringify(routes));
+            } catch (e) {
+                console.error('failed to enumerate routes', e);
+            }
+        } catch (err) {
+            console.error('failed to register MCP HTTP transport', err)
+        }
     } catch (err) {
-        console.error('failed to register MCP HTTP transport', err)
+        console.error('failed to import MCP HTTP transport', err)
     }
 
     // Basic 404 handler
@@ -46,8 +68,8 @@ export function createHttpApp() {
 import { WebSocketServer } from 'ws'
 import { WsServerTransport } from './mcp-ws.js'
 
-export function startHttpServer(port: number): Promise<import("http").Server> {
-    const app = createHttpApp();
+export async function startHttpServer(port: number): Promise<import("http").Server> {
+    const app = await createHttpApp();
     return new Promise((resolve) => {
         const server = app.listen(port, () => {
             console.error(`HTTP server listening on port ${port}`);

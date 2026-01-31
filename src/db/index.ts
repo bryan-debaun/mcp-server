@@ -43,21 +43,23 @@ if (!dbUrl) {
         update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
     }
 } else {
-    // Try to synchronously initialize PrismaClient. If this fails (e.g. `@prisma/client`
-    // not generated), log and fall back to stub to avoid crashing at module load.
-    try {
-        // Use static import (top-level) pattern to get synchronous init when possible
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const pkg = require('@prisma/client') as any
-        const { PrismaClient } = pkg
-        // Adapter import is ESM compatible; require it similarly
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const { PrismaPg } = require('@prisma/adapter-pg') as any
-        const adapter = new PrismaPg({ connectionString: dbUrl })
-        const real = new PrismaClient({ adapter })
-        Object.assign(prisma, real)
-    } catch (err) {
-        console.error('failed to initialize PrismaClient synchronously; falling back to stub', err)
+    // Try to initialize PrismaClient using dynamic ESM imports (avoids `require` in ESM runtime).
+    (async () => {
+        try {
+            const pkg = await import('@prisma/client') as any
+            const { PrismaClient } = pkg
+            const adapterPkg = await import('@prisma/adapter-pg') as any
+            const { PrismaPg } = adapterPkg
+            const adapter = new PrismaPg({ connectionString: dbUrl })
+            const real = new PrismaClient({ adapter })
+            Object.assign(prisma, real)
+            console.error('PrismaClient initialized successfully')
+            return
+        } catch (err) {
+            console.error('failed to initialize PrismaClient dynamically; falling back to stub', err)
+        }
+
+        // Fallback stubs when PrismaClient cannot be initialized
         prisma.$queryRaw = async () => { throw new Error('PrismaClient not initialized') }
         prisma.$disconnect = async () => { /* noop */ }
 
@@ -91,7 +93,7 @@ if (!dbUrl) {
             findMany: async (_opts?: any) => [],
             update: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
         }
-    }
+    })();
 }
 
 export async function testConnection() {
