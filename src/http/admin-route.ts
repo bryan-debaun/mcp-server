@@ -67,4 +67,23 @@ export function registerAdminRoute(app: Application) {
         const r = await approveAccessRequest(id, reviewerId!)
         res.json(r)
     })
+
+    // Debug endpoint to help diagnose gateway/auth issues on preview hosts.
+    // Protected with the same admin checks (jwtMiddleware + requireAdmin).
+    app.get(`${base}/_debug/headers`, jwtMiddleware, requireAdmin, async (req: Request, res: Response) => {
+        const ip = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim()
+        const internalKeyPresent = !!req.headers['x-internal-key']
+        const jwksUrl = process.env.SUPABASE_JWKS_URL
+        let jwksStatus: any = null
+        if (jwksUrl) {
+            try {
+                const r = await fetch(jwksUrl, { method: 'GET' })
+                jwksStatus = { status: r.status, ok: r.ok }
+            } catch (err) {
+                jwksStatus = { error: (err as any)?.message || String(err) }
+            }
+        }
+
+        res.json({ ip, internalKeyPresent, jwksUrl: !!jwksUrl, jwksStatus })
+    })
 }
