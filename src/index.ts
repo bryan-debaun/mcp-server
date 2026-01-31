@@ -14,25 +14,26 @@ async function main(): Promise<void> {
     // Register all tools
     registerTools(server);
 
-    // Create stdio transport
-    const transport = new StdioServerTransport();
-
-    // Connect server to transport
-    await server.connect(transport);
-
-    // Start HTTP server if a PORT is provided (Render/hosting) or explicitly enabled
+    // Decide transport based on runtime environment.
+    // In hosted environments (when PORT is provided) we should not attach to stdio.
     try {
         const port = process.env.PORT ? Number(process.env.PORT) : undefined;
         if (port) {
+            // Hosted mode: start HTTP server and do not use stdio transport.
             const { startHttpServer } = await import("./http/server.js");
             await startHttpServer(port);
+            console.error(`MCP server started in HTTP mode on port ${port}`);
+        } else {
+            // Local dev / extension-host mode: use stdio transport for extension integration.
+            const transport = new StdioServerTransport();
+            await server.connect(transport);
+            console.error("MCP server started on stdio transport");
         }
     } catch (err) {
-        console.error("Failed to start HTTP server:", err);
+        console.error("Failed to start server transport or HTTP server:", err);
     }
 
-    // Log to stderr (stdout is reserved for MCP protocol)
-    console.error("MCP server started on stdio transport");
+    // Note: transport-specific startup messages are logged in each branch above.
 
     // Warn if admin debug is enabled in what looks like production
     const adminDebug = (process.env.ADMIN_DEBUG_ENABLED || '').toLowerCase()

@@ -7,9 +7,24 @@ export class HttpStreamTransport {
     private res: Response;
     private readBuffer = "";
 
-    onmessage?: (msg: any) => void;
+    // Internals for safe message delivery when messages arrive before the server attaches a handler
+    private _onmessage?: (msg: any) => void;
+    private pendingMessages: any[] = [];
+
     onerror?: (err: any) => void;
     onclose?: () => void;
+
+    // Use a property accessor so we can flush pending messages when the handler is attached
+    set onmessage(fn: ((msg: any) => void) | undefined) {
+        this._onmessage = fn;
+        if (this._onmessage && this.pendingMessages.length) {
+            for (const m of this.pendingMessages) {
+                try { this._onmessage(m); } catch (e) { /* noop */ }
+            }
+            this.pendingMessages = [];
+        }
+    }
+    get onmessage() { return this._onmessage; }
 
     constructor(req: Request, res: Response) {
         this.req = req;
@@ -68,7 +83,11 @@ export class HttpStreamTransport {
                 if (!line.trim()) continue;
                 try {
                     const parsed = JSON.parse(line);
-                    this.onmessage?.(parsed);
+                    if (this._onmessage) {
+                        this._onmessage(parsed);
+                    } else {
+                        this.pendingMessages.push(parsed);
+                    }
                 } catch (err) {
                     this.onerror?.(err as any);
                 }
@@ -84,9 +103,23 @@ export class SseServerTransport {
     private res: Response;
     private connId: string;
 
-    onmessage?: (msg: any) => void; // we support incoming messages via a separate POST endpoint
+    // Buffer incoming messages until the server attaches a handler
+    private _onmessage?: (msg: any) => void; // we support incoming messages via a separate POST endpoint
+    private pendingMessages: any[] = [];
+
     onerror?: (err: any) => void;
     onclose?: () => void;
+
+    set onmessage(fn: ((msg: any) => void) | undefined) {
+        this._onmessage = fn;
+        if (this._onmessage && this.pendingMessages.length) {
+            for (const m of this.pendingMessages) {
+                try { this._onmessage(m); } catch (e) { /* noop */ }
+            }
+            this.pendingMessages = [];
+        }
+    }
+    get onmessage() { return this._onmessage; }
 
     constructor(res: Response, connId: string) {
         this.res = res;
@@ -114,6 +147,15 @@ export class SseServerTransport {
 
     async send(message: any): Promise<void> {
         this.sendEvent(message);
+    }
+
+    // Called by /mcp/events to deliver messages from SSE clients
+    receiveMessage(msg: any) {
+        if (this._onmessage) {
+            try { this._onmessage(msg); } catch (e) { this.onerror?.(e as any); }
+        } else {
+            this.pendingMessages.push(msg);
+        }
     }
 
     private sendEvent(payload: any) {
@@ -159,10 +201,13 @@ export function registerMcpHttp(app: Application): void {
             const serverInstance: McpServer = mod.createServer();
             registerTools(serverInstance);
             console.error('mcp-http: POST /mcp registering tools and connecting');
-            await serverInstance.connect(transport as any).catch((err) => {
+            try {
+                await serverInstance.connect(transport as any);
+                console.error('mcp-http: mcp http connected');
+            } catch (err) {
                 console.error('mcp-http: mcp http connect failed', err);
                 try { res.status(500).end(); } catch (e) { void e; }
-            });
+            }
         } catch (err) {
             console.error('mcp-http: error handling /mcp post', err);
             try { res.status(500).end(); } catch (e) { void e; }
@@ -198,7 +243,15 @@ export function registerMcpHttp(app: Application): void {
                 const serverInstance: McpServer = mod.createServer();
                 registerTools(serverInstance);
                 console.error('mcp-http: GET /mcp registering tools and connecting');
-                await serverInstance.connect(transport as any).catch((err) => console.error('mcp-http: mcp sse connect failed', err));
+                try {
+                    await serverInstance.connect(transport as any);
+                    console.error('mcp-http: mcp sse connected', { connId });
+                } catch (err) {
+                    console.error('mcp-http: mcp sse connect failed', err);
+                    transport.close();
+                    sseMap.delete(connId);
+                    return;
+                }
             } catch (err) {
                 console.error('mcp-http: error creating mcp server for sse', err);
                 transport.close();
@@ -247,9 +300,9 @@ export function registerMcpHttp(app: Application): void {
                 console.error('mcp-http: /mcp/events received body', { bodyType: Array.isArray(body) ? 'array' : typeof body });
                 // Support both single object and arrays
                 if (Array.isArray(body)) {
-                    for (const msg of body) transport.onmessage?.(msg);
+                    for (const msg of body) transport.receiveMessage(msg);
                 } else {
-                    transport.onmessage?.(body);
+                    transport.receiveMessage(body);
                 }
                 res.status(204).end();
             } catch (err) {
