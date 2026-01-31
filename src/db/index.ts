@@ -1,33 +1,35 @@
 import 'dotenv/config'
 
-// Export a mutable `prisma` object so tests and other modules can import it
-// synchronously and attach mocks. If a real DATABASE_URL is provided, we will
-// attempt to dynamically initialize the real PrismaClient and copy its
-// methods onto this object. If not, keep stub methods that throw when used.
+// Export a `prisma` object that is initialized synchronously when possible.
+// If `DATABASE_URL` is set and `@prisma/client` is available (as in CI after
+// running `prisma generate`), we create a real `PrismaClient` instance.
+// Otherwise, export a minimal stub so tests can import and mock methods.
 export const prisma: any = {}
 
 const dbUrl = process.env.DATABASE_URL
 if (!dbUrl) {
-    // Keep minimal stub methods for tests
+    // No DB configured; provide stub methods used in tests
     prisma.$queryRaw = async () => { throw new Error('DATABASE_URL not configured') }
     prisma.$disconnect = async () => { /* noop */ }
 } else {
-    // Dynamically import Prisma packages; if generation hasn't been run this
-    // will fail and we log the error but keep the stub to avoid throwing at
-    // module load time.
-    import('@prisma/client').then((pkg) => {
-        import('@prisma/adapter-pg').then(({ PrismaPg }) => {
-            try {
-                const { PrismaClient } = pkg as any
-                const adapter = new PrismaPg({ connectionString: dbUrl })
-                const real = new PrismaClient({ adapter })
-                // Copy methods/props onto exported object
-                Object.assign(prisma, real)
-            } catch (err) {
-                console.error('failed to initialize PrismaClient', err)
-            }
-        }).catch((err) => console.error('failed to import Prisma adapter', err))
-    }).catch((err) => console.error('failed to import @prisma/client (is prisma generate run?)', err))
+    // Try to synchronously initialize PrismaClient. If this fails (e.g. `@prisma/client`
+    // not generated), log and fall back to stub to avoid crashing at module load.
+    try {
+        // Use static import (top-level) pattern to get synchronous init when possible
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const pkg = require('@prisma/client') as any
+        const { PrismaClient } = pkg
+        // Adapter import is ESM compatible; require it similarly
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { PrismaPg } = require('@prisma/adapter-pg') as any
+        const adapter = new PrismaPg({ connectionString: dbUrl })
+        const real = new PrismaClient({ adapter })
+        Object.assign(prisma, real)
+    } catch (err) {
+        console.error('failed to initialize PrismaClient synchronously; falling back to stub', err)
+        prisma.$queryRaw = async () => { throw new Error('PrismaClient not initialized') }
+        prisma.$disconnect = async () => { /* noop */ }
+    }
 }
 
 export async function testConnection() {
