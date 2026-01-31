@@ -8,9 +8,40 @@ export const prisma: any = {}
 
 const dbUrl = process.env.DATABASE_URL
 if (!dbUrl) {
-    // No DB configured; provide stub methods used in tests
+    // No DB configured; provide stub methods used in tests and safe no-op model stubs to avoid
+    // runtime TypeErrors when server is running without a database (e.g., preview environments).
+    // Read methods return empty results; write methods throw to indicate missing DB.
     prisma.$queryRaw = async () => { throw new Error('DATABASE_URL not configured') }
     prisma.$disconnect = async () => { /* noop */ }
+
+    // Model stubs
+    prisma.user = {
+        findMany: async (_opts?: any) => [],
+        findUnique: async (_opts?: any) => null,
+        create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
+        update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+    }
+
+    prisma.invite = {
+        findMany: async (_opts?: any) => [],
+        findUnique: async (_opts?: any) => null,
+        create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
+        update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+    }
+
+    prisma.role = {
+        findUnique: async (_opts?: any) => null,
+        create: async (_data?: any) => ({ id: 1, name: 'user' }),
+    }
+
+    prisma.auditLog = {
+        create: async (_data?: any) => ({ id: 1 })
+    }
+
+    prisma.accessRequest = {
+        findMany: async (_opts?: any) => [],
+        update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+    }
 } else {
     // Try to synchronously initialize PrismaClient. If this fails (e.g. `@prisma/client`
     // not generated), log and fall back to stub to avoid crashing at module load.

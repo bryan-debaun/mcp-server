@@ -2,6 +2,8 @@ import { Application, Request, Response } from 'express'
 import { jwtMiddleware } from '../auth/jwt.js'
 import { requireAdmin } from '../auth/requireAdmin.js'
 import { sendInviteEmail } from "../email.js"
+import { prisma } from '../db/index.js'
+import { adminDebugRequestsTotal } from './metrics-route.js'
 
 export function registerAdminRoute(app: Application) {
     const base = '/api/admin'
@@ -70,20 +72,28 @@ export function registerAdminRoute(app: Application) {
 
     // Debug endpoint to help diagnose gateway/auth issues on preview hosts.
     // Protected with the same admin checks (jwtMiddleware + requireAdmin).
-    app.get(`${base}/_debug/headers`, jwtMiddleware, requireAdmin, async (req: Request, res: Response) => {
-        const ip = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim()
-        const internalKeyPresent = !!req.headers['x-internal-key']
-        const jwksUrl = process.env.SUPABASE_JWKS_URL
-        let jwksStatus: any = null
-        if (jwksUrl) {
-            try {
-                const r = await fetch(jwksUrl, { method: 'GET' })
-                jwksStatus = { status: r.status, ok: r.ok }
-            } catch (err) {
-                jwksStatus = { error: (err as any)?.message || String(err) }
+    if (process.env.ADMIN_DEBUG_ENABLED === '1') {
+        app.get(`${base}/_debug/headers`, jwtMiddleware, requireAdmin, async (req: Request, res: Response) => {
+            const ip = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim()
+            const internalKeyPresent = !!req.headers['x-internal-key']
+            const jwksUrl = process.env.SUPABASE_JWKS_URL
+            let jwksStatus: any = null
+            if (jwksUrl) {
+                try {
+                    const r = await fetch(jwksUrl, { method: 'GET' })
+                    jwksStatus = { status: r.status, ok: r.ok }
+                } catch (err) {
+                    jwksStatus = { error: (err as any)?.message || String(err) }
+                }
             }
-        }
 
-        res.json({ ip, internalKeyPresent, jwksUrl: !!jwksUrl, jwksStatus })
-    })
+            try {
+                await prisma.auditLog.create({ data: { action: 'admin-debug', metadata: { ip, path: req.path } } })
+            } catch (e) { /* noop */ }
+
+            try { adminDebugRequestsTotal.inc() } catch (e) { /* noop */ }
+
+            res.json({ ip, internalKeyPresent, jwksUrl: !!jwksUrl, jwksStatus })
+        })
+    }
 }

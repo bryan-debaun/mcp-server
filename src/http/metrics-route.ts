@@ -27,6 +27,8 @@ export const invitesAcceptedTotal = new Counter({ name: "invites_accepted_total"
 
 export const serviceRoleBypassTotal = new Counter({ name: "service_role_bypass_total", help: "Total number of service role bypasses" })
 
+export const adminDebugRequestsTotal = new Counter({ name: "admin_debug_requests_total", help: "Total number of admin debug endpoint requests" })
+
 register.registerMetric(httpRequestsTotal);
 register.registerMetric(httpRequestDurationSeconds);
 register.registerMetric(mcpPollSuccess);
@@ -36,6 +38,7 @@ register.registerMetric(mcpTokenRefreshFailure);
 register.registerMetric(invitesCreatedTotal);
 register.registerMetric(invitesAcceptedTotal);
 register.registerMetric(serviceRoleBypassTotal);
+register.registerMetric(adminDebugRequestsTotal);
 
 export function registerMetricsRoute(app: any): void {
     app.get("/metrics", async (_req: Request, res: Response) => {
