@@ -1,5 +1,5 @@
 import { describe, it, expect, afterAll } from 'vitest'
-import { prisma, testConnection } from '../../src/db'
+import { prisma, testConnection, prismaReady } from '../../src/db'
 
 const RUN_DB_TESTS = process.env.RUN_DB_INTEGRATION === 'true'
 
@@ -11,7 +11,10 @@ describe('DB integration', () => {
 
 
     afterAll(async () => {
-        await prisma.$disconnect()
+        await prismaReady
+        if (typeof prisma.$disconnect === 'function') {
+            await prisma.$disconnect()
+        }
     })
 
     it('connects to the DB and returns a basic result', async () => {
