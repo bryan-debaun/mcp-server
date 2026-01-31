@@ -8,6 +8,7 @@ An extensible Model Context Protocol (MCP) server for VS Code Copilot with GitHu
 - **Extensible Architecture**: Easily add new tool categories without major refactoring
 - **Zod Validation**: All tool inputs are validated with zod schemas
 - **Error Handling**: Graceful error handling with clear messages
+- **HTTP Stream & SSE Transport**: Hosts MCP over `POST /mcp` (NDJSON stream) and SSE fallback at `GET /mcp` with `POST /mcp/events` for event delivery. Protect endpoints with `MCP_API_KEY` using `Authorization: Bearer <MCP_API_KEY>`.
 
 ## Available Tools
 

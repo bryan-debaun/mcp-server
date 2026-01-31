@@ -30,6 +30,13 @@ export function createHttpApp() {
     // Public invite routes
     registerInviteRoutes(app)
 
+    // MCP HTTP transport (HTTP Stream + SSE fallback)
+    try {
+        import('./mcp-http.js').then(({ registerMcpHttp }) => registerMcpHttp(app)).catch((err) => console.error('failed to register MCP HTTP transport', err))
+    } catch (err) {
+        console.error('failed to register MCP HTTP transport', err)
+    }
+
     // Basic 404 handler
     app.use((_req, res) => res.status(404).json({ error: "not found" }));
 
