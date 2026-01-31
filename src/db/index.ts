@@ -123,7 +123,9 @@ if (!dbUrl) {
 }
 
 export async function testConnection() {
+    // Wait for the async Prisma initialization to complete to avoid races in tests/CI
+    await prismaReady
     // Basic connectivity check
-    const res = await prisma.$queryRaw`SELECT 1 as ok`
+    const res = await (prisma as any).$queryRaw`SELECT 1 as ok`
     return res
 }
