@@ -26,6 +26,7 @@
     "routes": {
         "routesDir": "src/http",
         "routesFileName": "tsoa-routes.ts",
+        "authenticationModule": "src/http/authentication.ts",
         "middleware": "express"
     }
 }

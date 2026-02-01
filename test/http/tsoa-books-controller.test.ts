@@ -63,7 +63,7 @@ describe('tsoa books controller', () => {
     it('should return authors via tsoa controller GET /api/authors', async () => {
         const response = await fetch(`${baseUrl}/api/authors`);
         expect(response.status).toBe(200);
-        
+
         const data = await response.json();
         expect(data).toHaveProperty('authors');
         expect(data).toHaveProperty('total');
@@ -79,7 +79,7 @@ describe('tsoa books controller', () => {
     it('should return ratings via tsoa controller GET /api/ratings', async () => {
         const response = await fetch(`${baseUrl}/api/ratings`);
         expect(response.status).toBe(200);
-        
+
         const data = await response.json();
         expect(data).toHaveProperty('ratings');
         expect(data).toHaveProperty('total');

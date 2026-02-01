@@ -1,4 +1,5 @@
-import { Controller, Get, Query, Route, Tags, Response, SuccessResponse, Path } from 'tsoa';
+import { Controller, Get, Post, Put, Delete, Query, Route, Tags, Response, SuccessResponse, Path, Body, Security, Request } from 'tsoa';
+import type { Request as ExpressRequest } from 'express';
 
 /**
  * Author representation
@@ -27,6 +28,24 @@ export interface AuthorWithBooks extends Author {
 export interface ListAuthorsResponse {
     authors: AuthorWithBooks[];
     total: number;
+}
+
+/**
+ * Create author request
+ */
+export interface CreateAuthorRequest {
+    name: string;
+    bio?: string;
+    website?: string;
+}
+
+/**
+ * Update author request
+ */
+export interface UpdateAuthorRequest {
+    name?: string;
+    bio?: string;
+    website?: string;
 }
 
 /**
@@ -83,6 +102,106 @@ export class AuthorsController extends Controller {
             console.error('get-author failed', err);
             this.setStatus(404);
             throw new Error('Author not found');
+        }
+    }
+
+    /**
+     * Create a new author (admin only)
+     * @summary Create a new author
+     * @param request Express request with JWT user info
+     * @param body Author data
+     */
+    @Post()
+    @Security('jwt', ['admin'])
+    @SuccessResponse('201', 'Author created successfully')
+    @Response('400', 'Invalid request')
+    @Response('401', 'Unauthorized')
+    @Response('500', 'Internal server error')
+    public async createAuthor(
+        @Request() request: ExpressRequest,
+        @Body() body: CreateAuthorRequest
+    ): Promise<Author> {
+        const { callTool } = await import('../../tools/local.js');
+        try {
+            if (!body.name) {
+                this.setStatus(400);
+                throw new Error('name is required');
+            }
+
+            const createdBy = (request as any).user?.sub ? Number((request as any).user.sub) : undefined;
+            const result = await callTool('create-author', {
+                ...body,
+                createdBy
+            });
+            this.setStatus(201);
+            return result as Author;
+        } catch (err: any) {
+            console.error('create-author failed', err);
+            this.setStatus(500);
+            throw new Error('Failed to create author');
+        }
+    }
+
+    /**
+     * Update an author (admin only)
+     * @summary Update an existing author
+     * @param id Author ID
+     * @param body Updated author data
+     */
+    @Put('{id}')
+    @Security('jwt', ['admin'])
+    @SuccessResponse('200', 'Author updated successfully')
+    @Response('400', 'Invalid request')
+    @Response('401', 'Unauthorized')
+    @Response('404', 'Author not found')
+    @Response('500', 'Internal server error')
+    public async updateAuthor(
+        @Path() id: number,
+        @Body() body: UpdateAuthorRequest
+    ): Promise<Author> {
+        const { callTool } = await import('../../tools/local.js');
+        try {
+            const result = await callTool('update-author', {
+                id,
+                ...body
+            });
+            return result as Author;
+        } catch (err: any) {
+            console.error('update-author failed', err);
+            if (err.message?.includes('not found')) {
+                this.setStatus(404);
+                throw new Error('Author not found');
+            }
+            this.setStatus(500);
+            throw new Error('Failed to update author');
+        }
+    }
+
+    /**
+     * Delete an author (admin only)
+     * @summary Delete an author by ID
+     * @param id Author ID
+     */
+    @Delete('{id}')
+    @Security('jwt', ['admin'])
+    @SuccessResponse('200', 'Author deleted successfully')
+    @Response('400', 'Invalid author ID')
+    @Response('401', 'Unauthorized')
+    @Response('404', 'Author not found')
+    @Response('500', 'Internal server error')
+    public async deleteAuthor(@Path() id: number): Promise<{ success: boolean }> {
+        const { callTool } = await import('../../tools/local.js');
+        try {
+            await callTool('delete-author', { id });
+            return { success: true };
+        } catch (err: any) {
+            console.error('delete-author failed', err);
+            if (err.message?.includes('not found')) {
+                this.setStatus(404);
+                throw new Error('Author not found');
+            }
+            this.setStatus(500);
+            throw new Error('Failed to delete author');
         }
     }
 }
