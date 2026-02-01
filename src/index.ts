@@ -35,22 +35,23 @@ async function main(): Promise<void> {
     // 2. If unset, prefer stdio when stdin appears attached (common for LocalProcess) even if PORT is set
     // 3. Otherwise, if PORT is set, run HTTP server
     try {
-        const explicit = (process.env.MCP_TRANSPORT || '').toLowerCase();
+        const explicitEnv = process.env.MCP_TRANSPORT;
         const port = process.env.PORT ? Number(process.env.PORT) : undefined;
         const stdinAttached = Boolean(process.stdin && (process.stdin.isTTY || process.stdin.readable || (process.stdin as any).readableFlowing));
+        const env = process.env.NODE_ENV || 'development';
 
-        let useStdio: boolean | undefined;
-        if (explicit === 'stdio') useStdio = true;
-        else if (explicit === 'http') useStdio = false;
-        else if (stdinAttached && port) {
-            // Fallback: prefer stdio when stdin is attached. This helps LocalProcess scenarios
+        // Determine transport via a testable helper
+        const { decideTransport } = await import('./transport-selection.js');
+        const decision = decideTransport({ mcpTransport: explicitEnv, port, nodeEnv: env, stdinAttached });
+
+        // Mirror previous logging behavior for the notable cases
+        if (decision.reason === 'production-port-prefers-http') {
+            console.error('transport decision: NODE_ENV=production and PORT present; forcing HTTP transport. Set MCP_TRANSPORT=stdio to force stdio.');
+        } else if (decision.reason === 'stdin-attached-port-prefers-stdio') {
             console.error('transport decision: stdin attached and PORT present; preferring stdio transport to support LocalProcess. Set MCP_TRANSPORT=http to force HTTP.');
-            useStdio = true;
-        } else if (port) {
-            useStdio = false;
-        } else {
-            useStdio = true;
         }
+
+        const useStdio = decision.useStdio;
 
         if (!useStdio) {
             // Hosted mode: start HTTP server and do not use stdio transport.
