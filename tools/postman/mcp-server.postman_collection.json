@@ -355,6 +355,588 @@
                     }
                 }
             ]
+        },
+        {
+            "name": "Books - List",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/books?limit=10",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "books"
+                    ],
+                    "query": [
+                        {
+                            "key": "limit",
+                            "value": "10"
+                        },
+                        {
+                            "key": "search",
+                            "value": "",
+                            "disabled": true
+                        },
+                        {
+                            "key": "authorId",
+                            "value": "",
+                            "disabled": true
+                        },
+                        {
+                            "key": "minRating",
+                            "value": "",
+                            "disabled": true
+                        }
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                            "pm.test('Has books array', function () { var json = pm.response.json(); pm.expect(json).to.have.property('books'); });",
+                            "pm.test('Books is array', function () { var json = pm.response.json(); pm.expect(Array.isArray(json.books)).to.be.true; });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Books - Get by ID",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/books/1",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "books",
+                        "1"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                            "pm.test('Has title', function () { var json = pm.response.json(); pm.expect(json).to.have.property('title'); });",
+                            "pm.test('Has authors', function () { var json = pm.response.json(); pm.expect(json).to.have.property('authors'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Books - Create (Admin)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "X-INTERNAL-KEY",
+                        "value": "{{internal_admin_key}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"title\": \"Test Book\",\n  \"description\": \"A test book for API testing\",\n  \"isbn\": \"9781234567890\",\n  \"publishedAt\": \"2024-01-01\",\n  \"authorIds\": [1]\n}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/books",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "books"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                            "pm.test('Has id', function () { var json = pm.response.json(); pm.expect(json).to.have.property('id'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Books - Update (Admin)",
+            "request": {
+                "method": "PUT",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "X-INTERNAL-KEY",
+                        "value": "{{internal_admin_key}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"title\": \"Updated Test Book\",\n  \"description\": \"Updated description\"\n}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/books/1",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "books",
+                        "1"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                            "pm.test('Has id', function () { var json = pm.response.json(); pm.expect(json).to.have.property('id'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Books - Delete (Admin)",
+            "request": {
+                "method": "DELETE",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "X-INTERNAL-KEY",
+                        "value": "{{internal_admin_key}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/books/99",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "books",
+                        "99"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200 or 404', function () { pm.expect(pm.response.status).to.be.oneOf([200,404]); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Authors - List",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/authors?limit=10",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "authors"
+                    ],
+                    "query": [
+                        {
+                            "key": "limit",
+                            "value": "10"
+                        },
+                        {
+                            "key": "search",
+                            "value": "",
+                            "disabled": true
+                        }
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                            "pm.test('Has authors array', function () { var json = pm.response.json(); pm.expect(json).to.have.property('authors'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Authors - Get by ID",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/authors/1",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "authors",
+                        "1"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                            "pm.test('Has name', function () { var json = pm.response.json(); pm.expect(json).to.have.property('name'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Authors - Create (Admin)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "X-INTERNAL-KEY",
+                        "value": "{{internal_admin_key}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"name\": \"Test Author\",\n  \"bio\": \"A test author for API testing\",\n  \"website\": \"https://testauthor.com\"\n}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/authors",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "authors"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                            "pm.test('Has id', function () { var json = pm.response.json(); pm.expect(json).to.have.property('id'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Authors - Update (Admin)",
+            "request": {
+                "method": "PUT",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "X-INTERNAL-KEY",
+                        "value": "{{internal_admin_key}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"name\": \"Updated Test Author\",\n  \"bio\": \"Updated bio\"\n}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/authors/1",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "authors",
+                        "1"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                            "pm.test('Has id', function () { var json = pm.response.json(); pm.expect(json).to.have.property('id'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Authors - Delete (Admin)",
+            "request": {
+                "method": "DELETE",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "X-INTERNAL-KEY",
+                        "value": "{{internal_admin_key}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/authors/99",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "authors",
+                        "99"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200 or 404', function () { pm.expect(pm.response.status).to.be.oneOf([200,404]); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Ratings - List",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/ratings?limit=10",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "ratings"
+                    ],
+                    "query": [
+                        {
+                            "key": "limit",
+                            "value": "10"
+                        },
+                        {
+                            "key": "bookId",
+                            "value": "",
+                            "disabled": true
+                        },
+                        {
+                            "key": "userId",
+                            "value": "",
+                            "disabled": true
+                        }
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                            "pm.test('Has ratings array', function () { var json = pm.response.json(); pm.expect(json).to.have.property('ratings'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Ratings - Create/Update (Authenticated)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"bookId\": 1,\n  \"rating\": 8,\n  \"review\": \"Great book! Highly recommend.\"\n}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/ratings",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "ratings"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                            "pm.test('Has rating', function () { var json = pm.response.json(); pm.expect(json).to.have.property('rating'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Ratings - My Ratings (Authenticated)",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/users/me/ratings",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "users",
+                        "me",
+                        "ratings"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                            "pm.test('Has ratings array', function () { var json = pm.response.json(); pm.expect(json).to.have.property('ratings'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Ratings - Delete (Authenticated)",
+            "request": {
+                "method": "DELETE",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/ratings/1",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "ratings",
+                        "1"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200 or 403 or 404', function () { pm.expect(pm.response.status).to.be.oneOf([200,403,404]); });"
+                        ]
+                    }
+                }
+            ]
         }
     ]
 }

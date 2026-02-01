@@ -8,8 +8,11 @@ import { registerInviteRoutes } from './invite-route.js';
 import { registerBooksRoute } from './books-route.js';
 import { registerAuthorsRoute } from './authors-route.js';
 import { registerRatingsRoute } from './ratings-route.js';
+import { initPrisma } from '../db/index.js';
 
 export async function createHttpApp() {
+    // Initialize Prisma before registering any routes that might use it
+    await initPrisma();
     const app = express();
     app.use(cors());
     app.use(express.json());
