@@ -1,4 +1,3 @@
-import 'dotenv/config'
 import pkg from '@prisma/client'
 const { PrismaClient } = pkg as any
 import { PrismaPg } from '@prisma/adapter-pg'
