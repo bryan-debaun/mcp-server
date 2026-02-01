@@ -37,6 +37,8 @@ jobs:
         run: echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/mcp_test" >> $GITHUB_ENV
       - name: Run Prisma DB push & generate
         run: npx prisma db push && npx prisma generate
+      - name: Build TypeScript (including seed script)
+        run: npm run build && npx tsc prisma/seed.ts --outDir dist --module NodeNext --moduleResolution NodeNext --target ES2022 --esModuleInterop --skipLibCheck
       - name: Seed DB
         run: npm run prisma:seed
       - name: Run tests
