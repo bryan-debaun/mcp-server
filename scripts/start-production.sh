@@ -1,15 +1,11 @@
 #!/bin/sh
 set -e
 
-# Save the original DATABASE_URL (pooled connection)
-ORIGINAL_DATABASE_URL="${DATABASE_URL}"
-
 echo "Running database migrations with direct connection..."
-export DATABASE_URL="${DATABASE_URL_DIRECT}"
-npx prisma migrate deploy
+echo "Using session pooler: ${DATABASE_URL_DIRECT}"
+env DATABASE_URL="${DATABASE_URL_DIRECT}" npx prisma migrate deploy
 
 echo "Seeding database with pooled connection..."
-export DATABASE_URL="${ORIGINAL_DATABASE_URL}"
 npm run prisma:seed
 
 echo "Starting server with pooled connection..."
