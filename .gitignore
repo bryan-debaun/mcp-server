@@ -20,6 +20,12 @@ coverage/
 .env
 .env.local
 
+# Local database files
+dev.db
+dev.db-journal
+*.db
+*.db-journal
+
 # Compiled test artifacts
 test/**/*.js
 test/**/*.js.map
@@ -32,3 +38,6 @@ test/**/*.d.ts.map
 # Logs
 *.log
 npm-debug.log*
+
+# Temporary debugging/testing scripts
+tmp/

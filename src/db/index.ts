@@ -48,6 +48,38 @@ export async function initPrisma() {
             update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
         }
 
+        prisma.author = {
+            findMany: async (_opts?: any) => [],
+            findUnique: async (_opts?: any) => null,
+            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
+            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+            delete: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+        }
+
+        prisma.book = {
+            findMany: async (_opts?: any) => [],
+            findUnique: async (_opts?: any) => null,
+            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
+            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+            delete: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+        }
+
+        prisma.bookAuthor = {
+            findMany: async (_opts?: any) => [],
+            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
+            deleteMany: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+        }
+
+        prisma.rating = {
+            findMany: async (_opts?: any) => [],
+            findUnique: async (_opts?: any) => null,
+            findFirst: async (_opts?: any) => null,
+            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
+            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+            upsert: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+            delete: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+        }
+
         prismaReadyPromise = Promise.resolve()
         return prismaReadyPromise
     }
@@ -89,6 +121,19 @@ export async function initPrisma() {
             (prisma as any).$executeRaw = (...args: any[]) => (real as any).$executeRaw(...args);
             (prisma as any).$disconnect = (real as any).$disconnect?.bind(real) ?? (async () => { });
 
+            // Explicitly forward model accessors (user, book, etc.) to ensure they're available
+            // These are often defined as getters on the Prisma client and may not be enumerable
+            const modelNames = ['user', 'invite', 'role', 'auditLog', 'accessRequest', 'author', 'book', 'bookAuthor', 'rating'];
+            for (const modelName of modelNames) {
+                if (modelName in real) {
+                    Object.defineProperty(prisma, modelName, {
+                        get() { return (real as any)[modelName]; },
+                        enumerable: true,
+                        configurable: true
+                    });
+                }
+            }
+
             console.error('PrismaClient initialized successfully')
             return
         } catch (err) {
@@ -128,6 +173,38 @@ export async function initPrisma() {
         prisma.accessRequest = {
             findMany: async (_opts?: any) => [],
             update: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
+        }
+
+        prisma.author = {
+            findMany: async (_opts?: any) => [],
+            findUnique: async (_opts?: any) => null,
+            create: async (_data?: any) => { throw new Error('PrismaClient not initialized') },
+            update: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
+            delete: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
+        }
+
+        prisma.book = {
+            findMany: async (_opts?: any) => [],
+            findUnique: async (_opts?: any) => null,
+            create: async (_data?: any) => { throw new Error('PrismaClient not initialized') },
+            update: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
+            delete: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
+        }
+
+        prisma.bookAuthor = {
+            findMany: async (_opts?: any) => [],
+            create: async (_data?: any) => { throw new Error('PrismaClient not initialized') },
+            deleteMany: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
+        }
+
+        prisma.rating = {
+            findMany: async (_opts?: any) => [],
+            findUnique: async (_opts?: any) => null,
+            findFirst: async (_opts?: any) => null,
+            create: async (_data?: any) => { throw new Error('PrismaClient not initialized') },
+            update: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
+            upsert: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
+            delete: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
         }
     })()
 

@@ -21,15 +21,18 @@ model Role {
 }
 
 model User {
-  id         Int      @id @default(autoincrement())
-  email      String   @unique
-  name       String?
-  roleId     Int?
-  role       Role?    @relation(fields: [roleId], references: [id])
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  invites    Invite[]
-  auditLogs  AuditLog[]
+  id             Int      @id @default(autoincrement())
+  email          String   @unique
+  name           String?
+  roleId         Int?
+  role           Role?    @relation(fields: [roleId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  invites        Invite[]
+  auditLogs      AuditLog[]
+  authorsCreated Author[] @relation("AuthorCreator")
+  booksCreated   Book[]   @relation("BookCreator")
+  ratings        Rating[] @relation("UserRatings")
 }
 
 model Invite {
@@ -61,4 +64,61 @@ model AuditLog {
   actor      User?    @relation(fields: [actorId], references: [id])
   metadata   Json?
   createdAt  DateTime @default(now())
+}
+
+model Author {
+  id        Int          @id @default(autoincrement())
+  name      String
+  bio       String?
+  website   String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  createdBy Int?
+  creator   User?        @relation("AuthorCreator", fields: [createdBy], references: [id])
+  books     BookAuthor[]
+  
+  @@index([name])
+}
+
+model Book {
+  id          Int          @id @default(autoincrement())
+  title       String
+  description String?
+  isbn        String?      @unique
+  publishedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  createdBy   Int?
+  creator     User?        @relation("BookCreator", fields: [createdBy], references: [id])
+  authors     BookAuthor[]
+  ratings     Rating[]
+  
+  @@index([title])
+  @@index([isbn])
+}
+
+model BookAuthor {
+  bookId   Int
+  authorId Int
+  book     Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  author   Author @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  @@id([bookId, authorId])
+  @@index([authorId])
+}
+
+model Rating {
+  id        Int      @id @default(autoincrement())
+  bookId    Int
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User     @relation("UserRatings", fields: [userId], references: [id])
+  rating    Int
+  review    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([bookId, userId])
+  @@index([userId])
+  @@index([bookId])
 }

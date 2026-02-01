@@ -4,7 +4,7 @@ services:
     env: docker
     plan: starter
     branch: main
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci && npm run build && npm run prisma:seed
     startCommand: npm run start
     autoDeploy: true
     envVars:

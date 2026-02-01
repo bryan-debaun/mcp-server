@@ -1,8 +1,12 @@
 import { registerTools } from './index.js';
+import { prisma, prismaReady } from '../db/index.js';
 
 type ToolHandler = (args: any) => Promise<any>;
 
 const handlers = new Map<string, ToolHandler>();
+
+// Track if we've verified Prisma initialization
+let prismaVerified = false;
 
 // Fake server interface that tools use to register themselves
 const fakeServer: any = {
@@ -28,6 +32,16 @@ function parseToolResult(result: any) {
 }
 
 export async function callTool(name: string, args: any) {
+    // Verify Prisma is initialized before calling any tool (only check once per process)
+    if (!prismaVerified) {
+        await prismaReady();
+        // Verify at least one model exists (as a sanity check that initialization completed)
+        if (!prisma.user || typeof prisma.user.findMany !== 'function') {
+            throw new Error('Prisma client not properly initialized - database connection may be unavailable');
+        }
+        prismaVerified = true;
+    }
+
     const handler = handlers.get(name);
     if (!handler) throw new Error(`tool not found: ${name}`);
 
