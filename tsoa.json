@@ -1,0 +1,32 @@
+{
+    "entryFile": "src/http/server.ts",
+    "noImplicitAdditionalProperties": "throw-on-extras",
+    "controllerPathGlobs": [
+        "src/http/controllers/**/*Controller.ts"
+    ],
+    "spec": {
+        "outputDirectory": "build",
+        "specVersion": 3,
+        "name": "MCP Server API",
+        "version": "0.1.0",
+        "description": "REST API for MCP Server with books, authors, ratings, and admin operations",
+        "contact": {
+            "name": "Bryan DeBaun",
+            "email": "bryan@debaun.dev"
+        },
+        "license": "MIT",
+        "securityDefinitions": {
+            "jwt": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
+        }
+    },
+    "routes": {
+        "routesDir": "src/http",
+        "routesFileName": "tsoa-routes.ts",
+        "authenticationModule": "src/http/authentication.ts",
+        "middleware": "express"
+    }
+}
