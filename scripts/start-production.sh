@@ -1,11 +1,11 @@
 #!/bin/sh
 set -e
 
-echo "Running database migrations..."
-npx prisma migrate deploy
+echo "Running database migrations with direct connection..."
+DATABASE_URL="${DATABASE_URL_DIRECT}" npx prisma migrate deploy
 
-echo "Seeding database..."
+echo "Seeding database with pooled connection..."
 npm run prisma:seed
 
-echo "Starting server..."
+echo "Starting server with pooled connection..."
 npm run start
