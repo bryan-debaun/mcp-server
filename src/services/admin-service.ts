@@ -14,7 +14,7 @@ export async function createInvite(email: string, invitedBy?: number) {
 
     // Observability
     try { invitesCreatedTotal.inc() } catch (e) { /* noop for tests */ }
-    console.log(`invite created for ${email} (id=${invite.id})`)
+    console.error(`invite created for ${email} (id=${invite.id})`)
 
     return invite
 }
@@ -65,7 +65,7 @@ export async function acceptInvite(token: string, opts?: { name?: string, passwo
     await prisma.auditLog.create({ data: { action: 'accept-invite', metadata: { inviteId: invite.id, userId: user.id } } })
 
     try { invitesAcceptedTotal.inc() } catch (e) { /* noop for tests */ }
-    console.log(`invite accepted for ${invite.email} (inviteId=${invite.id} userId=${user.id})`)
+    console.error(`invite accepted for ${invite.email} (inviteId=${invite.id} userId=${user.id})`)
 
     return user
 }
