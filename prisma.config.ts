@@ -1,4 +1,3 @@
-import 'dotenv/config'
 import { defineConfig, env } from '@prisma/config'
 
 // Make DATABASE_URL optional for local builds and CI where DB isn't required
