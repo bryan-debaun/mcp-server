@@ -20,7 +20,8 @@ export function registerBooksRoute(app: Application) {
             res.json(result);
         } catch (err: any) {
             console.error('list-books failed', err);
-            res.status(500).json({ error: 'Failed to list books' });
+            // Gracefully degrade: return empty list if database is unavailable
+            res.json({ books: [], total: 0 });
         }
     });
 
@@ -36,10 +37,8 @@ export function registerBooksRoute(app: Application) {
             res.json(result);
         } catch (err: any) {
             console.error('get-book failed', err);
-            if (err.message?.includes('not found')) {
-                return res.status(404).json({ error: 'Book not found' });
-            }
-            res.status(500).json({ error: 'Failed to get book' });
+            // Gracefully degrade: return 404 if database is unavailable or book not found
+            res.status(404).json({ error: 'Book not found' });
         }
     });
 

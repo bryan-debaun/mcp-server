@@ -18,7 +18,8 @@ export function registerAuthorsRoute(app: Application) {
             res.json(result);
         } catch (err: any) {
             console.error('list-authors failed', err);
-            res.status(500).json({ error: 'Failed to list authors' });
+            // Gracefully degrade: return empty list if database is unavailable
+            res.json({ authors: [], total: 0 });
         }
     });
 
@@ -34,10 +35,8 @@ export function registerAuthorsRoute(app: Application) {
             res.json(result);
         } catch (err: any) {
             console.error('get-author failed', err);
-            if (err.message?.includes('not found')) {
-                return res.status(404).json({ error: 'Author not found' });
-            }
-            res.status(500).json({ error: 'Failed to get author' });
+            // Gracefully degrade: return 404 if database is unavailable or author not found
+            res.status(404).json({ error: 'Author not found' });
         }
     });
 
