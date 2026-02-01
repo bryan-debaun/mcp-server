@@ -5,11 +5,11 @@
     "type": "module",
     "main": "dist/index.js",
     "scripts": {
-        "build": "prisma generate && tsc",
-        "build:spec": "tsoa spec-and-routes",
+        "build": "prisma generate && npm run build:spec && tsc",
+        "build:spec": "tsoa spec-and-routes && tsx scripts/fix-tsoa-imports.ts",
         "dev": "tsc --watch",
         "start": "node dist/index.js",
-        "mcp-proxy": "node ./scripts/mcp-proxy.js",
+        "mcp-proxy": "tsx scripts/mcp-proxy.ts",
         "test": "vitest run",
         "test:watch": "vitest",
         "typecheck": "tsc -p tsconfig.test.json --noEmit",
@@ -63,6 +63,7 @@
         "prisma": "^7.3.0",
         "supertest": "^6.3.3",
         "ts-node": "^10.9.1",
+        "tsx": "^4.21.0",
         "typescript": "^5.4.0",
         "vitest": "^2.0.0"
     },

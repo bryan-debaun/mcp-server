@@ -12,7 +12,7 @@ export async function expressAuthentication(
 ): Promise<any> {
     if (securityName === 'jwt') {
         const token = request.headers.authorization?.replace('Bearer ', '');
-        
+
         if (!token) {
             throw new Error('No token provided');
         }
