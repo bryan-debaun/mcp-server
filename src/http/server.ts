@@ -68,11 +68,12 @@ export async function createHttpApp() {
 import { WebSocketServer } from 'ws'
 import { WsServerTransport } from './mcp-ws.js'
 
-export async function startHttpServer(port: number): Promise<import("http").Server> {
+export async function startHttpServer(port: number, host?: string): Promise<import("http").Server> {
     const app = await createHttpApp();
     return new Promise((resolve) => {
-        const server = app.listen(port, () => {
-            console.error(`HTTP server listening on port ${port}`);
+        const bindHost = host ?? process.env.HOST ?? '0.0.0.0';
+        const server = app.listen(port, bindHost, () => {
+            console.error(`HTTP server listening on ${bindHost}:${port}`);
             // Attach WebSocket server for MCP remote transport when enabled via MCP_API_KEY
             const mcpKey = process.env.MCP_API_KEY
             if (mcpKey) {
