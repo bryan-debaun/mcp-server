@@ -14,14 +14,48 @@ async function main(): Promise<void> {
     // Register all tools
     registerTools(server);
 
-    // Decide transport based on runtime environment.
-    // In hosted environments (when PORT is provided) we should not attach to stdio.
+    // Diagnostic: log key environment variables and stdio status so we can detect how the extension launched us
     try {
+        const diag = {
+            PORT: process.env.PORT,
+            MCP_TRANSPORT: process.env.MCP_TRANSPORT,
+            NODE_ENV: process.env.NODE_ENV,
+            stdinIsTTY: typeof process.stdin.isTTY !== 'undefined' ? process.stdin.isTTY : null,
+            // Whether stdin is in flowing mode (a crude check; true for many interactive/stdio use-cases)
+            stdinReadable: Boolean(process.stdin && (process.stdin.readable || process.stdin.readableFlowing)),
+        };
+        console.error('startup diagnostic:', JSON.stringify(diag));
+    } catch (e) {
+        console.error('startup diagnostic failed', e);
+    }
+
+    // Decide transport based on runtime environment.
+    // Priority:
+    // 1. `MCP_TRANSPORT` env if explicitly set to 'stdio' or 'http'
+    // 2. If unset, prefer stdio when stdin appears attached (common for LocalProcess) even if PORT is set
+    // 3. Otherwise, if PORT is set, run HTTP server
+    try {
+        const explicit = (process.env.MCP_TRANSPORT || '').toLowerCase();
         const port = process.env.PORT ? Number(process.env.PORT) : undefined;
-        if (port) {
+        const stdinAttached = Boolean(process.stdin && (process.stdin.isTTY || process.stdin.readable || (process.stdin as any).readableFlowing));
+
+        let useStdio: boolean | undefined;
+        if (explicit === 'stdio') useStdio = true;
+        else if (explicit === 'http') useStdio = false;
+        else if (stdinAttached && port) {
+            // Fallback: prefer stdio when stdin is attached. This helps LocalProcess scenarios
+            console.error('transport decision: stdin attached and PORT present; preferring stdio transport to support LocalProcess. Set MCP_TRANSPORT=http to force HTTP.');
+            useStdio = true;
+        } else if (port) {
+            useStdio = false;
+        } else {
+            useStdio = true;
+        }
+
+        if (!useStdio) {
             // Hosted mode: start HTTP server and do not use stdio transport.
             const { startHttpServer } = await import("./http/server.js");
-            await startHttpServer(port);
+            await startHttpServer(port as number);
             console.error(`MCP server started in HTTP mode on port ${port}`);
         } else {
             // Local dev / extension-host mode: use stdio transport for extension integration.
