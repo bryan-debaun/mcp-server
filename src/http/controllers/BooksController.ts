@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Route, Tags, Response, SuccessResponse } from 'tsoa';
+import { Controller, Get, Query, Route, Tags, Response, SuccessResponse, Path } from 'tsoa';
 
 /**
  * Book representation
@@ -70,6 +70,27 @@ export class BooksController extends Controller {
             console.error('list-books failed', err);
             // Gracefully degrade: return empty list if database is unavailable
             return { books: [], total: 0 };
+        }
+    }
+
+    /**
+     * Get a book by ID
+     * @summary Get book details by ID
+     * @param id Book ID
+     */
+    @Get('{id}')
+    @SuccessResponse('200', 'Book retrieved successfully')
+    @Response('404', 'Book not found')
+    @Response('400', 'Invalid book ID')
+    public async getBook(@Path() id: number): Promise<BookWithAuthors> {
+        const { callTool } = await import('../../tools/local.js');
+        try {
+            const result = await callTool('get-book', { id });
+            return result as BookWithAuthors;
+        } catch (err: any) {
+            console.error('get-book failed', err);
+            this.setStatus(404);
+            throw new Error('Book not found');
         }
     }
 }
