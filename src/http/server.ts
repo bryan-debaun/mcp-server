@@ -3,8 +3,11 @@ import cors from "cors";
 import { registerHealthRoute } from "./health-route.js";
 import { registerPlaybackRoute } from "./playback-route.js";
 import { registerMetricsRoute, httpRequestsTotal, httpRequestDurationSeconds } from "./metrics-route.js";
-import { registerAdminRoute } from './admin-route.js'
-import { registerInviteRoutes } from './invite-route.js'
+import { registerAdminRoute } from './admin-route.js';
+import { registerInviteRoutes } from './invite-route.js';
+import { registerBooksRoute } from './books-route.js';
+import { registerAuthorsRoute } from './authors-route.js';
+import { registerRatingsRoute } from './ratings-route.js';
 
 export async function createHttpApp() {
     const app = express();
@@ -37,6 +40,10 @@ export async function createHttpApp() {
     registerAdminRoute(app)
     // Public invite routes
     registerInviteRoutes(app)
+    // Book catalog routes
+    registerBooksRoute(app)
+    registerAuthorsRoute(app)
+    registerRatingsRoute(app)
 
 
 

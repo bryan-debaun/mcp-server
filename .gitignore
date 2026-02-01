@@ -20,6 +20,12 @@ coverage/
 .env
 .env.local
 
+# Local database files
+dev.db
+dev.db-journal
+*.db
+*.db-journal
+
 # Compiled test artifacts
 test/**/*.js
 test/**/*.js.map
