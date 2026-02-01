@@ -2,7 +2,7 @@
 set -e
 
 echo "Running database migrations with direct connection..."
-DATABASE_URL="${DATABASE_URL_DIRECT}" npx prisma migrate deploy
+env DATABASE_URL="${DATABASE_URL_DIRECT}" npx prisma migrate deploy
 
 echo "Seeding database with pooled connection..."
 npm run prisma:seed
