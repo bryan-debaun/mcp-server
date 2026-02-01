@@ -38,6 +38,7 @@ test/**/*.d.ts.map
 
 # Docs
 /docs/handoffs/
+/docs/spike-reports/
 
 # Agent artifacts (working files for AI agents)
 agent-artifacts/
