@@ -14,6 +14,9 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
+# Compile seed script to JavaScript for production use
+RUN npx tsc prisma/seed.ts --outDir dist --module NodeNext --moduleResolution NodeNext --target ES2022 --esModuleInterop --skipLibCheck
+
 # Runtime image
 FROM node:20-alpine AS runtime
 WORKDIR /app
@@ -23,6 +26,8 @@ ENV NODE_ENV=production
 COPY --from=build /app/package*.json ./
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/prisma.config.ts ./prisma.config.ts
+COPY --from=build /app/scripts ./scripts
 
 # Install only production deps
 RUN npm ci --only=production
