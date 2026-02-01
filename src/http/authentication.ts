@@ -1,4 +1,5 @@
 import { Request } from 'express';
+import { verifySupabaseJwt } from '../auth/jwt.js';
 
 /**
  * Tsoa authentication handler for JWT bearer tokens
@@ -11,21 +12,14 @@ export async function expressAuthentication(
 ): Promise<any> {
     if (securityName === 'jwt') {
         const token = request.headers.authorization?.replace('Bearer ', '');
-
+        
         if (!token) {
             throw new Error('No token provided');
         }
 
-        const secret = process.env.JWT_SECRET;
-        if (!secret) {
-            throw new Error('JWT_SECRET not configured');
-        }
-
         try {
-            // Dynamic import to avoid loading jwt in test environment
-            const jwt = await import('jsonwebtoken');
-            const decoded = jwt.default.verify(token, secret) as any;
-
+            // Use existing Supabase JWT verification
+            const decoded = await verifySupabaseJwt(token);
             // If scopes are required (e.g., ['admin']), verify user has them
             if (scopes && scopes.length > 0) {
                 const userRole = decoded.role || 'user';
