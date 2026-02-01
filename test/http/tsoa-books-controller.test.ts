@@ -1,16 +1,13 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createHttpApp, startHttpServer } from '../../src/http/server.js';
-import type { Application } from 'express';
+import { startHttpServer } from '../../src/http/server.js';
 import type { Server } from 'http';
 
 describe('tsoa books controller', () => {
-    let app: Application;
     let server: Server;
     let baseUrl: string;
 
     beforeAll(async () => {
-        app = await createHttpApp();
-        server = await startHttpServer(app, '127.0.0.1', 0);
+        server = await startHttpServer(0, '127.0.0.1');
         const address = server.address();
         const port = typeof address === 'object' && address !== null ? address.port : 0;
         baseUrl = `http://127.0.0.1:${port}`;

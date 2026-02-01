@@ -5,6 +5,8 @@ An extensible Model Context Protocol (MCP) server for VS Code Copilot with GitHu
 ## Features
 
 - **GitHub Issues Tools**: List, view, create, update, and close GitHub issues directly through VS Code Copilot chat
+- **Book Catalog REST API**: Manage books, authors, and ratings with full CRUD operations
+- **OpenAPI 3.0 Specification**: Auto-generated API documentation with Swagger UI at `/docs`
 - **Extensible Architecture**: Easily add new tool categories without major refactoring
 - **Zod Validation**: All tool inputs are validated with zod schemas
 - **Error Handling**: Graceful error handling with clear messages
@@ -49,6 +51,50 @@ An extensible Model Context Protocol (MCP) server for VS Code Copilot with GitHu
 | `list-ratings` | List ratings with optional filters | `limit?`, `offset?`, `bookId?`, `userId?` |
 | `create-or-update-rating` | Create or update a book rating (authenticated) | `bookId`, `rating` (1-10), `review?`, `userId` |
 | `delete-rating` | Delete a rating (owner or admin) | `id` |
+
+## REST API & OpenAPI Documentation
+
+The server exposes a RESTful API for all book catalog operations with auto-generated OpenAPI 3.0 documentation.
+
+### Interactive API Documentation
+
+Access Swagger UI for interactive API exploration:
+
+- **Local**: `http://localhost:3000/docs`
+- **Production**: `https://your-server.onrender.com/docs`
+
+### Endpoints
+
+#### Public Endpoints (No Authentication)
+
+- `GET /api/books` - List books with filtering
+- `GET /api/books/:id` - Get book details
+- `GET /api/authors` - List authors
+- `GET /api/authors/:id` - Get author details
+- `GET /api/ratings` - List ratings
+
+#### Admin Endpoints (Require JWT Authentication)
+
+- `POST /api/books` - Create book
+- `PUT /api/books/:id` - Update book
+- `DELETE /api/books/:id` - Delete book
+- `POST /api/authors` - Create author
+- `PUT /api/authors/:id` - Update author
+- `DELETE /api/authors/:id` - Delete author
+
+#### Authenticated User Endpoints (Require JWT)
+
+- `POST /api/ratings` - Create/update rating
+- `DELETE /api/ratings/:id` - Delete own rating
+
+### OpenAPI Specification
+
+Download the raw OpenAPI spec:
+
+- **Local**: `http://localhost:3000/docs/swagger.json`
+- **Production**: `https://your-server.onrender.com/docs/swagger.json`
+
+Use this spec to generate client SDKs for any language using tools like [OpenAPI Generator](https://openapi-generator.tech/).
 
 ## Prerequisites
 
