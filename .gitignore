@@ -3,6 +3,10 @@ node_modules/
 
 # Build output
 dist/
+build/swagger.json
+
+# Generated tsoa routes (auto-generated, will regenerate)
+src/http/tsoa-routes.ts
 
 # IDE
 .idea/
@@ -34,6 +38,9 @@ test/**/*.d.ts.map
 
 # Docs
 /docs/handoffs/
+
+# Agent artifacts (working files for AI agents)
+agent-artifacts/
 
 # Logs
 *.log

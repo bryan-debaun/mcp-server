@@ -9,6 +9,8 @@ import { registerBooksRoute } from './books-route.js';
 import { registerAuthorsRoute } from './authors-route.js';
 import { registerRatingsRoute } from './ratings-route.js';
 import { initPrisma } from '../db/index.js';
+import { RegisterRoutes } from './tsoa-routes.js';
+import { registerSwaggerRoute } from './swagger-route.js';
 
 export async function createHttpApp() {
     // Initialize Prisma before registering any routes that might use it
@@ -47,6 +49,12 @@ export async function createHttpApp() {
     registerBooksRoute(app)
     registerAuthorsRoute(app)
     registerRatingsRoute(app)
+
+    // Register tsoa-generated routes
+    RegisterRoutes(app);
+
+    // Register Swagger UI documentation
+    registerSwaggerRoute(app);
 
 
 

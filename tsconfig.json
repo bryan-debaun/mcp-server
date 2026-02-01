@@ -16,6 +16,8 @@
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
         "types": [
             "vitest",
             "node"
