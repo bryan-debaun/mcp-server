@@ -135,10 +135,33 @@ ADMIN_DEBUG_ENABLED=true
    ```bash
    # Run migrations
    npx prisma migrate deploy
-   
+   ```
+
+   **Deploy-time seeding (recommended)**
+
+   ```bash
    # Seed initial data (creates admin user and sample books)
+   # NOTE: Run this as a deploy step (CI or Render deploy hook) to avoid re-seeding on cold-starts
    npm run prisma:seed
-   ```lone the repository**:
+   ```
+
+   Example GitHub Actions snippet (run seed after migrations):
+
+   ```yaml
+   jobs:
+     deploy:
+       runs-on: ubuntu-latest
+       steps:
+         - uses: actions/checkout@v4
+         - uses: actions/setup-node@v4
+           with:
+             node-version: 20
+         - run: npm ci
+         - run: npx prisma migrate deploy
+         - run: npm run prisma:seed
+   ```
+
+   Render: you can add a post-deploy command in your service settings (Render UI) to run `npm run prisma:seed`, or use a Deploy Hook to trigger seeding after deploy.
 
    ```bash
    git clone https://github.com/bryan-debaun/mcp-server.git

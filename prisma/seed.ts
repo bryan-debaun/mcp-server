@@ -10,24 +10,38 @@ if (!dbUrl) {
 const adapter = new PrismaPg({ connectionString: dbUrl })
 const prisma = new PrismaClient({ adapter })
 
-async function main() {
+export async function runSeed(prismaClient?: any) {
+    const db = prismaClient ?? prisma
+
+    // Quick presence check to avoid re-seeding on every cold start
+    try {
+        const existingAdmin = await db.role.findUnique({ where: { name: 'admin' } })
+        if (existingAdmin) {
+            console.log('DB already seeded; skipping.')
+            return
+        }
+    } catch (err) {
+        // If the check fails (e.g., table missing), proceed with seeding to surface errors
+        console.error('seed presence check failed; proceeding with seed:', err)
+    }
+
     console.log('Seeding DB...')
 
     // Create default roles
-    const adminRole = await prisma.role.upsert({
+    const adminRole = await db.role.upsert({
         where: { name: 'admin' },
         update: {},
         create: { name: 'admin' },
     })
 
-    const userRole = await prisma.role.upsert({
+    const userRole = await db.role.upsert({
         where: { name: 'user' },
         update: {},
         create: { name: 'user' },
     })
 
     // Create Bryan's admin user
-    const bryanAdmin = await prisma.user.upsert({
+    const bryanAdmin = await db.user.upsert({
         where: { email: 'brn.dbn@gmail.com' },
         update: {},
         create: {
@@ -38,7 +52,7 @@ async function main() {
     })
 
     // Create a test admin user (for local development only)
-    const admin = await prisma.user.upsert({
+    const admin = await db.user.upsert({
         where: { email: 'admin@example.com' },
         update: {},
         create: {
@@ -49,7 +63,7 @@ async function main() {
     })
 
     // Create sample authors
-    const author1 = await prisma.author.upsert({
+    const author1 = await db.author.upsert({
         where: { id: 1 },
         update: {},
         create: {
@@ -60,7 +74,7 @@ async function main() {
         },
     })
 
-    const author2 = await prisma.author.upsert({
+    const author2 = await db.author.upsert({
         where: { id: 2 },
         update: {},
         create: {
@@ -72,7 +86,7 @@ async function main() {
     })
 
     // Create sample books
-    const book1 = await prisma.book.upsert({
+    const book1 = await db.book.upsert({
         where: { id: 1 },
         update: {},
         create: {
@@ -84,7 +98,7 @@ async function main() {
         },
     })
 
-    const book2 = await prisma.book.upsert({
+    const book2 = await db.book.upsert({
         where: { id: 2 },
         update: {},
         create: {
@@ -96,7 +110,7 @@ async function main() {
         },
     })
 
-    const book3 = await prisma.book.upsert({
+    const book3 = await db.book.upsert({
         where: { id: 3 },
         update: {},
         create: {
@@ -109,7 +123,7 @@ async function main() {
     })
 
     // Create book-author associations
-    await prisma.bookAuthor.upsert({
+    await db.bookAuthor.upsert({
         where: { bookId_authorId: { bookId: book1.id, authorId: author1.id } },
         update: {},
         create: {
@@ -118,7 +132,7 @@ async function main() {
         },
     })
 
-    await prisma.bookAuthor.upsert({
+    await db.bookAuthor.upsert({
         where: { bookId_authorId: { bookId: book2.id, authorId: author2.id } },
         update: {},
         create: {
@@ -127,7 +141,7 @@ async function main() {
         },
     })
 
-    await prisma.bookAuthor.upsert({
+    await db.bookAuthor.upsert({
         where: { bookId_authorId: { bookId: book3.id, authorId: author1.id } },
         update: {},
         create: {
@@ -137,7 +151,7 @@ async function main() {
     })
 
     // Create sample ratings
-    const rating1 = await prisma.rating.upsert({
+    const rating1 = await db.rating.upsert({
         where: { bookId_userId: { bookId: book1.id, userId: bryanAdmin.id } },
         update: {},
         create: {
@@ -148,7 +162,7 @@ async function main() {
         },
     })
 
-    const rating2 = await prisma.rating.upsert({
+    const rating2 = await db.rating.upsert({
         where: { bookId_userId: { bookId: book2.id, userId: admin.id } },
         update: {},
         create: {
@@ -168,11 +182,16 @@ async function main() {
     })
 }
 
-main()
-    .catch((e) => {
+async function main() {
+    try {
+        await runSeed()
+    } catch (e) {
         console.error(e)
         process.exit(1)
-    })
-    .finally(async () => {
+    } finally {
         await prisma.$disconnect()
-    })
+    }
+}
+
+main()
+
