@@ -5,6 +5,7 @@ import { registerPlaybackRoute } from "./playback-route.js";
 import { registerMetricsRoute, httpRequestsTotal, httpRequestDurationSeconds } from "./metrics-route.js";
 import { registerAdminRoute } from './admin-route.js';
 import { registerInviteRoutes } from './invite-route.js';
+import { registerMagicLinkRoutes } from './magic-link-route.js';
 import { registerBooksRoute } from './books-route.js';
 import { registerAuthorsRoute } from './authors-route.js';
 import { registerRatingsRoute } from './ratings-route.js';
@@ -46,6 +47,8 @@ export async function createHttpApp() {
     registerAdminRoute(app)
     // Public invite routes
     registerInviteRoutes(app)
+    // Magic-link auth routes
+    registerMagicLinkRoutes(app)
     // Book catalog routes
     registerBooksRoute(app)
     registerAuthorsRoute(app)
@@ -114,7 +117,8 @@ export function createBasicApp() {
     registerPlaybackRoute(app);
     registerMetricsRoute(app);
 
-    // Do NOT register the final 404 handler here - it must be registered *after*\n    // DB-dependent routes so that routes added later are reachable. The 404 handler
+    // Do NOT register the final 404 handler here - it must be registered *after*
+    // DB-dependent routes so that routes added later are reachable. The 404 handler
     // is registered by `createHttpApp` (backwards-compatible caller) or by
     // `registerDbDependentRoutes` when DB-dependent registration completes.
 
@@ -127,6 +131,8 @@ export async function registerDbDependentRoutes(app: any) {
     registerAdminRoute(app)
     // Public invite routes
     registerInviteRoutes(app)
+    // Magic-link auth routes
+    registerMagicLinkRoutes(app)
     // Book catalog routes
     registerBooksRoute(app)
     registerAuthorsRoute(app)
