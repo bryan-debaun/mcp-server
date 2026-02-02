@@ -35,8 +35,14 @@ jobs:
           until pg_isready -h localhost -p 5432 -U postgres -d mcp_test; do sleep 1; done
       - name: Set DATABASE_URL
         run: echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/mcp_test" >> $GITHUB_ENV
+      - name: Parse SQL migrations (fast syntax check) 🔍
+        run: npm run sql:parse
       - name: Run Prisma DB push & generate
         run: npx prisma db push && npx prisma generate
+      - name: Validate SQL against test DB (apply statements) ✅
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mcp_test
+        run: npm run sql:validate
       - name: Build TypeScript (including seed script)
         run: npm run build && npx tsc prisma/seed.ts --outDir dist --module NodeNext --moduleResolution NodeNext --target ES2022 --esModuleInterop --skipLibCheck
       - name: Seed DB
