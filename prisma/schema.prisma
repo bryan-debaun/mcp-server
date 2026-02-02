@@ -13,57 +13,58 @@ datasource db {
 // See `prisma.config.ts` for local dev config and CI usage.
 
 model Role {
-  id        Int     @id @default(autoincrement())
-  name      String  @unique
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   users     User[]
 }
 
 model User {
-  id             Int      @id @default(autoincrement())
-  email          String   @unique
+  id             Int             @id @default(autoincrement())
+  email          String          @unique
   name           String?
   roleId         Int?
-  role           Role?    @relation(fields: [roleId], references: [id])
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  role           Role?           @relation(fields: [roleId], references: [id])
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   invites        Invite[]
   auditLogs      AuditLog[]
-  authorsCreated Author[] @relation("AuthorCreator")
-  booksCreated   Book[]   @relation("BookCreator")
-  ratings        Rating[] @relation("UserRatings")
+  authorsCreated Author[]        @relation("AuthorCreator")
+  booksCreated   Book[]          @relation("BookCreator")
+  ratings        Rating[]        @relation("UserRatings")
+  authMagicLinks AuthMagicLink[]
 }
 
 model Invite {
-  id         Int      @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   email      String
-  token      String   @unique
+  token      String    @unique
   invitedBy  Int?
-  inviter    User?    @relation(fields: [invitedBy], references: [id])
-  accepted   Boolean  @default(false)
+  inviter    User?     @relation(fields: [invitedBy], references: [id])
+  accepted   Boolean   @default(false)
   acceptedAt DateTime?
   expiresAt  DateTime?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 }
 
 model AccessRequest {
-  id         Int      @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   userEmail  String
   reason     String?
-  reviewed   Boolean  @default(false)
+  reviewed   Boolean   @default(false)
   reviewerId Int?
   reviewedAt DateTime?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 }
 
 model AuditLog {
-  id         Int      @id @default(autoincrement())
-  action     String
-  actorId    Int?
-  actor      User?    @relation(fields: [actorId], references: [id])
-  metadata   Json?
-  createdAt  DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  action    String
+  actorId   Int?
+  actor     User?    @relation(fields: [actorId], references: [id])
+  metadata  Json?
+  createdAt DateTime @default(now())
 }
 
 model Author {
@@ -76,7 +77,7 @@ model Author {
   createdBy Int?
   creator   User?        @relation("AuthorCreator", fields: [createdBy], references: [id])
   books     BookAuthor[]
-  
+
   @@index([name])
 }
 
@@ -92,7 +93,7 @@ model Book {
   creator     User?        @relation("BookCreator", fields: [createdBy], references: [id])
   authors     BookAuthor[]
   ratings     Rating[]
-  
+
   @@index([title])
   @@index([isbn])
 }
@@ -102,7 +103,7 @@ model BookAuthor {
   authorId Int
   book     Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
   author   Author @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  
+
   @@id([bookId, authorId])
   @@index([authorId])
 }
@@ -117,8 +118,23 @@ model Rating {
   review    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@unique([bookId, userId])
   @@index([userId])
   @@index([bookId])
+}
+
+model AuthMagicLink {
+  id         Int       @id @default(autoincrement())
+  jti        String    @unique
+  email      String
+  userId     Int?
+  user       User?     @relation(fields: [userId], references: [id])
+  expiresAt  DateTime
+  consumed   Boolean   @default(false)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([email])
+  @@index([expiresAt])
 }
