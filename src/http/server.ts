@@ -13,7 +13,8 @@ import { RegisterRoutes } from './tsoa-routes.js';
 import { registerSwaggerRoute } from './swagger-route.js';
 
 export async function createHttpApp() {
-    // Initialize Prisma before registering any routes that might use it
+    // Backwards-compatible: keep existing behavior when callers expect Prisma initialized
+    // before the app is returned.
     await initPrisma();
     const app = express();
     app.use(cors());
@@ -83,15 +84,95 @@ export async function createHttpApp() {
     return app;
 }
 
+// New helper: create a minimal app that can listen early and expose liveness/readiness
+export function createBasicApp() {
+    const app = express();
+    app.use(cors());
+    app.use(express.json());
+
+    // Diagnostic request logging to help debug hosting/proxy issues
+    app.use((req, res, next) => {
+        try {
+            console.error(`incoming request: ${req.method} ${req.path} authPresent=${!!req.headers.authorization}`);
+        } catch (e) { /* noop */ }
+        next();
+    });
+
+    // HTTP instrumentation middleware
+    app.use((req, res, next) => {
+        const end = httpRequestDurationSeconds.startTimer();
+        res.on("finish", () => {
+            const labels = { method: req.method, path: req.path, status: String(res.statusCode) };
+            httpRequestsTotal.inc(labels);
+            end(labels);
+        });
+        next();
+    });
+
+    // Minimal publicly safe routes (liveness, readiness, playback, metrics)
+    registerHealthRoute(app);
+    registerPlaybackRoute(app);
+    registerMetricsRoute(app);
+
+    // Do NOT register the final 404 handler here - it must be registered *after*\n    // DB-dependent routes so that routes added later are reachable. The 404 handler
+    // is registered by `createHttpApp` (backwards-compatible caller) or by
+    // `registerDbDependentRoutes` when DB-dependent registration completes.
+
+    return app;
+}
+
+// Helper to register DB-dependent routes and optional extras after DB init
+export async function registerDbDependentRoutes(app: any) {
+    // Register admin routes
+    registerAdminRoute(app)
+    // Public invite routes
+    registerInviteRoutes(app)
+    // Book catalog routes
+    registerBooksRoute(app)
+    registerAuthorsRoute(app)
+    registerRatingsRoute(app)
+
+    // Register tsoa-generated routes
+    RegisterRoutes(app);
+
+    // Register Swagger UI documentation
+    registerSwaggerRoute(app);
+
+    // MCP HTTP transport (HTTP Stream + SSE fallback)
+    try {
+        const mod = await import('./mcp-http.js');
+        try {
+            mod.registerMcpHttp(app);
+            console.error('registered MCP HTTP transport (routes mounted at /mcp)');
+            try {
+                const routes = (app as any)._router?.stack?.filter((l: any) => l.route).map((l: any) => ({ path: l.route.path, methods: l.route.methods }));
+                console.error('registered routes:', JSON.stringify(routes));
+            } catch (e) {
+                console.error('failed to enumerate routes', e);
+            }
+        } catch (err) {
+            console.error('failed to register MCP HTTP transport', err)
+        }
+    } catch (err) {
+        console.error('failed to import MCP HTTP transport', err)
+    }
+
+    // Basic 404 handler (must be registered after all other routes so it doesn't
+    // intercept later-registered DB-dependent routes)
+    app.use((_req: any, res: any) => res.status(404).json({ error: "not found" }));
+}
+
 import { WebSocketServer } from 'ws'
 import { WsServerTransport } from './mcp-ws.js'
 
-export async function startHttpServer(port: number, host?: string): Promise<import("http").Server> {
-    const app = await createHttpApp();
+export async function startHttpServer(port: number, host?: string, opts?: { earlyStart?: boolean }): Promise<import("http").Server> {
+    const app = createBasicApp();
+
     return new Promise((resolve) => {
         const bindHost = host ?? process.env.HOST ?? '0.0.0.0';
-        const server = app.listen(port, bindHost, () => {
+        const server = app.listen(port, bindHost, async () => {
             console.error(`HTTP server listening on ${bindHost}:${port}`);
+
             // Attach WebSocket server for MCP remote transport when enabled via MCP_API_KEY
             const mcpKey = process.env.MCP_API_KEY
             if (mcpKey) {
@@ -119,7 +200,46 @@ export async function startHttpServer(port: number, host?: string): Promise<impo
                 })
                 console.error('MCP WebSocket endpoint enabled at /mcp/ws')
             }
-            resolve(server);
+
+            const early = opts?.earlyStart === true || process.env.EARLY_START === 'true'
+
+            // Initialize Prisma and register DB-dependent routes.
+            // If `early` is true, do this in the background and resolve immediately.
+            // Otherwise, await completion before resolving so callers (tests/consumers)
+            // get a fully-initialized app.
+            const initAndRegister = async () => {
+                try {
+                    console.error('Starting DB initialization')
+                    await initPrisma();
+                    try {
+                        await registerDbDependentRoutes(app)
+                    } catch (err) {
+                        console.error('Error registering DB-dependent routes', err)
+                    }
+
+                    // Mark readiness so readiness probes return success
+                    try {
+                        const { setReady } = await import('./readiness.js')
+                        setReady(true)
+                    } catch (err) {
+                        console.error('failed to set readiness flag', err)
+                    }
+
+                    console.error('DB initialized; app ready')
+                } catch (err) {
+                    console.error('DB initialization failed', err)
+                    throw err
+                }
+            }
+
+            if (early) {
+                // Run init in background and return immediately
+                initAndRegister().catch(() => { /* logged above */ })
+                resolve(server)
+            } else {
+                // Wait for full init before returning
+                initAndRegister().then(() => resolve(server)).catch(() => resolve(server))
+            }
         });
     });
 }
