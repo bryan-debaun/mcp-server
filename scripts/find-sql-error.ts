@@ -22,6 +22,16 @@ async function main() {
 
     console.log(`Parsed ${statements.length} statements from ${file}`)
 
+    // Sanity check: disallow comma-separated action lists in CREATE POLICY statements (Postgres syntax error)
+    // Detect patterns like: CREATE POLICY ... FOR INSERT, UPDATE or FOR UPDATE, DELETE (comma between actions)
+    const policyCommaRegex = /CREATE\s+POLICY[\s\S]*?FOR\s+(?:INSERT|UPDATE|DELETE)\s*,\s*(?:INSERT|UPDATE|DELETE)/i
+    const bad = statements.find(s => policyCommaRegex.test(s))
+    if (bad) {
+        console.error('Invalid CREATE POLICY: comma-separated action list detected. Use one policy per action or FOR ALL instead. Offending statement:')
+        console.error(bad)
+        process.exit(4)
+    }
+
     if (dryRun && !apply) {
         console.log('Dry-run mode: not executing statements')
         return
