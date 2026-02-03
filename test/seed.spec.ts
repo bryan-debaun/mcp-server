@@ -78,6 +78,23 @@ describe('prisma seed', () => {
         // Ensure upserts were called
         expect(mockPrisma.role.upsert).toHaveBeenCalled()
         expect(mockPrisma.user.upsert).toHaveBeenCalled()
+        // Ensure books created include status default
+        expect(mockPrisma.book.upsert).toHaveBeenCalled()
+        expect(mockPrisma.book.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ status: 'NOT_STARTED' }) }))
+    })
+
+    it('seeding sets default status for books', async () => {
+        mockPrisma.role.findUnique.mockResolvedValue(null)
+        mockPrisma.book.upsert = vi.fn().mockResolvedValue({ id: 42 })
+
+        await runSeed(mockPrisma)
+
+        expect(mockPrisma.book.upsert).toHaveBeenCalled()
+        mockPrisma.book.upsert.mock.calls.forEach(call => {
+            const arg = call[0]
+            expect(arg).toHaveProperty('create')
+            expect(arg.create).toHaveProperty('status', 'NOT_STARTED')
+        })
     })
 
     it('continues to seed when presence check throws (surfaces errors via log)', async () => {

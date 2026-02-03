@@ -106,6 +106,7 @@ export async function runSeed(prismaClient?: any) {
         update: {},
         create: {
             title: 'The Way of Kings',
+            status: 'NOT_STARTED',
             description: 'First book in The Stormlight Archive series',
             isbn: '9780765326355',
             publishedAt: new Date('2010-08-31'),
@@ -118,6 +119,7 @@ export async function runSeed(prismaClient?: any) {
         update: {},
         create: {
             title: 'The Name of the Wind',
+            status: 'NOT_STARTED',
             description: 'First book in The Kingkiller Chronicle series',
             isbn: '9780756404079',
             publishedAt: new Date('2007-03-27'),
@@ -130,6 +132,7 @@ export async function runSeed(prismaClient?: any) {
         update: {},
         create: {
             title: 'Mistborn: The Final Empire',
+            status: 'NOT_STARTED',
             description: 'First book in the Mistborn trilogy',
             isbn: '9780765311788',
             publishedAt: new Date('2006-07-17'),
