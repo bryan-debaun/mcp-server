@@ -123,6 +123,61 @@
             ]
         },
         {
+            "name": "Docs - Swagger UI",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/docs",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "docs"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                            "pm.test('Body contains Swagger UI', function () { pm.expect(pm.response.text()).to.include('Swagger'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Docs - Swagger JSON",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/docs/swagger.json",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "docs",
+                        "swagger.json"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                            "pm.test('Response is JSON or contains json-like', function () { try { var json = pm.response.json(); pm.expect(json).to.be.ok; } catch (e) { pm.expect(pm.response.text()).to.include('{'); } });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
             "name": "Invite Accept (POST)",
             "request": {
                 "method": "POST",

@@ -4,7 +4,7 @@ export const CreateBookInputSchema = {
     type: "object",
     properties: {
         title: { type: "string", description: "Book title" },
-        status: { type: "string", description: "Book status (e.g., Not started, In progress, Completed)" },
+        status: { type: "string", description: "Book status (e.g., Not started, In progress, Completed)", enum: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'] },
         description: { type: "string", description: "Book description" },
         isbn: { type: "string", description: "ISBN (optional, must be unique)" },
         publishedAt: { type: "string", description: "Publication date (ISO 8601 format)" },
@@ -23,7 +23,7 @@ export const UpdateBookInputSchema = {
     properties: {
         id: { type: "number", description: "Book ID" },
         title: { type: "string", description: "Book title" },
-        status: { type: "string", description: "Book status (e.g., Not started, In progress, Completed)" },
+        status: { type: "string", description: "Book status (e.g., Not started, In progress, Completed)", enum: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'] },
         description: { type: "string", description: "Book description" },
         isbn: { type: "string", description: "ISBN (must be unique)" },
         publishedAt: { type: "string", description: "Publication date (ISO 8601 format)" },
@@ -58,7 +58,7 @@ export const ListBooksInputSchema = {
         authorId: { type: "number", description: "Filter by author ID" },
         minRating: { type: "number", description: "Minimum average rating (1-10)" },
         search: { type: "string", description: "Search in title and description" },
-        status: { type: "string", description: "Filter by status (Not started, In progress, Completed)" },
+        status: { type: "string", description: "Filter by status (Not started, In progress, Completed)", enum: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'] },
         limit: { type: "number", description: "Maximum number of results (default 50)" },
         offset: { type: "number", description: "Number of results to skip (default 0)" },
     },

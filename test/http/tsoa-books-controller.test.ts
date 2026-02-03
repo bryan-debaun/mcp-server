@@ -58,6 +58,16 @@ describe('tsoa books controller', () => {
         expect(spec.paths).toHaveProperty('/api/authors');
         expect(spec.paths).toHaveProperty('/api/authors/{id}');
         expect(spec.paths).toHaveProperty('/api/ratings');
+
+        // ItemStatus enum should be present and referenced by Book
+        expect(spec).toHaveProperty('components');
+        expect(spec.components).toHaveProperty('schemas');
+        expect(spec.components.schemas).toHaveProperty('ItemStatus');
+        expect(Array.isArray(spec.components.schemas.ItemStatus.enum)).toBe(true);
+        expect(spec.components.schemas.ItemStatus.enum).toEqual(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED']);
+        expect(spec.components.schemas.Book.properties.status.$ref).toBe('#/components/schemas/ItemStatus');
+        expect(spec.components.schemas.CreateBookRequest.properties.status.$ref).toBe('#/components/schemas/ItemStatus');
+
     });
 
     it('should return book by ID via tsoa controller GET /api/books/:id', async () => {

@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Put, Delete, Query, Route, Tags, Response, SuccessResponse, Path, Body, Security, Request } from 'tsoa';
 import type { Request as ExpressRequest } from 'express';
+import type { ItemStatus } from '../../tools/db/books/status';
 
 /**
  * Book representation
@@ -10,6 +11,7 @@ export interface Book {
     description?: string;
     isbn?: string;
     publishedAt?: string;
+    status: ItemStatus;
     createdAt: string;
     updatedAt: string;
 }
@@ -37,7 +39,7 @@ export interface ListBooksResponse {
  */
 export interface CreateBookRequest {
     title: string;
-    status?: string;
+    status?: ItemStatus;
     description?: string;
     isbn?: string;
     publishedAt?: string;
@@ -49,7 +51,7 @@ export interface CreateBookRequest {
  */
 export interface UpdateBookRequest {
     title?: string;
-    status?: string;
+    status?: ItemStatus;
     description?: string;
     isbn?: string;
     publishedAt?: string;
@@ -78,7 +80,7 @@ export class BooksController extends Controller {
         @Query() authorId?: number,
         @Query() minRating?: number,
         @Query() search?: string,
-        @Query() status?: string,
+        @Query() status?: ItemStatus,
         @Query() limit?: number,
         @Query() offset?: number
     ): Promise<ListBooksResponse> {
