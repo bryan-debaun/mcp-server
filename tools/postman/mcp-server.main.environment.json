@@ -23,6 +23,16 @@
             "enabled": true
         },
         {
+            "key": "magic_link_email",
+            "value": "test@example.com",
+            "enabled": true
+        },
+        {
+            "key": "magic_link_token",
+            "value": "",
+            "enabled": true
+        },
+        {
             "key": "internal_admin_key",
             "value": "",
             "enabled": true

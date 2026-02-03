@@ -5,7 +5,8 @@ import { registerPlaybackRoute } from "./playback-route.js";
 import { registerMetricsRoute, httpRequestsTotal, httpRequestDurationSeconds } from "./metrics-route.js";
 import { registerAdminRoute } from './admin-route.js';
 import { registerInviteRoutes } from './invite-route.js';
-import { registerMagicLinkRoutes } from './magic-link-route.js';
+// Magic link endpoints are now implemented as a TSOA controller (src/http/controllers/MagicLinkController.ts) and will be registered by `RegisterRoutes(app)`.
+
 import { registerBooksRoute } from './books-route.js';
 import { registerAuthorsRoute } from './authors-route.js';
 import { registerRatingsRoute } from './ratings-route.js';
@@ -47,8 +48,7 @@ export async function createHttpApp() {
     registerAdminRoute(app)
     // Public invite routes
     registerInviteRoutes(app)
-    // Magic-link auth routes
-    registerMagicLinkRoutes(app)
+    // Magic-link auth routes are provided by the TSOA controller and registered via `RegisterRoutes(app)`
     // Book catalog routes
     registerBooksRoute(app)
     registerAuthorsRoute(app)
@@ -131,8 +131,7 @@ export async function registerDbDependentRoutes(app: any) {
     registerAdminRoute(app)
     // Public invite routes
     registerInviteRoutes(app)
-    // Magic-link auth routes
-    registerMagicLinkRoutes(app)
+    // Magic-link auth routes are provided by the TSOA controller and registered via `RegisterRoutes(app)`
     // Book catalog routes
     registerBooksRoute(app)
     registerAuthorsRoute(app)

@@ -10,19 +10,19 @@ vi.mock('../../src/email.ts', () => ({
     sendMagicLinkEmail: vi.fn(),
 }))
 
-import { registerMagicLinkRoutes } from '../../src/http/magic-link-route.js'
+import { RegisterRoutes } from '../../src/http/tsoa-routes.js'
 
 describe('magic-link routes', () => {
     beforeEach(async () => {
         // Reset mocks and rate limits
-        const mod: any = await import('../../src/http/magic-link-route.ts')
+        const mod: any = await import('../../src/http/controllers/MagicLinkController.ts')
         mod._testResetRateLimits()
     })
 
     it('POST /api/auth/magic-link returns 202 and sends email', async () => {
         const app = express()
         app.use(express.json())
-        registerMagicLinkRoutes(app)
+        RegisterRoutes(app)
 
         const auth: any = await import('../../src/auth/magic-link.ts')
         auth.generateMagicLinkToken.mockResolvedValue({ token: 'tkn', jti: 'j1' })
@@ -38,7 +38,7 @@ describe('magic-link routes', () => {
     it('POST /api/auth/magic-link rate limits per email', async () => {
         const app = express()
         app.use(express.json())
-        registerMagicLinkRoutes(app)
+        RegisterRoutes(app)
 
         const auth: any = await import('../../src/auth/magic-link.ts')
         auth.generateMagicLinkToken.mockResolvedValue({ token: 'tkn', jti: 'j1' })
@@ -56,7 +56,7 @@ describe('magic-link routes', () => {
     it('GET /api/auth/magic-link/verify sets cookie and redirects on success', async () => {
         const app = express()
         app.use(express.json())
-        registerMagicLinkRoutes(app)
+        RegisterRoutes(app)
 
         const auth: any = await import('../../src/auth/magic-link.ts')
         auth.verifyMagicLinkToken.mockResolvedValue({ jti: 'j1', email: 'u@example.com', userId: null })
