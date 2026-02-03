@@ -9,6 +9,12 @@ datasource db {
   provider = "postgresql"
 }
 
+enum ItemStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
 // Note: Prisma 7 requires the datasource URL to be configured in `prisma.config.ts`.
 // See `prisma.config.ts` for local dev config and CI usage.
 
@@ -24,6 +30,7 @@ model User {
   id             Int             @id @default(autoincrement())
   email          String          @unique
   name           String?
+  isAdmin        Boolean         @default(false) @map("is_admin")
   roleId         Int?
   role           Role?           @relation(fields: [roleId], references: [id])
   createdAt      DateTime        @default(now())
@@ -34,6 +41,8 @@ model User {
   booksCreated   Book[]          @relation("BookCreator")
   ratings        Rating[]        @relation("UserRatings")
   authMagicLinks AuthMagicLink[]
+
+  @@index([isAdmin])
 }
 
 model Invite {
@@ -84,6 +93,7 @@ model Author {
 model Book {
   id          Int          @id @default(autoincrement())
   title       String
+  status      ItemStatus   @default(NOT_STARTED)
   description String?
   isbn        String?      @unique
   publishedAt DateTime?
@@ -96,6 +106,7 @@ model Book {
 
   @@index([title])
   @@index([isbn])
+  @@index([status])
 }
 
 model BookAuthor {

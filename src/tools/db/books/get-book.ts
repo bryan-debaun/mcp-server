@@ -3,6 +3,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { GetBookInputSchema } from "./schemas.js";
 import { prisma } from "../../../db/index.js";
 import { createSuccessResult, createErrorResult } from "../../github-issues/results.js";
+import { statusLabel } from "./status.js";
 
 const name = "get-book";
 const config = {
@@ -60,7 +61,8 @@ export function registerGetBookTool(server: McpServer): void {
                 return createSuccessResult({
                     ...book,
                     averageRating: avgRating,
-                    ratingCount: book.ratings.length
+                    ratingCount: book.ratings.length,
+                    statusLabel: statusLabel(book.status)
                 });
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);

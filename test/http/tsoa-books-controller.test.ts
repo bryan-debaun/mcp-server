@@ -36,6 +36,15 @@ describe('tsoa books controller', () => {
         expect(data).toHaveProperty('total');
     });
 
+    it('should accept status query parameter for GET /api/books', async () => {
+        const response = await fetch(`${baseUrl}/api/books?status=Not%20started`);
+        expect(response.status).toBe(200);
+
+        const data = await response.json();
+        expect(data).toHaveProperty('books');
+        expect(data).toHaveProperty('total');
+    });
+
     it('should serve swagger spec at /docs/swagger.json', async () => {
         const response = await fetch(`${baseUrl}/docs/swagger.json`);
         expect(response.status).toBe(200);

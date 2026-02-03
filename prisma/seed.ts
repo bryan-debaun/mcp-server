@@ -43,24 +43,39 @@ export async function runSeed(prismaClient?: any) {
     // Create Bryan's admin user
     const bryanAdmin = await db.user.upsert({
         where: { email: 'brn.dbn@gmail.com' },
-        update: {},
+        update: { isAdmin: true },
         create: {
             email: 'brn.dbn@gmail.com',
             name: 'Bryan DeBaun',
             roleId: adminRole.id,
+            isAdmin: true,
         },
     })
 
     // Create a test admin user (for local development only)
     const admin = await db.user.upsert({
         where: { email: 'admin@example.com' },
-        update: {},
+        update: { isAdmin: true },
         create: {
             email: 'admin@example.com',
             name: 'Local Admin',
             roleId: adminRole.id,
+            isAdmin: true,
         },
     })
+
+    // If ADMIN_EMAIL is set, mark that user as admin or create a minimal users row
+    const adminEmail = process.env.ADMIN_EMAIL
+    if (adminEmail) {
+        const existing = await db.user.findUnique({ where: { email: adminEmail } })
+        if (existing) {
+            await db.user.update({ where: { id: existing.id }, data: { isAdmin: true } })
+            console.log(`Marked existing user ${adminEmail} as isAdmin = true`)
+        } else {
+            const minimal = await db.user.create({ data: { email: adminEmail, isAdmin: true } })
+            console.warn(`Created minimal users row for ADMIN_EMAIL ${adminEmail}. Please create a Supabase Auth user for this email and sync external_id if needed.`)
+        }
+    }
 
     // Create sample authors
     const author1 = await db.author.upsert({
@@ -91,6 +106,7 @@ export async function runSeed(prismaClient?: any) {
         update: {},
         create: {
             title: 'The Way of Kings',
+            status: 'NOT_STARTED',
             description: 'First book in The Stormlight Archive series',
             isbn: '9780765326355',
             publishedAt: new Date('2010-08-31'),
@@ -103,6 +119,7 @@ export async function runSeed(prismaClient?: any) {
         update: {},
         create: {
             title: 'The Name of the Wind',
+            status: 'NOT_STARTED',
             description: 'First book in The Kingkiller Chronicle series',
             isbn: '9780756404079',
             publishedAt: new Date('2007-03-27'),
@@ -115,6 +132,7 @@ export async function runSeed(prismaClient?: any) {
         update: {},
         create: {
             title: 'Mistborn: The Final Empire',
+            status: 'NOT_STARTED',
             description: 'First book in the Mistborn trilogy',
             isbn: '9780765311788',
             publishedAt: new Date('2006-07-17'),

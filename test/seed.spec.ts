@@ -25,7 +25,37 @@ describe('prisma seed', () => {
     })
 
     afterEach(() => {
+        delete process.env.ADMIN_EMAIL
         vi.restoreAllMocks()
+    })
+
+    it('marks existing ADMIN_EMAIL user as admin', async () => {
+        mockPrisma.role.findUnique.mockResolvedValue(null)
+        mockPrisma.user.findUnique = vi.fn().mockResolvedValue({ id: 2, email: 'foo@example.com' })
+        mockPrisma.user.update = vi.fn().mockResolvedValue({ id: 2 })
+
+        process.env.ADMIN_EMAIL = 'foo@example.com'
+
+        await runSeed(mockPrisma)
+
+        expect(mockPrisma.user.update).toHaveBeenCalledWith({ where: { id: 2 }, data: { isAdmin: true } })
+        expect(consoleLogSpy).toHaveBeenCalledWith('Seeding DB...')
+        expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Marked existing user'))
+    })
+
+    it('creates minimal user for ADMIN_EMAIL when not present', async () => {
+        mockPrisma.role.findUnique.mockResolvedValue(null)
+        mockPrisma.user.findUnique = vi.fn().mockResolvedValue(null)
+        mockPrisma.user.create = vi.fn().mockResolvedValue({ id: 3 })
+
+        process.env.ADMIN_EMAIL = 'new@example.com'
+
+        const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { })
+
+        await runSeed(mockPrisma)
+
+        expect(mockPrisma.user.create).toHaveBeenCalledWith({ data: { email: 'new@example.com', isAdmin: true } })
+        expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Created minimal users row for ADMIN_EMAIL'))
     })
 
     it('skips seeding when admin role exists', async () => {
@@ -48,6 +78,23 @@ describe('prisma seed', () => {
         // Ensure upserts were called
         expect(mockPrisma.role.upsert).toHaveBeenCalled()
         expect(mockPrisma.user.upsert).toHaveBeenCalled()
+        // Ensure books created include status default
+        expect(mockPrisma.book.upsert).toHaveBeenCalled()
+        expect(mockPrisma.book.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ status: 'NOT_STARTED' }) }))
+    })
+
+    it('seeding sets default status for books', async () => {
+        mockPrisma.role.findUnique.mockResolvedValue(null)
+        mockPrisma.book.upsert = vi.fn().mockResolvedValue({ id: 42 })
+
+        await runSeed(mockPrisma)
+
+        expect(mockPrisma.book.upsert).toHaveBeenCalled()
+        mockPrisma.book.upsert.mock.calls.forEach(call => {
+            const arg = call[0]
+            expect(arg).toHaveProperty('create')
+            expect(arg.create).toHaveProperty('status', 'NOT_STARTED')
+        })
     })
 
     it('continues to seed when presence check throws (surfaces errors via log)', async () => {

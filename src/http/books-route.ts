@@ -9,11 +9,12 @@ export function registerBooksRoute(app: Application) {
     app.get(base, async (req: Request, res: Response) => {
         const { callTool } = await import('../tools/local.js');
         try {
-            const { authorId, minRating, search, limit, offset } = req.query;
+            const { authorId, minRating, search, status, limit, offset } = req.query;
             const result = await callTool('list-books', {
                 authorId: authorId ? Number(authorId) : undefined,
                 minRating: minRating ? Number(minRating) : undefined,
                 search: search as string,
+                status: status as string | undefined,
                 limit: limit ? Number(limit) : undefined,
                 offset: offset ? Number(offset) : undefined
             });
@@ -46,7 +47,7 @@ export function registerBooksRoute(app: Application) {
     app.post(base, jwtMiddleware, requireAdmin, async (req: Request, res: Response) => {
         const { callTool } = await import('../tools/local.js');
         try {
-            const { title, description, isbn, publishedAt, authorIds } = req.body;
+            const { title, description, isbn, publishedAt, authorIds, status } = req.body;
             if (!title) {
                 return res.status(400).json({ error: 'title is required' });
             }
@@ -57,6 +58,7 @@ export function registerBooksRoute(app: Application) {
                 isbn,
                 publishedAt,
                 authorIds,
+                status,
                 createdBy
             });
             res.status(201).json(result);
@@ -77,14 +79,15 @@ export function registerBooksRoute(app: Application) {
             if (isNaN(id)) {
                 return res.status(400).json({ error: 'Invalid book ID' });
             }
-            const { title, description, isbn, publishedAt, authorIds } = req.body;
+            const { title, description, isbn, publishedAt, authorIds, status } = req.body;
             const result = await callTool('update-book', {
                 id,
                 title,
                 description,
                 isbn,
                 publishedAt,
-                authorIds
+                authorIds,
+                status
             });
             res.json(result);
         } catch (err: any) {
