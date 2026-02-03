@@ -25,7 +25,37 @@ describe('prisma seed', () => {
     })
 
     afterEach(() => {
+        delete process.env.ADMIN_EMAIL
         vi.restoreAllMocks()
+    })
+
+    it('marks existing ADMIN_EMAIL user as admin', async () => {
+        mockPrisma.role.findUnique.mockResolvedValue(null)
+        mockPrisma.user.findUnique = vi.fn().mockResolvedValue({ id: 2, email: 'foo@example.com' })
+        mockPrisma.user.update = vi.fn().mockResolvedValue({ id: 2 })
+
+        process.env.ADMIN_EMAIL = 'foo@example.com'
+
+        await runSeed(mockPrisma)
+
+        expect(mockPrisma.user.update).toHaveBeenCalledWith({ where: { id: 2 }, data: { isAdmin: true } })
+        expect(consoleLogSpy).toHaveBeenCalledWith('Seeding DB...')
+        expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Marked existing user'))
+    })
+
+    it('creates minimal user for ADMIN_EMAIL when not present', async () => {
+        mockPrisma.role.findUnique.mockResolvedValue(null)
+        mockPrisma.user.findUnique = vi.fn().mockResolvedValue(null)
+        mockPrisma.user.create = vi.fn().mockResolvedValue({ id: 3 })
+
+        process.env.ADMIN_EMAIL = 'new@example.com'
+
+        const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { })
+
+        await runSeed(mockPrisma)
+
+        expect(mockPrisma.user.create).toHaveBeenCalledWith({ data: { email: 'new@example.com', isAdmin: true } })
+        expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Created minimal users row for ADMIN_EMAIL'))
     })
 
     it('skips seeding when admin role exists', async () => {

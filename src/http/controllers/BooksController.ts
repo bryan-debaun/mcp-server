@@ -37,6 +37,7 @@ export interface ListBooksResponse {
  */
 export interface CreateBookRequest {
     title: string;
+    status?: string;
     description?: string;
     isbn?: string;
     publishedAt?: string;
@@ -48,6 +49,7 @@ export interface CreateBookRequest {
  */
 export interface UpdateBookRequest {
     title?: string;
+    status?: string;
     description?: string;
     isbn?: string;
     publishedAt?: string;
@@ -76,6 +78,7 @@ export class BooksController extends Controller {
         @Query() authorId?: number,
         @Query() minRating?: number,
         @Query() search?: string,
+        @Query() status?: string,
         @Query() limit?: number,
         @Query() offset?: number
     ): Promise<ListBooksResponse> {

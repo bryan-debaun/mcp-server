@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { ListBooksInputSchema } from "./schemas.js";
 import { prisma } from "../../../db/index.js";
+import { normalizeStatusInput, statusLabel } from "./status.js";
 import { createSuccessResult, createErrorResult } from "../../github-issues/results.js";
 
 const name = "list-books";
@@ -17,7 +18,7 @@ export function registerListBooksTool(server: McpServer): void {
         config,
         async (args: any): Promise<CallToolResult> => {
             try {
-                const { authorId, minRating, search, limit = 50, offset = 0 } = args;
+                const { authorId, minRating, search, status, limit = 50, offset = 0 } = args;
 
                 // Build where clause
                 const where: any = {};
@@ -35,6 +36,14 @@ export function registerListBooksTool(server: McpServer): void {
                         { title: { contains: search, mode: 'insensitive' } },
                         { description: { contains: search, mode: 'insensitive' } }
                     ];
+                }
+
+                // Filter by status if provided
+                if (status !== undefined) {
+                    const normalized = normalizeStatusInput(status);
+                    if (normalized !== undefined) {
+                        where.status = normalized;
+                    }
                 }
 
                 const books = await prisma.book.findMany({
@@ -70,7 +79,8 @@ export function registerListBooksTool(server: McpServer): void {
                     return {
                         ...book,
                         averageRating: avgRating,
-                        ratingCount: book.ratings.length
+                        ratingCount: book.ratings.length,
+                        statusLabel: statusLabel(book.status)
                     };
                 });
 
