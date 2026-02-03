@@ -8,9 +8,9 @@ describe('ItemStatus migration', () => {
         const sql = readFileSync(file, 'utf8')
 
         expect(sql).toMatch(/CREATE TYPE "ItemStatus" AS ENUM \('NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'\)/)
-        expect(sql).toMatch(/ALTER TABLE "Book" ADD COLUMN "status"/) 
-        expect(sql).toMatch(/ALTER TABLE "User" ADD COLUMN "is_admin"/) 
-        expect(sql).toMatch(/CREATE INDEX "Book_status_index"/) 
-        expect(sql).toMatch(/CREATE INDEX "User_is_admin_index"/) 
+        expect(sql).toMatch(/ALTER TABLE "Book" ADD COLUMN "status"/)
+        expect(sql).toMatch(/ALTER TABLE "User" ADD COLUMN "is_admin"/)
+        expect(sql).toMatch(/CREATE INDEX "Book_status_index"/)
+        expect(sql).toMatch(/CREATE INDEX "User_is_admin_index"/)
     })
 })
