@@ -7,11 +7,9 @@ import { mcpAuthFailuresTotal } from '../../src/http/metrics-route.js'
 function getCounterValue(counter: any) {
     try {
         // prom-client Counter exposes get().values
-        // @ts-expect-error - prom-client type is dynamic in tests
         const metrics = counter.get?.().values as any[] | undefined
         if (metrics && metrics.length) return metrics[0].value
         // Fallback to hashMap
-        // @ts-expect-error - hashMap access is non-standard but useful in tests
         const hm = counter.hashMap
         if (hm) {
             const keys = Object.keys(hm)
