@@ -13,7 +13,7 @@ describe('tsoa books controller', () => {
         baseUrl = `http://127.0.0.1:${port}`;
     });
 
-    const authHeaders = process.env.MCP_API_KEY ? { Authorization: `Bearer ${process.env.MCP_API_KEY}` } : {};
+    const authHeaders: HeadersInit | undefined = process.env.MCP_API_KEY ? { Authorization: `Bearer ${process.env.MCP_API_KEY}` } : undefined;
 
 
     afterAll(async () => {
