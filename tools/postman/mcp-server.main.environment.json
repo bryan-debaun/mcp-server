@@ -38,6 +38,11 @@
             "enabled": true
         },
         {
+            "key": "mcp_api_key",
+            "value": "",
+            "enabled": true
+        },
+        {
             "key": "admin_ip_allowlist",
             "value": "",
             "enabled": true

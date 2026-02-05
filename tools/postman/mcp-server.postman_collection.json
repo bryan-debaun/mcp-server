@@ -35,6 +35,28 @@
             "key": "admin_ip_allowlist",
             "value": "",
             "type": "string"
+        },
+        {
+            "key": "mcp_api_key",
+            "value": "",
+            "type": "string"
+        }
+    ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "exec": [
+                    "try {",
+                    "  const token = pm.collectionVariables.get('mcp_api_key') || pm.environment.get('mcp_api_key') || '';",
+                    "  if (token) {",
+                    "    const hasAuth = pm.request.headers.has('Authorization');",
+                    "    if (!hasAuth) { pm.request.headers.add({ key: 'Authorization', value: `Bearer ${token}` }); }",
+                    "  }",
+                    "} catch (e) { console.log('mcp collection prerequest error', e); }"
+                ],
+                "type": "text/javascript"
+            }
         }
     ],
     "item": [

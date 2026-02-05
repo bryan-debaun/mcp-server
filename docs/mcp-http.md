@@ -40,3 +40,5 @@ This document describes the new HTTP-based transports for the MCP server.
 - Clients that require true bidirectional streaming should use `POST /mcp`.
 - SSE is a fallback when an HTTP Stream client is not available; it requires clients to POST events separately to `/mcp/events`.
 - The endpoints are guarded by `MCP_API_KEY` to protect hosted servers.
+
+> **Note:** When `MCP_API_KEY` is set, DB-dependent routes under `/api/*` (books, authors, ratings) are also protected by the same API key. Requests must present `Authorization: Bearer <MCP_API_KEY>`. As a temporary fallback we accept `x-mcp-api-key` but this header is **deprecated** and will be removed in a future release (the server logs a deprecation warning when it is used).

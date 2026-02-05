@@ -119,7 +119,10 @@ Create a `.env` file in the project root:
 DATABASE_URL=postgresql://user:password@localhost:5432/dbname
 
 # Optional: For HTTP MCP transport authentication
+# When `MCP_API_KEY` is set, MCP transport endpoints (eg. `/mcp`) and DB-dependent routes (`/api/*` for books/authors/ratings) require `Authorization: Bearer <MCP_API_KEY>`.
 MCP_API_KEY=your-secret-key
+
+> Note: A legacy header `x-mcp-api-key` is temporarily supported as a fallback but is deprecated and will be removed in a future release; the server emits a deprecation log when it is used.
 
 # Optional: For admin endpoints
 INTERNAL_ADMIN_KEY=your-admin-key
