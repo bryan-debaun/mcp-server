@@ -4,6 +4,10 @@ import express from 'express'
 import { registerMcpHttp } from '../../src/http/mcp-http.js'
 
 describe('MCP HTTP endpoints', () => {
+    const origMcp = process.env.MCP_API_KEY
+    beforeEach(() => { /* ensure clean state per-test */ })
+    afterEach(() => { if (typeof origMcp === 'undefined') delete process.env.MCP_API_KEY; else process.env.MCP_API_KEY = origMcp })
+
     it('should reject POST /mcp without auth when MCP_API_KEY set', async () => {
         process.env.MCP_API_KEY = 'testkey'
         const app = express()

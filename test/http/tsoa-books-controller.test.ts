@@ -13,12 +13,15 @@ describe('tsoa books controller', () => {
         baseUrl = `http://127.0.0.1:${port}`;
     });
 
+    const authHeaders = process.env.MCP_API_KEY ? { Authorization: `Bearer ${process.env.MCP_API_KEY}` } : {};
+
+
     afterAll(async () => {
         await new Promise<void>((resolve) => server.close(() => resolve()));
     });
 
     it('should return books via tsoa controller GET /api/books', async () => {
-        const response = await fetch(`${baseUrl}/api/books`);
+        const response = await fetch(`${baseUrl}/api/books`, { headers: authHeaders });
         expect(response.status).toBe(200);
 
         const data = await response.json();
@@ -28,7 +31,7 @@ describe('tsoa books controller', () => {
     });
 
     it('should accept query parameters for GET /api/books', async () => {
-        const response = await fetch(`${baseUrl}/api/books?limit=10&offset=0`);
+        const response = await fetch(`${baseUrl}/api/books?limit=10&offset=0`, { headers: authHeaders });
         expect(response.status).toBe(200);
 
         const data = await response.json();
@@ -37,7 +40,7 @@ describe('tsoa books controller', () => {
     });
 
     it('should accept status query parameter for GET /api/books', async () => {
-        const response = await fetch(`${baseUrl}/api/books?status=Not%20started`);
+        const response = await fetch(`${baseUrl}/api/books?status=Not%20started`, { headers: authHeaders });
         expect(response.status).toBe(200);
 
         const data = await response.json();
@@ -46,7 +49,7 @@ describe('tsoa books controller', () => {
     });
 
     it('should serve swagger spec at /docs/swagger.json', async () => {
-        const response = await fetch(`${baseUrl}/docs/swagger.json`);
+        const response = await fetch(`${baseUrl}/docs/swagger.json`, { headers: authHeaders });
         expect(response.status).toBe(200);
 
         const spec = await response.json();
@@ -71,13 +74,13 @@ describe('tsoa books controller', () => {
     });
 
     it('should return book by ID via tsoa controller GET /api/books/:id', async () => {
-        const response = await fetch(`${baseUrl}/api/books/1`);
+        const response = await fetch(`${baseUrl}/api/books/1`, { headers: authHeaders });
         // Gracefully handles non-existent IDs (returns 404 or empty)
         expect([200, 404]).toContain(response.status);
     });
 
     it('should return authors via tsoa controller GET /api/authors', async () => {
-        const response = await fetch(`${baseUrl}/api/authors`);
+        const response = await fetch(`${baseUrl}/api/authors`, { headers: authHeaders });
         expect(response.status).toBe(200);
 
         const data = await response.json();
@@ -87,13 +90,13 @@ describe('tsoa books controller', () => {
     });
 
     it('should return author by ID via tsoa controller GET /api/authors/:id', async () => {
-        const response = await fetch(`${baseUrl}/api/authors/1`);
+        const response = await fetch(`${baseUrl}/api/authors/1`, { headers: authHeaders });
         // Gracefully handles non-existent IDs
         expect([200, 404]).toContain(response.status);
     });
 
     it('should return ratings via tsoa controller GET /api/ratings', async () => {
-        const response = await fetch(`${baseUrl}/api/ratings`);
+        const response = await fetch(`${baseUrl}/api/ratings`, { headers: authHeaders });
         expect(response.status).toBe(200);
 
         const data = await response.json();

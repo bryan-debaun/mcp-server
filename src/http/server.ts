@@ -126,7 +126,11 @@ export function createBasicApp() {
 }
 
 // Helper to register DB-dependent routes and optional extras after DB init
+import { mcpAuthMiddleware } from './middleware/mcp-auth.js';
 export async function registerDbDependentRoutes(app: any) {
+    // Install MCP API key middleware to protect DB-dependent routes when `MCP_API_KEY` is set
+    app.use(mcpAuthMiddleware)
+
     // Register admin routes
     registerAdminRoute(app)
     // Public invite routes
