@@ -43,6 +43,11 @@
             "enabled": true
         },
         {
+            "key": "mcp_api_key",
+            "value": "",
+            "enabled": true
+        },
+        {
             "key": "admin_debug_enabled",
             "value": "0",
             "enabled": true
