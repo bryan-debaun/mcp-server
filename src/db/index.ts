@@ -218,7 +218,27 @@ export function prismaReady() {
 export async function testConnection() {
     // Wait for the async Prisma initialization to complete to avoid races in tests/CI
     await initPrisma()
-    // Basic connectivity check
-    const res = await (prisma as any).$queryRaw`SELECT 1 as ok`
-    return res
+
+    // Basic connectivity check with retries to tolerate transient connection errors
+    const maxAttempts = 10
+    const delayMs = 500
+    let lastErr: any = null
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            const res = await (prisma as any).$queryRaw`SELECT 1 as ok`
+            return res
+        } catch (err) {
+            lastErr = err
+            // Log and retry on transient connection errors
+            console.error(`testConnection attempt ${attempt} failed:`, err && err.message ? err.message : err)
+            if (attempt < maxAttempts) {
+                await new Promise((r) => setTimeout(r, delayMs))
+                continue
+            }
+            break
+        }
+    }
+
+    // If we get here, all retries failed — surface the last error for diagnostics
+    throw lastErr
 }
