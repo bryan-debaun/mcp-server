@@ -72,7 +72,9 @@ export async function runSeed(prismaClient?: any) {
             await db.user.update({ where: { id: existing.id }, data: { isAdmin: true } })
             console.log(`Marked existing user ${adminEmail} as isAdmin = true`)
         } else {
-            const minimal = await db.user.create({ data: { email: adminEmail, isAdmin: true } })
+            const createData: any = { email: adminEmail, isAdmin: true }
+            if (process.env.ADMIN_EXTERNAL_ID) createData.external_id = process.env.ADMIN_EXTERNAL_ID
+            const minimal = await db.user.create({ data: createData })
             console.warn(`Created minimal users row for ADMIN_EMAIL ${adminEmail}. Please create a Supabase Auth user for this email and sync external_id if needed.`)
         }
     }

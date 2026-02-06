@@ -41,4 +41,14 @@ This document describes the new HTTP-based transports for the MCP server.
 - SSE is a fallback when an HTTP Stream client is not available; it requires clients to POST events separately to `/mcp/events`.
 - The endpoints are guarded by `MCP_API_KEY` to protect hosted servers.
 
+### Auth session endpoint
+
+The server exposes `GET /api/auth/session` which reads the `session` cookie and returns a minimal authenticated user object. The cookie is signed using `SESSION_JWT_SECRET` in production; when `SESSION_JWT_SECRET` is not set (development), a base64-encoded JSON payload is accepted for convenience. Response shape:
+
+```
+{ "id": 42, "email": "you@example.com", "role": "admin", "isAdmin": true, "external_id": "<optional>" }
+```
+
+Missing or invalid sessions return `401`. Rate-limiting protections apply and are configurable via `SESSION_RATE_LIMIT_PER_IP` and `SESSION_RATE_LIMIT_WINDOW_MS`.
+
 > **Note:** When `MCP_API_KEY` is set, DB-dependent routes under `/api/*` (books, authors, ratings) are also protected by the same API key. Requests must present `Authorization: Bearer <MCP_API_KEY>`. As a temporary fallback we accept `x-mcp-api-key` but this header is **deprecated** and will be removed in a future release (the server logs a deprecation warning when it is used).
