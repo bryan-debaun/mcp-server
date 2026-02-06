@@ -11,6 +11,18 @@ on:
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: mcp_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mcp_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - name: Use Node.js 20
@@ -21,8 +33,11 @@ jobs:
         run: npm ci
       - name: Set DATABASE_URL (for Prisma client generation)
         run: echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/mcp_ci" >> $GITHUB_ENV
-      - name: Generate Prisma Client
-        run: npx prisma generate
+      - name: Wait for Postgres
+        run: |
+          until pg_isready -h localhost -p 5432 -U postgres -d mcp_ci; do sleep 1; done
+      - name: Run Prisma DB push & generate
+        run: npx prisma db push && npx prisma generate
       - name: Generate tsoa routes (required for tests)
         run: npm run build:spec
       - name: Run tests
