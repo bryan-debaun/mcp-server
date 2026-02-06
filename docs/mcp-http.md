@@ -41,6 +41,11 @@ This document describes the new HTTP-based transports for the MCP server.
 - SSE is a fallback when an HTTP Stream client is not available; it requires clients to POST events separately to `/mcp/events`.
 - The endpoints are guarded by `MCP_API_KEY` to protect hosted servers.
 
+### Email / SendGrid
+
+- The application uses SendGrid for transactional email when `SENDGRID_API_KEY` is present. Set `SENDER_EMAIL` (or `FROM_EMAIL`) to a verified address (recommended: `no-reply@bryandebaun.dev`).
+- See `docs/runbooks/sendgrid.md` for verification, DNS checks, key rotation, and CI gating details.
+
 ### Auth session endpoint
 
 The server exposes `GET /api/auth/session` which reads the `session` cookie and returns a minimal authenticated user object. The cookie is signed using `SESSION_JWT_SECRET` in production; when `SESSION_JWT_SECRET` is not set (development), a base64-encoded JSON payload is accepted for convenience. Response shape:
