@@ -2,11 +2,14 @@ import request from 'supertest'
 import { startHttpServer } from '../../src/http/server.js'
 import { prisma } from '../../src/db/index.js'
 import { SignJWT } from 'jose'
+import { testConnection } from '../../src/db/index.js'
 
 let server: any
 beforeAll(async () => {
     const srv = await startHttpServer(0, '127.0.0.1')
     server = srv
+    // Ensure DB is responsive before running tests that write to it
+    await testConnection()
 })
 
 afterAll(async () => {

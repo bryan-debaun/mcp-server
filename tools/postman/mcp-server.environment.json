@@ -51,6 +51,21 @@
             "key": "admin_debug_enabled",
             "value": "0",
             "enabled": true
+        },
+        {
+            "key": "session_cookie",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "SESSION_RATE_LIMIT_PER_IP",
+            "value": "60",
+            "enabled": true
+        },
+        {
+            "key": "SESSION_RATE_LIMIT_WINDOW_MS",
+            "value": "60000",
+            "enabled": true
         }
     ],
     "timestamp": 0,
