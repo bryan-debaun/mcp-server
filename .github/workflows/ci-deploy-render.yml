@@ -18,11 +18,10 @@ jobs:
           POSTGRES_DB: mcp_ci
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d mcp_ci"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-cmd "pg_isready -U postgres -d mcp_ci" --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - name: Use Node.js 20
@@ -35,7 +34,25 @@ jobs:
         run: echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/mcp_ci" >> $GITHUB_ENV
       - name: Wait for Postgres
         run: |
-          until pg_isready -h localhost -p 5432 -U postgres -d mcp_ci; do sleep 1; done
+          max=60
+          i=0
+          while ! pg_isready -h localhost -p 5432 -U postgres -d mcp_ci; do
+            i=$((i+1))
+            echo "pg_isready attempt $i: not ready"
+            if [ "$i" -ge "$max" ]; then
+              echo "Postgres not ready after $max seconds. Printing diagnostics..."
+              echo "-- docker ps --all --format '{{.ID}} {{.Image}} {{.Status}}' --filter 'name=postgres'" || true
+              docker ps --all || true
+              cnt=$(docker ps --filter 'ancestor=postgres:15' --format '{{.ID}}' | head -n1 || true)
+              if [ -n "$cnt" ]; then
+                echo "--- docker logs $cnt ---"
+                docker logs $cnt || true
+              fi
+              exit 1
+            fi
+            sleep 1
+          done
+          echo "Postgres is ready"
       - name: Run Prisma DB push & generate
         run: npx prisma db push && npx prisma generate
       - name: Generate tsoa routes (required for tests)
