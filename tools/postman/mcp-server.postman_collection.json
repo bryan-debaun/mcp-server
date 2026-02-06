@@ -40,6 +40,11 @@
             "key": "mcp_api_key",
             "value": "",
             "type": "string"
+        },
+        {
+            "key": "session_cookie",
+            "value": "",
+            "type": "string"
         }
     ],
     "event": [
@@ -83,6 +88,33 @@
                             "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
                             "pm.test('Has status ok in body', function () { var json = pm.response.json(); pm.expect(json).to.have.property('status', 'ok'); });",
                             "pm.test('Contains uptime_seconds and node', function () { var json = pm.response.json(); pm.expect(json).to.have.property('uptime_seconds'); pm.expect(json).to.have.property('node'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Readiness",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/readyz",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "readyz"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200 or 503', function () { pm.expect(pm.response.status).to.be.oneOf([200,503]); });",
+                            "pm.test('If 200, status is ready', function () { if (pm.response.code === 200) { var json = pm.response.json(); pm.expect(json).to.have.property('status', 'ready'); } });"
                         ]
                     }
                 }
@@ -392,6 +424,40 @@
                     "script": {
                         "exec": [
                             "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Auth - Session",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Cookie",
+                        "value": "session={{session_cookie}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/auth/session",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "auth",
+                        "session"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200, 401 or 429', function () { pm.expect(pm.response.status).to.be.oneOf([200,401,429]); });",
+                            "pm.test('If 200, has id', function () { if (pm.response.code === 200) { var json = pm.response.json(); pm.expect(json).to.have.property('id'); } });"
                         ]
                     }
                 }

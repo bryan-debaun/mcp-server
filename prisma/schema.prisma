@@ -41,8 +41,10 @@ model User {
   booksCreated   Book[]          @relation("BookCreator")
   ratings        Rating[]        @relation("UserRatings")
   authMagicLinks AuthMagicLink[]
+  external_id    String?         @map("external_id")
 
   @@index([isAdmin])
+  @@index([external_id])
 }
 
 model Invite {
