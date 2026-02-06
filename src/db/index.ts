@@ -230,7 +230,7 @@ export async function testConnection() {
         } catch (err) {
             lastErr = err
             // Log and retry on transient connection errors
-            console.error(`testConnection attempt ${attempt} failed:`, err && err.message ? err.message : err)
+            console.error(`testConnection attempt ${attempt} failed:`, (err as any)?.message ?? err)
             if (attempt < maxAttempts) {
                 await new Promise((r) => setTimeout(r, delayMs))
                 continue
