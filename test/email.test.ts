@@ -20,12 +20,13 @@ describe('sendMagicLinkEmail', () => {
     it('sends HTML and text payload when SENDGRID_API_KEY is set', async () => {
         process.env.SENDGRID_API_KEY = 'SG.test'
         process.env.SENDER_EMAIL = 'no-reply@bryandebaun.dev'
+        process.env.SENDER_NAME = 'BryanDeBaunDev'
         process.env.SUPPORT_EMAIL = 'support@bryandebaun.dev'
 
         const fakeRes = { ok: true, status: 202, text: async () => '' }
         const fetchSpy = vi.spyOn(globalThis, 'fetch' as any).mockResolvedValue(fakeRes as any)
 
-        await sendMagicLinkEmail('u@example.com', 'tkn')
+        await sendMagicLinkEmail('u@example.com', 'tkn', 'https://preview.bryandebaun.dev')
 
         expect(fetchSpy).toHaveBeenCalled()
         const call = fetchSpy.mock.calls[0]
@@ -36,6 +37,7 @@ describe('sendMagicLinkEmail', () => {
         expect(types).toContain('text/html')
         expect(body.personalizations[0].to[0].email).toBe('u@example.com')
         expect(body.from.email).toBe('no-reply@bryandebaun.dev')
+        expect(body.from.name).toBe('BryanDeBaunDev')
         expect(body.tracking_settings).toBeDefined()
 
         fetchSpy.mockRestore()

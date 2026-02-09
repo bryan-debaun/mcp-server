@@ -4,10 +4,11 @@ export async function sendInviteEmail(email: string, token: string) {
 
     const sendgridKey = process.env.SENDGRID_API_KEY
     if (sendgridKey) {
-        const from = process.env.FROM_EMAIL ?? 'noreply@example.com'
+        const fromEmail = process.env.FROM_EMAIL ?? 'noreply@example.com'
+        const fromName = process.env.SENDER_NAME ?? 'MCP Server'
         const payload = {
             personalizations: [{ to: [{ email }], subject: 'You are invited' }],
-            from: { email: from },
+            from: { email: fromEmail, name: fromName },
             content: [{ type: 'text/plain', value: `You were invited to MCP Server. Accept: ${inviteUrl}` }]
         }
 
@@ -31,8 +32,8 @@ export async function sendInviteEmail(email: string, token: string) {
     console.log(`Invite for ${email}: ${inviteUrl}`)
 }
 
-export async function sendMagicLinkEmail(email: string, token: string) {
-    const base = process.env.MAGIC_LINK_BASE_URL ?? 'http://localhost:3000'
+export async function sendMagicLinkEmail(email: string, token: string, baseOverride?: string) {
+    const base = baseOverride ?? process.env.MAGIC_LINK_BASE_URL ?? 'http://localhost:3000'
     const url = `${base}/auth/magic-link/verify?token=${encodeURIComponent(token)}`
 
     const sendgridKey = process.env.SENDGRID_API_KEY
@@ -64,9 +65,11 @@ export async function sendMagicLinkEmail(email: string, token: string) {
         // Respect env override to disable click tracking if needed (useful for tests or preview)
         const clickTrackingEnabled = (process.env.SENDGRID_CLICK_TRACKING ?? 'true') !== 'false'
 
+        const fromEmail = from
+        const fromName = process.env.SENDER_NAME ?? 'bryandebaun.dev'
         const payload: any = {
             personalizations: [{ to: [{ email }], subject: 'Sign in to MCP Server' }],
-            from: { email: from },
+            from: { email: fromEmail, name: fromName },
             reply_to: { email: supportEmail },
             headers: {
                 'List-Unsubscribe': `<mailto:${supportEmail}>`

@@ -81,7 +81,26 @@ export class MagicLinkController extends Controller {
 
             try {
                 const { token } = await generateMagicLinkToken(email)
-                await sendMagicLinkEmail(email, token)
+
+                // Compute environment-aware base for magic link URL
+                // Priority: explicit env override -> X-Forwarded headers -> request host/protocol -> fallback
+                const envBase = process.env.MAGIC_LINK_BASE_URL
+                let requestBase: string | undefined
+                try {
+                    const xfProto = (request as any)?.headers?.['x-forwarded-proto']
+                    const xfHost = (request as any)?.headers?.['x-forwarded-host']
+                    if (envBase) {
+                        requestBase = envBase
+                    } else if (xfProto && (xfHost || (request as any)?.headers?.host)) {
+                        requestBase = `${String(xfProto)}://${String(xfHost ?? (request as any).headers.host)}`
+                    } else if ((request as any)?.protocol && (request as any).get) {
+                        requestBase = `${(request as any).protocol}://${(request as any).get('host')}`
+                    }
+                } catch (e) { /* ignore */ }
+
+                const base = requestBase ?? process.env.MAGIC_LINK_BASE_URL ?? 'http://localhost:3000'
+
+                await sendMagicLinkEmail(email, token, base)
                 magicLinkSent.inc()
                 console.info('magic_link.sent', { email })
             } catch (err: any) {

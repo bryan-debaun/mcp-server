@@ -32,7 +32,7 @@ describe('magic-link routes', () => {
         const res = await request(app).post('/api/auth/magic-link').send({ email: 'u@example.com' })
         expect(res.status).toBe(202)
         expect(auth.generateMagicLinkToken).toHaveBeenCalledWith('u@example.com')
-        expect(email.sendMagicLinkEmail).toHaveBeenCalledWith('u@example.com', 'tkn')
+        expect(email.sendMagicLinkEmail).toHaveBeenCalledWith('u@example.com', 'tkn', expect.any(String))
     })
 
     it('POST /api/auth/magic-link rate limits per email', async () => {
