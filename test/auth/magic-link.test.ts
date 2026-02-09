@@ -16,13 +16,13 @@ describe('magic-link token utils', () => {
         mockCreate.mockReset()
         mockFindUnique.mockReset()
         mockUpdate.mockReset()
-        ;(globalThis as any).__TEST_PRISMA_MOCK__ = {
-            authMagicLink: {
-                create: mockCreate,
-                findUnique: mockFindUnique,
-                update: mockUpdate,
+            ; (globalThis as any).__TEST_PRISMA_MOCK__ = {
+                authMagicLink: {
+                    create: mockCreate,
+                    findUnique: mockFindUnique,
+                    update: mockUpdate,
+                }
             }
-        }
     })
 
     it('generates token and stores jti', async () => {
@@ -75,5 +75,15 @@ describe('magic-link token utils', () => {
         mockFindUnique.mockResolvedValue({ jti: 'e1', email: 'u4@example.com', userId: null, expiresAt: new Date(Date.now() - 1000 * 60), consumed: false })
 
         await expect(verifyMagicLinkToken(token)).rejects.toThrow('expired token')
+    })
+
+    it('throws a clear error when DATABASE_URL is not configured', async () => {
+        // Ensure we are not using the global test prisma mock
+        delete process.env.DATABASE_URL
+        delete (globalThis as any).__TEST_PRISMA_MOCK__
+        vi.resetModules()
+
+        const { generateMagicLinkToken } = await import('../../src/auth/magic-link.js')
+        await expect(generateMagicLinkToken('no-db@example.com')).rejects.toThrow(/DATABASE_URL not configured|PrismaClient not initialized/)
     })
 })

@@ -16,6 +16,12 @@ export async function generateMagicLinkToken(email: string, userId?: number) {
     const jti = globalThis.crypto?.randomUUID?.() ?? String(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER))
     const expiresAt = new Date(Date.now() + EXP_MINUTES * 60 * 1000)
 
+    // Fail fast when no DB configured — magic-link persistence requires a DB
+    // Allow tests that inject a global `__TEST_PRISMA_MOCK__` to proceed
+    if (!process.env.DATABASE_URL && !(globalThis as any).__TEST_PRISMA_MOCK__) {
+        throw new Error('DATABASE_URL not configured')
+    }
+
     // Persist jti for single-use enforcement (lazy import to avoid DB init at module load)
     // Allow tests to inject a mock Prisma object via global (helps when module cache
     // contains the real DB module and Vitest mocks didn't apply)
@@ -73,6 +79,12 @@ export async function verifyMagicLinkToken(token: string) {
         const { payload } = await jwtVerify(token, getKey() as any)
         const jti = String((payload as any).jti ?? '')
         if (!jti) throw new Error('invalid token')
+
+        // Require a configured database for token verification (single-use check)
+        // Allow tests that inject a global `__TEST_PRISMA_MOCK__` to proceed
+        if (!process.env.DATABASE_URL && !(globalThis as any).__TEST_PRISMA_MOCK__) {
+            throw new Error('DATABASE_URL not configured')
+        }
 
         // Look up persisted jti
         let prisma: any = (globalThis as any).__TEST_PRISMA_MOCK__
