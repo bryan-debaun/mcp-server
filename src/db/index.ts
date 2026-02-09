@@ -34,6 +34,13 @@ export async function initPrisma() {
             update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
         }
 
+        // Stub for magic-link single-use token persistence
+        prisma.authMagicLink = {
+            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
+            findUnique: async (_opts?: any) => null,
+            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+        }
+
         prisma.role = {
             findUnique: async (_opts?: any) => null,
             create: async (_data?: any) => ({ id: 1, name: 'user' }),
@@ -123,7 +130,7 @@ export async function initPrisma() {
 
             // Explicitly forward model accessors (user, book, etc.) to ensure they're available
             // These are often defined as getters on the Prisma client and may not be enumerable
-            const modelNames = ['user', 'invite', 'role', 'auditLog', 'accessRequest', 'author', 'book', 'bookAuthor', 'rating'];
+            const modelNames = ['user', 'invite', 'role', 'auditLog', 'accessRequest', 'author', 'book', 'bookAuthor', 'rating', 'authMagicLink'];
             for (const modelName of modelNames) {
                 if (modelName in real) {
                     Object.defineProperty(prisma, modelName, {
@@ -158,6 +165,13 @@ export async function initPrisma() {
             findMany: async (_opts?: any) => [],
             findUnique: async (_opts?: any) => null,
             create: async (_data?: any) => { throw new Error('PrismaClient not initialized') },
+            update: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
+        }
+
+        // Fallback stub for magic-link single-use token persistence
+        prisma.authMagicLink = {
+            create: async (_data?: any) => { throw new Error('PrismaClient not initialized') },
+            findUnique: async (_opts?: any) => null,
             update: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
         }
 
