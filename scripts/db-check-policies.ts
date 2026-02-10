@@ -6,7 +6,7 @@ async function main() {
     const c = new Client({ connectionString: conn })
     await c.connect()
 
-    const tables = ['Role', 'Author', 'Book', 'Rating']
+    const tables = ['Role', 'Author', 'Book', 'Rating', 'RatingAggregate']
     const res = await c.query(`SELECT relname, relrowsecurity FROM pg_class WHERE relname = ANY($1)`, [tables])
     console.log('RLS flags:', res.rows)
 

@@ -722,7 +722,8 @@
                         "exec": [
                             "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
                             "pm.test('Has books array', function () { var json = pm.response.json(); pm.expect(json).to.have.property('books'); });",
-                            "pm.test('Books is array', function () { var json = pm.response.json(); pm.expect(Array.isArray(json.books)).to.be.true; });"
+                            "pm.test('Books is array', function () { var json = pm.response.json(); pm.expect(Array.isArray(json.books)).to.be.true; });",
+                            "pm.test('Books items include averageRating and ratingCount', function () { var json = pm.response.json(); if (Array.isArray(json.books) && json.books.length>0) { pm.expect(json.books[0]).to.have.property('averageRating'); pm.expect(json.books[0]).to.have.property('ratingCount'); } });"
                         ]
                     }
                 }
@@ -752,7 +753,8 @@
                         "exec": [
                             "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
                             "pm.test('Has title', function () { var json = pm.response.json(); pm.expect(json).to.have.property('title'); });",
-                            "pm.test('Has authors', function () { var json = pm.response.json(); pm.expect(json).to.have.property('authors'); });"
+                            "pm.test('Has authors', function () { var json = pm.response.json(); pm.expect(json).to.have.property('authors'); });",
+                            "pm.test('Has averageRating and ratingCount', function () { var json = pm.response.json(); pm.expect(json).to.have.property('averageRating'); pm.expect(json).to.have.property('ratingCount'); });"
                         ]
                     }
                 }
@@ -802,7 +804,8 @@
                     "script": {
                         "exec": [
                             "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
-                            "pm.test('Has id', function () { var json = pm.response.json(); pm.expect(json).to.have.property('id'); });"
+                            "pm.test('Has id', function () { var json = pm.response.json(); pm.expect(json).to.have.property('id'); });",
+                            "pm.test('Created book has rating fields with defaults', function () { var json = pm.response.json(); pm.expect(json).to.have.property('ratingCount'); pm.expect(json.ratingCount).to.equal(0); pm.expect(json).to.have.property('averageRating'); pm.expect(json.averageRating).to.equal(null); });"
                         ]
                     }
                 }

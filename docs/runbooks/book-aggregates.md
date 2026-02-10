@@ -28,3 +28,5 @@ If `book_aggregate_update_failures_total` increases:
 - As a mitigation, run the backfill script to correct inconsistent rows, and fix underlying write failures.
 
 If you need to re-run a backfill safely on production large datasets, consider copying the script to run with a throttling loop and checkpointing (currently the script iterates by id and is resumable).
+
+Note: The Postman collection has been updated to assert `averageRating` and `ratingCount` presence on relevant `Books` endpoints for smoke checks and CI validation.
