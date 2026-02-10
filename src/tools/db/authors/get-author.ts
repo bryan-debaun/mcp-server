@@ -45,21 +45,27 @@ export function registerGetAuthorTool(server: McpServer): void {
                     return createErrorResult("Author not found");
                 }
 
-                // Enhance books with average ratings
+                // Enhance books with persisted average ratings when present
                 const authorWithRatings = {
                     ...author,
                     books: author.books.map((ba: any) => {
                         const book = ba.book;
-                        const avgRating = book.ratings.length > 0
-                            ? book.ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / book.ratings.length
-                            : null;
+                        const avgRating = (book.averageRating !== null && book.averageRating !== undefined)
+                            ? Number(book.averageRating)
+                            : (book.ratings.length > 0
+                                ? book.ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / book.ratings.length
+                                : null);
+
+                        const ratingCount = (book.ratingCount !== undefined && book.ratingCount !== null)
+                            ? book.ratingCount
+                            : book.ratings.length;
 
                         return {
                             ...ba,
                             book: {
                                 ...book,
                                 averageRating: avgRating,
-                                ratingCount: book.ratings.length
+                                ratingCount
                             }
                         };
                     })

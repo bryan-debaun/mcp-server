@@ -70,16 +70,22 @@ export function registerListBooksTool(server: McpServer): void {
                     }
                 });
 
-                // Filter by min rating if specified and calculate avg rating for each
+                // Use stored aggregates when present; fall back to computing from ratings for older rows
                 let results = books.map((book: any) => {
-                    const avgRating = book.ratings.length > 0
-                        ? book.ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / book.ratings.length
-                        : null;
+                    const avgRating = (book.averageRating !== null && book.averageRating !== undefined)
+                        ? Number(book.averageRating)
+                        : (book.ratings.length > 0
+                            ? book.ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / book.ratings.length
+                            : null);
+
+                    const ratingCount = (book.ratingCount !== undefined && book.ratingCount !== null)
+                        ? book.ratingCount
+                        : book.ratings.length;
 
                     return {
                         ...book,
                         averageRating: avgRating,
-                        ratingCount: book.ratings.length,
+                        ratingCount,
                         statusLabel: statusLabel(book.status)
                     };
                 });

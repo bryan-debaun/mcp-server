@@ -14,6 +14,10 @@ export interface Book {
     status: ItemStatus;
     createdAt: string;
     updatedAt: string;
+
+    // Aggregates
+    averageRating?: number | null;
+    ratingCount?: number;
 }
 
 /**

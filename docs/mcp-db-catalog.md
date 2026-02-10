@@ -44,7 +44,7 @@ List books with optional filtering and pagination.
       "isbn": "978-0765326355",
       "publishedAt": "2010-08-31",
       "averageRating": 9.5,
-      "totalRatings": 2,
+      "ratingCount": 2,
       "authors": [
         {
           "id": 1,

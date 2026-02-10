@@ -108,6 +108,12 @@ model Book {
   authors     BookAuthor[]
   ratings     Rating[]
 
+  // Aggregates maintained for fast read access
+  // - averageRating: numeric(5,2) — nullable for books with no ratings
+  // - ratingCount: int — default 0
+  averageRating Decimal? @map("average_rating") @db.Decimal(5, 2)
+  ratingCount   Int      @default(0) @map("rating_count")
+
   @@index([title])
   @@index([isbn])
   @@index([status])
