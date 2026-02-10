@@ -48,4 +48,25 @@ describe('admin service - acceptInvite', () => {
         await expect(svc.acceptInvite('t')).rejects.toThrow('expired token')
         expect(p.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: 'accept-invite-expired' }) }))
     })
+
+    it('sets blocked flag and writes audit log', async () => {
+        p.user.update = vi.fn().mockResolvedValue({ id: 1, blocked: true })
+        await svc.setUserBlocked(1, true, 5)
+        expect(p.user.update).toHaveBeenCalledWith({ where: { id: 1 }, data: { blocked: true } })
+        expect(p.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: 'set-blocked' }) }))
+    })
+
+    it('soft-deletes user by default and writes audit log', async () => {
+        p.user.update = vi.fn().mockResolvedValue({ id: 1, deletedAt: new Date(), blocked: true })
+        await svc.deleteUser(1, 5, {})
+        expect(p.user.update).toHaveBeenCalled()
+        expect(p.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: 'delete-user' }) }))
+    })
+
+    it('hard-deletes user when hard=true', async () => {
+        p.user.delete = vi.fn().mockResolvedValue({ id: 1 })
+        await svc.deleteUser(1, 5, { hard: true })
+        expect(p.user.delete).toHaveBeenCalledWith({ where: { id: 1 } })
+        expect(p.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: 'delete-user' }) }))
+    })
 })

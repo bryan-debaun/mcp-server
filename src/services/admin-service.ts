@@ -83,6 +83,28 @@ export async function setUserRole(userId: number, roleName: string, actorId?: nu
     return user
 }
 
+export async function setUserBlocked(userId: number, blocked: boolean, actorId?: number) {
+    const user = await prisma.user.update({ where: { id: userId }, data: { blocked } })
+    await prisma.auditLog.create({ data: { action: 'set-blocked', actorId, metadata: { userId, blocked } } })
+    return user
+}
+
+export async function deleteUser(userId: number, actorId?: number, opts?: { hard?: boolean }) {
+    if (opts?.hard) {
+        // Attempt hard delete; may fail due to FK constraints in which case caller should handle/report
+        await prisma.user.delete({ where: { id: userId } })
+        await prisma.auditLog.create({ data: { action: 'delete-user', actorId, metadata: { userId, hard: true } } })
+        return { success: true }
+    }
+
+    // Soft-delete by default: anonymize and mark blocked and deletedAt
+    const timestamp = new Date()
+    const anonEmail = `deleted-${userId}-${timestamp.getTime()}@deleted.local`
+    await prisma.user.update({ where: { id: userId }, data: { blocked: true, deletedAt: timestamp, email: anonEmail, name: null, external_id: null } })
+    await prisma.auditLog.create({ data: { action: 'delete-user', actorId, metadata: { userId, hard: false } } })
+    return { success: true }
+}
+
 export async function listAccessRequests() {
     return prisma.accessRequest.findMany({ orderBy: { createdAt: 'desc' } })
 }
