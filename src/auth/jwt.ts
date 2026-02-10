@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose'
-import { verifySessionToken } from './session'
+import { verifySessionToken } from './session.js'
 
 const jwksUrl = process.env.SUPABASE_JWKS_URL
 
