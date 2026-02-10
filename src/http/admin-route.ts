@@ -48,12 +48,23 @@ export function registerAdminRoute(app: Application) {
 
     app.patch(`${base}/users/:id`, jwtMiddleware, requireAdmin, async (req: Request, res: Response) => {
         const id = Number(req.params.id)
-        const { role } = req.body
-        if (!role) return res.status(400).json({ error: 'role is required' })
+        const { role, blocked } = req.body
+        if (role === undefined && blocked === undefined) return res.status(400).json({ error: 'role or blocked is required' })
         const actorId = (req as any).user?.sub ? Number((req as any).user.sub) : undefined
-        const { setUserRole } = await import('../services/admin-service.js')
-        const user = await setUserRole(id, role, actorId)
+        const { setUserRole, setUserBlocked } = await import('../services/admin-service.js')
+        let user: any = null
+        if (role !== undefined) user = await setUserRole(id, role, actorId)
+        if (blocked !== undefined) user = await setUserBlocked(id, !!blocked, actorId)
         res.json(user)
+    })
+
+    app.delete(`${base}/users/:id`, jwtMiddleware, requireAdmin, async (req: Request, res: Response) => {
+        const id = Number(req.params.id)
+        const actorId = (req as any).user?.sub ? Number((req as any).user.sub) : undefined
+        const hard = (req.query.hard === '1' || req.query.hard === 'true')
+        const { deleteUser } = await import('../services/admin-service.js')
+        await deleteUser(id, actorId, { hard })
+        res.json({ success: true })
     })
 
     app.get(`${base}/access-requests`, jwtMiddleware, requireAdmin, async (_req: Request, res: Response) => {

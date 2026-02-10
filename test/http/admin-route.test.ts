@@ -97,4 +97,33 @@ describe('Admin routes', () => {
         expect(res.body.token).toBe('invite-token')
         delete process.env.SHOW_INVITE_TOKEN
     })
+
+    it('allows admin to set blocked flag via PATCH and calls service', async () => {
+        const app = express()
+        app.use(express.json())
+        app.use(adminStub)
+        registerAdminRoute(app)
+
+        const svc = await import('../../src/services/admin-service.js')
+        vi.spyOn(svc as any, 'setUserBlocked').mockResolvedValue({ id: 1, blocked: true })
+
+        const res = await request(app).patch('/api/admin/users/1').send({ blocked: true })
+        expect(res.status).toBe(200)
+        expect((svc as any).setUserBlocked).toHaveBeenCalledWith(1, true, 1)
+    })
+
+    it('allows admin to delete user (soft by default) and returns success', async () => {
+        const app = express()
+        app.use(express.json())
+        app.use(adminStub)
+        registerAdminRoute(app)
+
+        const svc = await import('../../src/services/admin-service.js')
+        vi.spyOn(svc as any, 'deleteUser').mockResolvedValue({ success: true })
+
+        const res = await request(app).delete('/api/admin/users/1')
+        expect(res.status).toBe(200)
+        expect((svc as any).deleteUser).toHaveBeenCalledWith(1, 1, expect.objectContaining({ hard: false }))
+        expect(res.body.success).toBe(true)
+    })
 })

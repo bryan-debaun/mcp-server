@@ -17,6 +17,18 @@ function signToken(payload: any, opts?: { expiresIn?: string }) {
 
 // Skip this DB-dependent suite when DATABASE_URL or Prisma client is not available
 const shouldRunDbTests = (() => {
+    // Developer convenience: if DATABASE_URL isn't set in the environment, try
+    // to load a local `.env.local` file (this mirrors common local-dev setups).
+    if (!process.env.DATABASE_URL) {
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const dotenv = require('dotenv')
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const path = require('path')
+            dotenv.config({ path: path.resolve(__dirname, '../../.env.local') })
+        } catch (e) { /* noop - we'll skip tests if env still missing */ }
+    }
+
     if (!process.env.DATABASE_URL) return false
     try {
         // Try requiring the Prisma package synchronously. If the generated client

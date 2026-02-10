@@ -70,6 +70,44 @@ export async function acceptInvite(token: string, opts?: { name?: string, passwo
     return user
 }
 
+export async function registerUser(email: string, name?: string, password?: string) {
+    // Prevent duplicate users
+    const existing = await prisma.user.findUnique({ where: { email } })
+    if (existing) throw new Error('user already exists')
+
+    // Optional Supabase provisioning if a password is provided
+    if (password) {
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+        if (!supabaseKey) throw new Error('password not supported')
+        const supabaseUrl = process.env.SUPABASE_ISS
+        if (!supabaseUrl) throw new Error('SUPABASE_ISS missing')
+        try {
+            const res = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseKey}` },
+                body: JSON.stringify({ email, password, user_metadata: { name }, email_confirm: true })
+            })
+            if (!res.ok) {
+                const txt = await res.text()
+                await prisma.auditLog.create({ data: { action: 'register-supabase-failed', metadata: { email, reason: txt } } })
+                throw new Error('supabase provisioning failed')
+            }
+        } catch (err) {
+            console.error('supabase provisioning error', err)
+            throw err
+        }
+    }
+
+    let role = await prisma.role.findUnique({ where: { name: 'user' } })
+    if (!role) role = await prisma.role.create({ data: { name: 'user' } })
+
+    const user = await prisma.user.create({ data: { email, name, roleId: role.id } })
+
+    await prisma.auditLog.create({ data: { action: 'register-user', metadata: { email, userId: user.id } } })
+
+    return user
+}
+
 export async function setUserRole(userId: number, roleName: string, actorId?: number) {
     let role = await prisma.role.findUnique({ where: { name: roleName } })
     if (!role) {
@@ -81,6 +119,28 @@ export async function setUserRole(userId: number, roleName: string, actorId?: nu
     await prisma.auditLog.create({ data: { action: 'set-role', actorId, actor: undefined as any, metadata: { userId, role: roleName } } })
 
     return user
+}
+
+export async function setUserBlocked(userId: number, blocked: boolean, actorId?: number) {
+    const user = await prisma.user.update({ where: { id: userId }, data: { blocked } })
+    await prisma.auditLog.create({ data: { action: 'set-blocked', actorId, metadata: { userId, blocked } } })
+    return user
+}
+
+export async function deleteUser(userId: number, actorId?: number, opts?: { hard?: boolean }) {
+    if (opts?.hard) {
+        // Attempt hard delete; may fail due to FK constraints in which case caller should handle/report
+        await prisma.user.delete({ where: { id: userId } })
+        await prisma.auditLog.create({ data: { action: 'delete-user', actorId, metadata: { userId, hard: true } } })
+        return { success: true }
+    }
+
+    // Soft-delete by default: anonymize and mark blocked and deletedAt
+    const timestamp = new Date()
+    const anonEmail = `deleted-${userId}-${timestamp.getTime()}@deleted.local`
+    await prisma.user.update({ where: { id: userId }, data: { blocked: true, deletedAt: timestamp, email: anonEmail, name: null, external_id: null } })
+    await prisma.auditLog.create({ data: { action: 'delete-user', actorId, metadata: { userId, hard: false } } })
+    return { success: true }
 }
 
 export async function listAccessRequests() {

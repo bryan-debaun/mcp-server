@@ -29,8 +29,8 @@ describe('sendMagicLinkEmail', () => {
         await sendMagicLinkEmail('u@example.com', 'tkn', 'https://preview.bryandebaun.dev')
 
         expect(fetchSpy).toHaveBeenCalled()
-        const call = fetchSpy.mock.calls[0]
-        const body = JSON.parse(call[1].body)
+        const call = (fetchSpy.mock as any).calls[0]
+        const body = JSON.parse((call[1] as any).body)
         // has both text/plain and text/html
         const types = body.content.map((c: any) => c.type)
         expect(types).toContain('text/plain')

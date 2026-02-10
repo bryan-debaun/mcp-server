@@ -62,6 +62,7 @@ function setSessionCookie(res: any, payload: Record<string, any>) {
 }
 
 export interface SendMagicLinkRequest { email: string }
+export interface RegisterRequest { email: string; name?: string; password?: string }
 
 @Route('api/auth/magic-link')
 @Tags('Auth')
@@ -114,6 +115,71 @@ export class MagicLinkController extends Controller {
         } catch (err: any) {
             if (this.getStatus() === 429) throw new Error('rate limited')
             console.error('magic-link send error', err)
+            this.setStatus(400)
+            throw new Error('Invalid request')
+        }
+    }
+
+    /** Public registration endpoint */
+
+    @Post('register')
+    @Response('400', 'Invalid request')
+    @Response('502', 'Supabase provisioning failed')
+    public async register(@Body() body: RegisterRequest, @Request() request?: ExpressRequest): Promise<any> {
+        if (!body || !body.email) { this.setStatus(400); throw new Error('Invalid request') }
+        try {
+            const email = String(body.email).toLowerCase()
+            const name = body.name
+            const password = body.password
+
+            const { registerUser } = await import('../../services/admin-service.js')
+            let user: any
+            try {
+                user = await registerUser(email, name, password)
+            } catch (err: any) {
+                if (err.message === 'user already exists' || err.message === 'password not supported' || err.message === 'SUPABASE_ISS missing') {
+                    try { (request as any).res.status(400).json({ error: err.message }) } catch (e) { /* noop */ }
+                    return
+                }
+                if (err.message === 'supabase provisioning failed') {
+                    try { (request as any).res.status(502).json({ error: 'supabase provisioning failed' }) } catch (e) { /* noop */ }
+                    return
+                }
+                throw err
+            }
+
+            // If password not provided, send magic link to allow immediate sign-in
+            if (!password) {
+                try {
+                    const { token } = await generateMagicLinkToken(email, user.id)
+
+                    // Compute base similar to send()
+                    const envBase = process.env.MAGIC_LINK_BASE_URL
+                    let requestBase: string | undefined
+                    try {
+                        const xfProto = (request as any)?.headers?.['x-forwarded-proto']
+                        const xfHost = (request as any)?.headers?.['x-forwarded-host']
+                        if (envBase) {
+                            requestBase = envBase
+                        } else if (xfProto && (xfHost || (request as any)?.headers?.host)) {
+                            requestBase = `${String(xfProto)}://${String(xfHost ?? (request as any).headers.host)}`
+                        } else if ((request as any)?.protocol && (request as any).get) {
+                            requestBase = `${(request as any).protocol}://${(request as any).get('host')}`
+                        }
+                    } catch (e) { /* ignore */ }
+
+                    const base = requestBase ?? process.env.MAGIC_LINK_BASE_URL ?? 'http://localhost:3000'
+                    await sendMagicLinkEmail(email, token, base)
+                } catch (err: any) {
+                    console.error('failed to send magic link after register', err)
+                }
+            }
+
+            this.setStatus(201)
+            return user
+        } catch (err: any) {
+            if (this.getStatus() === 400 || this.getStatus() === 502) throw err
+            console.error('register error', err)
             this.setStatus(400)
             throw new Error('Invalid request')
         }
