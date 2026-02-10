@@ -51,21 +51,28 @@ export async function backfillAllBookAggregates(batchSize = 200) {
     console.log('Starting rating aggregate backfill for books...')
     let lastId = 0
     let processed = 0
+    let hasMore = true
 
-    while (true) {
+    while (hasMore) {
         const books = await prisma.book.findMany({
             where: { id: { gt: lastId } },
             orderBy: { id: 'asc' },
             take: batchSize,
             select: { id: true }
         })
-        if (!books.length) break
+        if (!books.length) {
+            hasMore = false
+            break
+        }
 
         for (const b of books) {
             lastId = b.id
             await updateAggregates('book', b.id)
             processed++
         }
+
+        // If we got fewer than a full batch, we're at the end
+        if (books.length < batchSize) hasMore = false
     }
 
     console.log(`Backfill done: processed=${processed}`)
