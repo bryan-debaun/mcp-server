@@ -36,6 +36,14 @@ async function backfill(batchSize = 100) {
                     averageRating: avg
                 }
             })
+
+            // Also ensure RatingAggregate row exists for this book
+            await prisma.ratingAggregate.upsert({
+                where: { entityType_entityId: { entityType: 'book', entityId: b.id } },
+                create: { entityType: 'book', entityId: b.id, ratingCount: count, averageRating: avg },
+                update: { ratingCount: count, averageRating: avg }
+            })
+
             processed++
         }
     }

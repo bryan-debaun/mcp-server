@@ -12,6 +12,7 @@ describe('create-or-update-rating tool', () => {
         const tx = {
             rating: { upsert: upsertMock, aggregate: aggregateMock },
             book: { update: bookUpdateMock },
+            ratingAggregate: { upsert: vi.fn(async () => ({})) },
             $executeRaw: vi.fn(async () => ({}))
         }
 
@@ -28,6 +29,7 @@ describe('create-or-update-rating tool', () => {
         expect(upsertMock).toHaveBeenCalled()
         expect(aggregateMock).toHaveBeenCalled()
         expect(bookUpdateMock).toHaveBeenCalledWith({ where: { id: 11 }, data: { ratingCount: 3, averageRating: 8.33 } })
+        expect((tx as any).ratingAggregate.upsert).toHaveBeenCalledWith({ where: { entityType_entityId: { entityType: 'book', entityId: 11 } }, create: { entityType: 'book', entityId: 11, ratingCount: 3, averageRating: 8.33 }, update: { ratingCount: 3, averageRating: 8.33 } })
         expect(res.content).toBeDefined()
         expect(String(res.content[0].text)).toContain('"id": 1')
     })
