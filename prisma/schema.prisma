@@ -108,6 +108,12 @@ model Book {
   authors     BookAuthor[]
   ratings     Rating[]
 
+  // Aggregates maintained for fast read access
+  // - averageRating: numeric(5,2) — nullable for books with no ratings
+  // - ratingCount: int — default 0
+  averageRating Decimal? @map("average_rating") @db.Decimal(5, 2)
+  ratingCount   Int      @default(0) @map("rating_count")
+
   @@index([title])
   @@index([isbn])
   @@index([status])
@@ -137,6 +143,19 @@ model Rating {
   @@unique([bookId, userId])
   @@index([userId])
   @@index([bookId])
+}
+
+// Aggregates table for ratings across multiple entity types (books, movies, games, etc.)
+model RatingAggregate {
+  id            Int      @id @default(autoincrement())
+  entityType    String   @map("entity_type")
+  entityId      Int      @map("entity_id")
+  ratingCount   Int      @default(0) @map("rating_count")
+  averageRating Decimal? @map("average_rating") @db.Decimal(5, 2)
+
+  @@unique([entityType, entityId])
+  @@index([entityType])
+  @@index([entityId])
 }
 
 model AuthMagicLink {

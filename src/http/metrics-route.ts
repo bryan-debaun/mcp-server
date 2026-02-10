@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { Registry, collectDefaultMetrics, Counter, Histogram } from "prom-client";
+import { Registry, collectDefaultMetrics, Counter, Histogram, Gauge } from "prom-client";
 
 const register = new Registry();
 collectDefaultMetrics({ register });
@@ -30,6 +30,10 @@ export const serviceRoleBypassTotal = new Counter({ name: "service_role_bypass_t
 export const adminDebugRequestsTotal = new Counter({ name: "admin_debug_requests_total", help: "Total number of admin debug endpoint requests" })
 export const mcpAuthFailuresTotal = new Counter({ name: "mcp_auth_failures_total", help: "Total number of MCP API auth failures" })
 
+// Book aggregate metrics
+export const bookAggregateUpdateFailuresTotal = new Counter({ name: "book_aggregate_update_failures_total", help: "Number of failures updating book aggregates" })
+export const bookAggregatesLastBackfillTimestamp = new Gauge({ name: "book_aggregates_last_backfill_timestamp", help: "Last backfill timestamp (epoch seconds)" })
+
 register.registerMetric(httpRequestsTotal);
 register.registerMetric(httpRequestDurationSeconds);
 register.registerMetric(mcpPollSuccess);
@@ -41,6 +45,8 @@ register.registerMetric(invitesAcceptedTotal);
 register.registerMetric(serviceRoleBypassTotal);
 register.registerMetric(adminDebugRequestsTotal);
 register.registerMetric(mcpAuthFailuresTotal);
+register.registerMetric(bookAggregateUpdateFailuresTotal);
+register.registerMetric(bookAggregatesLastBackfillTimestamp);
 
 export function registerMetricsRoute(app: any): void {
     app.get("/metrics", async (_req: Request, res: Response) => {
