@@ -70,6 +70,44 @@ export async function acceptInvite(token: string, opts?: { name?: string, passwo
     return user
 }
 
+export async function registerUser(email: string, name?: string, password?: string) {
+    // Prevent duplicate users
+    const existing = await prisma.user.findUnique({ where: { email } })
+    if (existing) throw new Error('user already exists')
+
+    // Optional Supabase provisioning if a password is provided
+    if (password) {
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+        if (!supabaseKey) throw new Error('password not supported')
+        const supabaseUrl = process.env.SUPABASE_ISS
+        if (!supabaseUrl) throw new Error('SUPABASE_ISS missing')
+        try {
+            const res = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseKey}` },
+                body: JSON.stringify({ email, password, user_metadata: { name }, email_confirm: true })
+            })
+            if (!res.ok) {
+                const txt = await res.text()
+                await prisma.auditLog.create({ data: { action: 'register-supabase-failed', metadata: { email, reason: txt } } })
+                throw new Error('supabase provisioning failed')
+            }
+        } catch (err) {
+            console.error('supabase provisioning error', err)
+            throw err
+        }
+    }
+
+    let role = await prisma.role.findUnique({ where: { name: 'user' } })
+    if (!role) role = await prisma.role.create({ data: { name: 'user' } })
+
+    const user = await prisma.user.create({ data: { email, name, roleId: role.id } })
+
+    await prisma.auditLog.create({ data: { action: 'register-user', metadata: { email, userId: user.id } } })
+
+    return user
+}
+
 export async function setUserRole(userId: number, roleName: string, actorId?: number) {
     let role = await prisma.role.findUnique({ where: { name: roleName } })
     if (!role) {

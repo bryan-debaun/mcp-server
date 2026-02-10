@@ -45,6 +45,21 @@
             "key": "session_cookie",
             "value": "",
             "type": "string"
+        },
+        {
+            "key": "register_email",
+            "value": "reg@example.com",
+            "type": "string"
+        },
+        {
+            "key": "register_name",
+            "value": "Reg User",
+            "type": "string"
+        },
+        {
+            "key": "register_password",
+            "value": "",
+            "type": "string"
         }
     ],
     "event": [
@@ -424,6 +439,50 @@
                     "script": {
                         "exec": [
                             "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Magic Link - Register",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\"email\":\"{{register_email}}\",\"name\":\"{{register_name}}\",\"password\":\"{{register_password}}\"}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/auth/magic-link/register",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "auth",
+                        "magic-link",
+                        "register"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 201,400 or 502', function () { pm.expect(pm.response.status).to.be.oneOf([201,400,502]); });",
+                            "pm.test('If 201, response has id and email', function () { if (pm.response.code === 201) { var json = pm.response.json(); pm.expect(json).to.have.property('id'); pm.expect(json).to.have.property('email'); } });"
                         ]
                     }
                 }

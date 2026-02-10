@@ -69,4 +69,40 @@ describe('admin service - acceptInvite', () => {
         expect(p.user.delete).toHaveBeenCalledWith({ where: { id: 1 } })
         expect(p.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: 'delete-user' }) }))
     })
+
+    it('registers a new user without password and writes audit log', async () => {
+        p.user.findUnique.mockResolvedValue(null)
+        p.role.findUnique.mockResolvedValue({ id: 2, name: 'user' })
+        p.user.create.mockResolvedValue({ id: 7, email: 'reg@example.com' })
+
+        const user = await svc.registerUser('reg@example.com', 'Reg User')
+        expect(user).toEqual({ id: 7, email: 'reg@example.com' })
+        expect(prisma.user.create).toHaveBeenCalled()
+        expect(prisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: 'register-user' }) }))
+    })
+
+    it('throws when registering an existing user', async () => {
+        p.user.findUnique.mockResolvedValue({ id: 1, email: 'exists@example.com' })
+        await expect(svc.registerUser('exists@example.com')).rejects.toThrow('user already exists')
+    })
+
+    it('rejects password when SUPABASE not configured', async () => {
+        p.user.findUnique.mockResolvedValue(null)
+        await expect(svc.registerUser('pw@example.com', 'PW', 'secret')).rejects.toThrow('password not supported')
+    })
+
+    it('propagates supabase provisioning failure and writes audit log', async () => {
+        p.user.findUnique.mockResolvedValue(null)
+        process.env.SUPABASE_SERVICE_ROLE_KEY = 'key'
+        process.env.SUPABASE_ISS = 'https://supabase.example'
+        const oldFetch = (global as any).fetch
+            ; (global as any).fetch = vi.fn().mockResolvedValue({ ok: false, text: async () => 'bad' })
+
+        await expect(svc.registerUser('s@example.com', 'S', 'secret')).rejects.toThrow('supabase provisioning failed')
+        expect(prisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: 'register-supabase-failed' }) }))
+
+        delete process.env.SUPABASE_SERVICE_ROLE_KEY
+        delete process.env.SUPABASE_ISS
+            ; (global as any).fetch = oldFetch
+    })
 })

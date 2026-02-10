@@ -33,6 +33,21 @@
             "enabled": true
         },
         {
+            "key": "register_email",
+            "value": "reg@example.com",
+            "enabled": true
+        },
+        {
+            "key": "register_name",
+            "value": "Reg User",
+            "enabled": true
+        },
+        {
+            "key": "register_password",
+            "value": "",
+            "enabled": true
+        },
+        {
             "key": "internal_admin_key",
             "value": "",
             "enabled": true
