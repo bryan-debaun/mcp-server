@@ -7,10 +7,12 @@ Steps to run a backfill (staging/production):
 1. Run migration on the database to add columns (already included in migration `20260210120000_add_book_aggregates`).
 2. On a staging instance run the backfill script (safer scripted ops):
 
-   # Dry run (no writes):
+   # Dry run (no writes)
+
    npm run backfill:books -- --dry-run
 
-   # To run against production you MUST use an explicit confirmation token and the --force flag:
+   # To run against production you MUST use an explicit confirmation token and the --force flag
+
    CONFIRM=REALLY_I_AGREE npm run backfill:books:force
 
    - Use `--batch-size` to tune chunk size (e.g., `--batch-size=500`).
