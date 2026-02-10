@@ -72,6 +72,70 @@ describe('JWT middleware', () => {
         expect(res.status).toBe(401)
     })
 
+    it('verifies a valid session cookie and attaches user', async () => {
+        process.env.SESSION_JWT_SECRET = 'session-secret'
+        const sessionToken = await new SignJWT({ userId: 42 })
+            .setProtectedHeader({ alg: 'HS256' })
+            .setSubject('cookie-user')
+            .setIssuedAt()
+            .setExpirationTime('2h')
+            .sign(new TextEncoder().encode(process.env.SESSION_JWT_SECRET) as any)
+
+        const app = express()
+        app.use(jwtMiddleware)
+        app.get('/whoami', (req, res) => res.json({ user: (req as any).user }))
+
+        const res = await request(app).get('/whoami').set('Cookie', `session=${sessionToken}`)
+        expect(res.status).toBe(200)
+        expect(res.body.user.sub).toBe('cookie-user')
+
+        delete process.env.SESSION_JWT_SECRET
+    })
+
+    it('rejects invalid session cookie', async () => {
+        const app = express()
+        app.use(jwtMiddleware)
+        app.get('/whoami', (req, res) => res.json({ user: (req as any).user }))
+
+        const res = await request(app).get('/whoami').set('Cookie', 'session=invalid-token')
+        expect(res.status).toBe(401)
+    })
+
+    it('uses Authorization header when both header and session cookie are present', async () => {
+        // build a supabase-signed token for the header
+        const token = await new SignJWT({ role: 'authenticated' })
+            .setProtectedHeader({ alg: 'RS256', kid: publicJwk.kid })
+            .setIssuer(issuer)
+            .setAudience(audience)
+            .setSubject('user-header')
+            .setIssuedAt()
+            .setExpirationTime('2h')
+            .sign(privateKey as any)
+
+        // set session cookie with different sub
+        process.env.SESSION_JWT_SECRET = 'session-secret'
+        const sessionToken = await new SignJWT({ userId: 99 })
+            .setProtectedHeader({ alg: 'HS256' })
+            .setSubject('cookie-user')
+            .setIssuedAt()
+            .setExpirationTime('2h')
+            .sign(new TextEncoder().encode(process.env.SESSION_JWT_SECRET) as any)
+
+        const app = express()
+        app.use(jwtMiddleware)
+        app.get('/whoami', (req, res) => res.json({ user: (req as any).user }))
+
+        const res = await request(app)
+            .get('/whoami')
+            .set('Authorization', `Bearer ${token}`)
+            .set('Cookie', `session=${sessionToken}`)
+
+        expect(res.status).toBe(200)
+        expect(res.body.user.sub).toBe('user-header')
+
+        delete process.env.SESSION_JWT_SECRET
+    })
+
     it('verifySupabaseJwt fails for expired token', async () => {
         const token = await new SignJWT({ role: 'authenticated' })
             .setProtectedHeader({ alg: 'RS256', kid: publicJwk.kid })

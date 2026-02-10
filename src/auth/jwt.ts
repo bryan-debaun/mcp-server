@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose'
+import { verifySessionToken } from './session.js'
 
 const jwksUrl = process.env.SUPABASE_JWKS_URL
 
@@ -54,25 +55,49 @@ export async function verifySupabaseJwt(token: string): Promise<JWTPayload> {
 export async function jwtMiddleware(req: Request, res: Response, next: NextFunction) {
     try {
         const auth = req.headers.authorization
-        if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Missing token' })
-
-        // Allow service role key to bypass JWT signature verification for server-to-server calls.
-        // Hardening: require either an internal header key OR the request IP to be in ADMIN_IP_ALLOWLIST.
         const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-        if (serviceRoleKey && auth === `Bearer ${serviceRoleKey}`) {
-            // Mark the request as coming from a service role. Authorization checks (header + IP allowlist)
-            // are enforced in the `requireAdmin` middleware which will reject with 403 if the request
-            // is not allowed. We avoid writing audit logs here to centralize auditing/metrics in one place.
-            (req as any).user = { sub: 'service', role: 'admin', service: true }
+        if (auth) {
+            // If Authorization header exists it must be a Bearer token
+            if (!auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Missing token' })
+
+            if (serviceRoleKey && auth === `Bearer ${serviceRoleKey}`) {
+                // Mark the request as coming from a service role. Authorization checks (header + IP allowlist)
+                // are enforced in the `requireAdmin` middleware which will reject with 403 if the request
+                // is not allowed. We avoid writing audit logs here to centralize auditing/metrics in one place.
+                (req as any).user = { sub: 'service', role: 'admin', service: true }
+                return next()
+            }
+
+            const token = auth.slice('Bearer '.length)
+            const payload = await verifySupabaseJwt(token)
+                // attach a minimal user object
+                ; (req as any).user = { sub: payload.sub, ...payload }
             return next()
         }
 
-        const token = auth.slice('Bearer '.length)
-        const payload = await verifySupabaseJwt(token)
-            // attach a minimal user object
-            ; (req as any).user = { sub: payload.sub, ...payload }
-        return next()
+        // No Authorization header: try session cookie
+        const cookieHeader = req.headers.cookie
+        if (cookieHeader) {
+            const cookies = Object.fromEntries(
+                cookieHeader
+                    .split(';')
+                    .map((c) => c.trim())
+                    .filter(Boolean)
+                    .map((s) => {
+                        const i = s.indexOf('=')
+                        return [s.slice(0, i), s.slice(i + 1)] as [string, string]
+                    })
+            )
+            const sessionToken = (cookies as any).session
+            if (sessionToken) {
+                const payload = await verifySessionToken(sessionToken)
+                    ; (req as any).user = { sub: payload.sub ?? payload.userId, ...payload }
+                return next()
+            }
+        }
+
+        return res.status(401).json({ error: 'Missing token' })
     } catch (err: any) {
         console.warn('JWT validation failed', err?.message ?? err)
         return res.status(401).json({ error: 'Unauthorized' })
