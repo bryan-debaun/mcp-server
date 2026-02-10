@@ -22,7 +22,14 @@
         "prisma:dev": "prisma db push && prisma generate",
         "prisma:seed": "node dist/seed.js",
         "prisma:seed:dev": "node --loader ts-node/esm prisma/seed.ts",
-        "prisma:generate": "prisma generate"
+        "prisma:generate": "prisma generate",
+        "backfill:books": "tsx scripts/ops/backfill-book-aggregates.ts",
+        "backfill:books:dry-run": "tsx scripts/ops/backfill-book-aggregates.ts --dry-run",
+        "backfill:books:force": "tsx scripts/ops/backfill-book-aggregates.ts --force --confirm-token=REALLY_I_AGREE",
+        "ops:smoke": "tsx scripts/ops/smoke-check-aggregates.ts",
+        "ops:smoke:force": "CONFIRM=REALLY_I_AGREE tsx scripts/ops/smoke-check-aggregates.ts --force",
+        "ops:sql-backfill": "tsx scripts/ops/sql-backfill-aggregates.ts",
+        "ops:sql-backfill:force": "CONFIRM=REALLY_I_AGREE tsx scripts/ops/sql-backfill-aggregates.ts --force"
     },
     "keywords": [
         "mcp",

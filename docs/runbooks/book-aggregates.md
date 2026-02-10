@@ -5,12 +5,17 @@ Purpose: Guide for running the backfill and responding to failing aggregate upda
 Steps to run a backfill (staging/production):
 
 1. Run migration on the database to add columns (already included in migration `20260210120000_add_book_aggregates`).
-2. On a staging instance run the backfill script:
+2. On a staging instance run the backfill script (safer scripted ops):
 
-   NODE_ENV=production npm run ts-node -- scripts/backfill-book-aggregates.ts
+   # Dry run (no writes):
+   npm run backfill:books -- --dry-run
 
-   - Use `BACKFILL_BATCH_SIZE` env var to tune chunk size (e.g., 500).
-   - The script will set `book_aggregates_last_backfill_timestamp` Gauge on completion.
+   # To run against production you MUST use an explicit confirmation token and the --force flag:
+   CONFIRM=REALLY_I_AGREE npm run backfill:books:force
+
+   - Use `--batch-size` to tune chunk size (e.g., `--batch-size=500`).
+   - The script will set `book_aggregates_last_backfill_timestamp` Gauge on completion (skipped in dry-run).
+   - For convenience there are wrappers: `npm run backfill:books` (normal), `npm run backfill:books:dry-run` (shorthand dry), and `npm run backfill:books:force` (production guarded).
 
 3. Verify in metrics endpoint `/metrics` that `book_aggregates_last_backfill_timestamp` and `book_aggregate_update_failures_total` look healthy.
 
