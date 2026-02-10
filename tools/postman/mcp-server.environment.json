@@ -73,10 +73,40 @@
             "enabled": true
         },
         {
+            "key": "SESSION_JWT_SECRET",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "SUPABASE_JWKS_URL",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "SUPABASE_ISS",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "SUPABASE_AUD",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "SUPABASE_SERVICE_ROLE_KEY",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "SUPABASE_ANON_KEY",
+            "value": "",
+            "enabled": true
+        },
+        {
             "key": "SESSION_RATE_LIMIT_PER_IP",
             "value": "60",
             "enabled": true
-        },
+        }
         {
             "key": "SESSION_RATE_LIMIT_WINDOW_MS",
             "value": "60000",

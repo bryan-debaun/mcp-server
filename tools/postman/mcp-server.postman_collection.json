@@ -73,6 +73,12 @@
                     "    const hasAuth = pm.request.headers.has('Authorization');",
                     "    if (!hasAuth) { pm.request.headers.add({ key: 'Authorization', value: `Bearer ${token}` }); }",
                     "  }",
+                    "  // If a session cookie is stored, add it as a Cookie header when missing",
+                    "  const session = pm.collectionVariables.get('session_cookie') || pm.environment.get('session_cookie') || '';",
+                    "  if (session) {",
+                    "    const hasCookie = pm.request.headers.has('Cookie');",
+                    "    if (!hasCookie) { pm.request.headers.add({ key: 'Cookie', value: `session=${session}` }); }",
+                    "  }",
                     "} catch (e) { console.log('mcp collection prerequest error', e); }"
                 ],
                 "type": "text/javascript"
@@ -186,6 +192,107 @@
                         "exec": [
                             "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
                             "pm.test('Contains http_requests_total', function () { pm.expect(pm.response.text()).to.include('http_requests_total'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "MCP - GET (SSE)",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/mcp",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "mcp"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200 or 401', function () { pm.expect(pm.response.status).to.be.oneOf([200,401]); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "MCP - POST",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\"test\":true}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/mcp",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "mcp"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200,201,401 or 403', function () { pm.expect(pm.response.status).to.be.oneOf([200,201,401,403]); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "MCP - POST /mcp/events",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "x-conn-id",
+                        "value": ""
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\"event\":\"ping\"}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/mcp/events",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "mcp",
+                        "events"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200,400 or 401', function () { pm.expect(pm.response.status).to.be.oneOf([200,400,401]); });"
                         ]
                     }
                 }
@@ -438,9 +545,16 @@
                     "listen": "test",
                     "script": {
                         "exec": [
-                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                            "// Ensure a session cookie is set and save it to collection variable 'session_cookie'",
+                            "pm.test('Sets session cookie and stores it', function () {",
+                            "  var sc = pm.response.headers.get('set-cookie');",
+                            "  pm.expect(sc, 'set-cookie header').to.exist;",
+                            "  var m = sc && sc.match(/session=([^;]+)/);"  if (m) { pm.collectionVariables.set('session_cookie', m[1]); } else { pm.expect.fail('session cookie not found in set-cookie'); }",
+                            "});"
                         ]
-                    }
+                    },
+                    {}
                 }
             ]
         },
