@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { prisma, initPrisma } from '../../src/db'
+import { ensureRlsTestRoleReady } from '../utils/db-utils'
 
 const RUN_DB_TESTS = process.env.RUN_DB_INTEGRATION === 'true'
 
@@ -11,11 +12,7 @@ describe('RLS integration tests', () => {
 
     beforeAll(async () => {
         await initPrisma()
-        // Ensure a non-super role exists for testing RLS behavior
-        await prisma.$executeRaw`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='rls_test_role') THEN CREATE ROLE rls_test_role NOINHERIT; END IF; END $$;`
-        // Ensure role can access public schema objects (privileges are required for non-superusers to see tables)
-        await prisma.$executeRaw`GRANT USAGE ON SCHEMA public TO rls_test_role`;
-        await prisma.$executeRaw`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO rls_test_role`;
+        await ensureRlsTestRoleReady(prisma);
         // Clean up tables used in test
         await prisma.rating.deleteMany().catch(() => { })
         await prisma.book.deleteMany().catch(() => { })
@@ -27,15 +24,21 @@ describe('RLS integration tests', () => {
         await prisma.book.deleteMany().catch(() => { })
         await prisma.user.deleteMany().catch(() => { })
         if (typeof prisma.$disconnect === 'function') await prisma.$disconnect()
-        // Clean up test role
-        await prisma.$executeRaw`DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='rls_test_role') THEN REVOKE ALL ON ALL TABLES IN SCHEMA public FROM rls_test_role; REVOKE USAGE ON SCHEMA public FROM rls_test_role; DROP ROLE IF EXISTS rls_test_role; END IF; END $$;`
+        // Intentionally do not drop the test role here to avoid races when tests run in parallel
+
     })
 
     it('enforces owner-based access for ratings (user A cannot see user B ratings)', async () => {
+        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', 'rls-a@example.com', false)`;
         const userA = await prisma.user.create({ data: { email: 'rls-a@example.com', name: 'User A' } })
+        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
+        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', 'rls-b@example.com', false)`;
         const userB = await prisma.user.create({ data: { email: 'rls-b@example.com', name: 'User B' } })
+        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
 
+        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${userA.email}, false)`;
         const book = await prisma.book.create({ data: { title: 'RLS Test Book', createdBy: userA.id } })
+        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
         const ratingA = await prisma.rating.create({ data: { bookId: book.id, userId: userA.id, rating: 5 } })
         const ratingB = await prisma.rating.create({ data: { bookId: book.id, userId: userB.id, rating: 3 } })
 

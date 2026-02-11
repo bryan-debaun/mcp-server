@@ -115,8 +115,8 @@ ALTER TABLE "Rating" ADD COLUMN IF NOT EXISTS "entity_id" INTEGER;
 -- Backfill existing book ratings into new polymorphic columns
 UPDATE "Rating" SET "entity_type" = 'book', "entity_id" = "bookId" WHERE "bookId" IS NOT NULL;
 
--- Add unique constraint and indexes for polymorphic rating uniqueness
-ALTER TABLE "Rating" ADD CONSTRAINT IF NOT EXISTS "Rating_entity_user_unique" UNIQUE ("entity_type", "entity_id", "userId");
+-- Add unique index and indexes for polymorphic rating uniqueness
+CREATE UNIQUE INDEX IF NOT EXISTS "Rating_entity_user_unique" ON "Rating" ("entity_type", "entity_id", "userId");
 CREATE INDEX IF NOT EXISTS "Rating_entity_type_idx" ON "Rating" ("entity_type");
 CREATE INDEX IF NOT EXISTS "Rating_entity_id_idx" ON "Rating" ("entity_id");
 CREATE INDEX IF NOT EXISTS "Rating_entity_composite_idx" ON "Rating" ("entity_type", "entity_id");

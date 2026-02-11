@@ -62,7 +62,9 @@ export class MoviesController extends Controller {
             return result as Movie;
         } catch (err: any) {
             console.error('get-movie failed', err);
-            throw new Error('Movie not found');
+            const e: any = new Error('Movie not found');
+            e.status = 404;
+            throw e;
         }
     }
 

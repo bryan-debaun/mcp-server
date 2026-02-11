@@ -109,6 +109,7 @@ model Book {
   createdBy   Int?
   creator     User?        @relation("BookCreator", fields: [createdBy], references: [id])
   authors     BookAuthor[]
+  ratings     Rating[]
 
   // Aggregates maintained for fast read access
   // - averageRating: numeric(5,2) — nullable for books with no ratings
@@ -192,8 +193,10 @@ model ContentCreator {
 
 model Rating {
   id         Int      @id @default(autoincrement())
-  entityType String   @map("entity_type")
-  entityId   Int      @map("entity_id")
+  entityType String?  @map("entity_type")
+  entityId   Int?     @map("entity_id")
+  bookId     Int?     @map("bookId")
+  book       Book?    @relation(fields: [bookId], references: [id])
   userId     Int
   user       User     @relation("UserRatings", fields: [userId], references: [id])
   rating     Int

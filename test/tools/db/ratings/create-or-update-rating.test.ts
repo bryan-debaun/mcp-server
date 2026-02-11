@@ -11,7 +11,7 @@ describe('create-or-update-rating tool', () => {
 
         const tx = {
             rating: { upsert: upsertMock, aggregate: aggregateMock },
-            book: { update: bookUpdateMock },
+            book: { update: bookUpdateMock, findUnique: vi.fn(async () => ({ id: 11, title: 'RLS Test Book' })) },
             ratingAggregate: { upsert: vi.fn(async () => ({})) },
             $executeRaw: vi.fn(async () => ({}))
         }
