@@ -281,6 +281,88 @@ Delete an author. Also removes all BookAuthor relationships (books remain, just 
 
 List ratings with optional filtering.
 
+---
+
+## Movie Tools
+
+### `list-movies`
+
+List movies with optional filtering and pagination.
+
+**Parameters:**
+
+- `limit` (number, optional): Maximum number of results (default: 50)
+- `offset` (number, optional): Number of results to skip for pagination
+- `search` (string, optional): Search in title and description
+- `minRating` (number, optional): Minimum average rating (1-10)
+- `status` (string, optional): Filter by status
+
+**Returns:**
+
+```json
+{ "movies": [ /* movie objects */ ], "total": 10 }
+```
+
+### `get-movie`
+
+Get detailed information about a specific movie.
+
+**Parameters:**
+
+- `id` (number, required): Movie ID
+
+### `create-movie` (Admin Only)
+
+Create a new movie (IASN, IMDB ID supported).
+
+**Parameters:**
+
+- `title` (string, required)
+- `description` (string, optional)
+- `iasn` (string, optional, unique)
+- `imdbId` (string, optional, unique)
+- `releasedAt` (string, optional)
+- `createdBy` (number, optional)
+
+### `update-movie` (Admin Only)
+
+Update an existing movie's details.
+
+### `delete-movie` (Admin Only)
+
+Delete a movie (admin only).
+
+---
+
+## VideoGame Tools
+
+### `list-videogames`
+
+List video games with optional filters (platform, search).
+
+**Parameters:**
+
+- `platform` (string, optional): Filter by `PlayStation`, `Xbox`, `PC`
+- `search` (string, optional)
+- `limit`, `offset` (pagination)
+
+### `get-videogame`, `create-videogame`, `update-videogame`, `delete-videogame`
+
+CRUD tools for video games. `create-videogame` requires `platform` (PlayStation|Xbox|PC) and supports `igdbId`.
+
+---
+
+## Content Creator Tools
+
+### `list-content-creators`
+
+List content creators with optional search and pagination.
+
+### `get-content-creator`, `create-content-creator`, `update-content-creator`, `delete-content-creator`
+
+CRUD tools for `ContentCreator` including `description` and `website` fields.
+
+
 **Parameters:**
 
 - `limit` (number, optional): Maximum results (default: 50)
