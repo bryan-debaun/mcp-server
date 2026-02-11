@@ -18,24 +18,34 @@ export function registerCreateOrUpdateRatingTool(server: McpServer): void {
         config,
         async (args: any): Promise<CallToolResult> => {
             try {
-                const { bookId, userId, rating, review } = args;
+                const { bookId, entityType: argEntityType, entityId: argEntityId, userId, rating, review } = args;
+
+                // Determine target entity (backwards-compatible with bookId)
+                const entityType = argEntityType ?? (bookId !== undefined ? 'book' : undefined);
+                const entityId = argEntityId ?? (bookId !== undefined ? bookId : undefined);
+
+                if (!entityType || entityId === undefined) {
+                    return createErrorResult('entityType and entityId (or bookId) are required');
+                }
 
                 // Validate rating range
                 if (rating < 1 || rating > 10) {
                     return createErrorResult("Rating must be between 1 and 10");
                 }
 
-                // Perform the upsert and update book aggregates inside a single transaction
+                // Perform the upsert and update aggregates inside a single transaction
                 const ratingRecord = await prisma.$transaction(async (tx: any) => {
                     const r = await tx.rating.upsert({
                         where: {
-                            bookId_userId: {
-                                bookId,
+                            entityType_entityId_userId: {
+                                entityType,
+                                entityId,
                                 userId
                             }
                         },
                         create: {
-                            bookId,
+                            entityType,
+                            entityId,
                             userId,
                             rating,
                             review
@@ -45,12 +55,6 @@ export function registerCreateOrUpdateRatingTool(server: McpServer): void {
                             review
                         },
                         include: {
-                            book: {
-                                select: {
-                                    id: true,
-                                    title: true
-                                }
-                            },
                             user: {
                                 select: {
                                     id: true,
@@ -61,11 +65,18 @@ export function registerCreateOrUpdateRatingTool(server: McpServer): void {
                         }
                     });
 
-                    // Lock the book row to avoid races
-                    await tx.$executeRaw`SELECT id FROM "Book" WHERE id = ${bookId} FOR UPDATE`;
+                    // Lock the entity row to avoid races and update aggregates for the specific entity type
+                    if (entityType === 'book') {
+                        await tx.$executeRaw`SELECT id FROM "Book" WHERE id = ${entityId} FOR UPDATE`;
+                    } else if (entityType === 'movie') {
+                        await tx.$executeRaw`SELECT id FROM "Movie" WHERE id = ${entityId} FOR UPDATE`;
+                    } else if (entityType === 'videogame' || entityType === 'videogame' || entityType === 'videoGame') {
+                        await tx.$executeRaw`SELECT id FROM "VideoGame" WHERE id = ${entityId} FOR UPDATE`;
+                    }
 
+                    // Compute aggregates generically from Rating table
                     const agg = await tx.rating.aggregate({
-                        where: { bookId },
+                        where: { entityType, entityId },
                         _count: { _all: true },
                         _avg: { rating: true }
                     });
@@ -75,20 +86,45 @@ export function registerCreateOrUpdateRatingTool(server: McpServer): void {
                         ? Number(Number(agg._avg.rating).toFixed(2))
                         : null;
 
-                    await tx.book.update({
-                        where: { id: bookId },
-                        data: {
-                            ratingCount: count,
-                            averageRating: avg
-                        }
-                    });
+                    // Persist aggregates back to the relevant parent table when applicable
+                    if (entityType === 'book') {
+                        await tx.book.update({
+                            where: { id: entityId },
+                            data: { ratingCount: count, averageRating: avg }
+                        });
+                    } else if (entityType === 'movie') {
+                        await tx.movie.update({
+                            where: { id: entityId },
+                            data: { ratingCount: count, averageRating: avg }
+                        });
+                    } else if (entityType === 'videogame' || entityType === 'videoGame' || entityType === 'videogame') {
+                        await tx.videoGame.update({
+                            where: { id: entityId },
+                            data: { ratingCount: count, averageRating: avg }
+                        });
+                    }
 
                     // Upsert into RatingAggregate as well for polymorphic support
                     await tx.ratingAggregate.upsert({
-                        where: { entityType_entityId: { entityType: 'book', entityId: bookId } },
-                        create: { entityType: 'book', entityId: bookId, ratingCount: count, averageRating: avg },
+                        where: { entityType_entityId: { entityType, entityId } },
+                        create: { entityType, entityId, ratingCount: count, averageRating: avg },
                         update: { ratingCount: count, averageRating: avg }
                     });
+
+                    // Attach minimal entity info to the returned object for convenience
+                    // Fetch the parent entity title for book/movie/videogame
+                    if (entityType === 'book') {
+                        const b = await tx.book.findUnique({ where: { id: entityId }, select: { id: true, title: true } });
+                        return { ...r, book: b };
+                    }
+                    if (entityType === 'movie') {
+                        const m = await tx.movie.findUnique({ where: { id: entityId }, select: { id: true, title: true } });
+                        return { ...r, movie: m };
+                    }
+                    if (entityType === 'videogame' || entityType === 'videoGame') {
+                        const g = await tx.videoGame.findUnique({ where: { id: entityId }, select: { id: true, title: true, platform: true } });
+                        return { ...r, videoGame: g };
+                    }
 
                     return r;
                 });

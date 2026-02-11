@@ -27,23 +27,26 @@ model Role {
 }
 
 model User {
-  id             Int             @id @default(autoincrement())
-  email          String          @unique
-  name           String?
-  isAdmin        Boolean         @default(false) @map("is_admin")
-  roleId         Int?
-  role           Role?           @relation(fields: [roleId], references: [id])
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  blocked        Boolean         @default(false)
-  deletedAt      DateTime?
-  invites        Invite[]
-  auditLogs      AuditLog[]
-  authorsCreated Author[]        @relation("AuthorCreator")
-  booksCreated   Book[]          @relation("BookCreator")
-  ratings        Rating[]        @relation("UserRatings")
-  authMagicLinks AuthMagicLink[]
-  external_id    String?         @map("external_id")
+  id                     Int              @id @default(autoincrement())
+  email                  String           @unique
+  name                   String?
+  isAdmin                Boolean          @default(false) @map("is_admin")
+  roleId                 Int?
+  role                   Role?            @relation(fields: [roleId], references: [id])
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  blocked                Boolean          @default(false)
+  deletedAt              DateTime?
+  invites                Invite[]
+  auditLogs              AuditLog[]
+  authorsCreated         Author[]         @relation("AuthorCreator")
+  booksCreated           Book[]           @relation("BookCreator")
+  moviesCreated          Movie[]          @relation("MovieCreator")
+  videoGamesCreated      VideoGame[]      @relation("VideoGameCreator")
+  contentCreatorsCreated ContentCreator[] @relation("ContentCreatorCreator")
+  ratings                Rating[]         @relation("UserRatings")
+  authMagicLinks         AuthMagicLink[]
+  external_id            String?          @map("external_id")
 
   @@index([isAdmin])
   @@index([external_id])
@@ -106,7 +109,6 @@ model Book {
   createdBy   Int?
   creator     User?        @relation("BookCreator", fields: [createdBy], references: [id])
   authors     BookAuthor[]
-  ratings     Rating[]
 
   // Aggregates maintained for fast read access
   // - averageRating: numeric(5,2) — nullable for books with no ratings
@@ -129,20 +131,79 @@ model BookAuthor {
   @@index([authorId])
 }
 
-model Rating {
-  id        Int      @id @default(autoincrement())
-  bookId    Int
-  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  userId    Int
-  user      User     @relation("UserRatings", fields: [userId], references: [id])
-  rating    Int
-  review    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum Platform {
+  PlayStation
+  Xbox
+  PC
+}
 
-  @@unique([bookId, userId])
+model Movie {
+  id          Int        @id @default(autoincrement())
+  title       String
+  status      ItemStatus @default(NOT_STARTED)
+  description String?
+  iasn        String?    @unique
+  imdbId      String?    @unique @map("imdb_id")
+  releasedAt  DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  createdBy   Int?
+  creator     User?      @relation("MovieCreator", fields: [createdBy], references: [id])
+
+  averageRating Decimal? @map("average_rating") @db.Decimal(5, 2)
+  ratingCount   Int      @default(0) @map("rating_count")
+
+  @@index([title])
+  @@index([iasn])
+}
+
+model VideoGame {
+  id          Int        @id @default(autoincrement())
+  title       String
+  status      ItemStatus @default(NOT_STARTED)
+  description String?
+  platform    Platform
+  igdbId      String?    @unique @map("igdb_id")
+  releasedAt  DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  createdBy   Int?
+  creator     User?      @relation("VideoGameCreator", fields: [createdBy], references: [id])
+
+  averageRating Decimal? @map("average_rating") @db.Decimal(5, 2)
+  ratingCount   Int      @default(0) @map("rating_count")
+
+  @@index([title])
+  @@index([platform])
+}
+
+model ContentCreator {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  website     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   Int?
+  creator     User?    @relation("ContentCreatorCreator", fields: [createdBy], references: [id])
+
+  @@index([name])
+}
+
+model Rating {
+  id         Int      @id @default(autoincrement())
+  entityType String   @map("entity_type")
+  entityId   Int      @map("entity_id")
+  userId     Int
+  user       User     @relation("UserRatings", fields: [userId], references: [id])
+  rating     Int
+  review     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([entityType, entityId, userId])
   @@index([userId])
-  @@index([bookId])
+  @@index([entityType, entityId])
 }
 
 // Aggregates table for ratings across multiple entity types (books, movies, games, etc.)

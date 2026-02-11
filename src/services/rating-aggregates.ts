@@ -5,45 +5,38 @@ export async function updateAggregates(entityType: string, entityId: number, tx?
     const client = tx || prisma
 
     // Compute aggregates from Rating table for the given entityType/entityId
-    // Currently Ratings are scoped to books only, so for entityType === 'book' we use Rating.bookId
+    const agg = await client.rating.aggregate({
+        where: { entityType, entityId },
+        _count: { _all: true },
+        _avg: { rating: true }
+    })
 
-    if (entityType === 'book') {
-        const agg = await client.rating.aggregate({
-            where: { bookId: entityId },
-            _count: { _all: true },
-            _avg: { rating: true }
-        })
+    const count = agg._count?._all || 0
+    const avg = agg._avg?.rating !== null && agg._avg?.rating !== undefined
+        ? Number(Number(agg._avg.rating).toFixed(2))
+        : null
 
-        const count = agg._count?._all || 0
-        const avg = agg._avg?.rating !== null && agg._avg?.rating !== undefined
-            ? Number(Number(agg._avg.rating).toFixed(2))
-            : null
-
-        // Upsert into RatingAggregate
-        await client.ratingAggregate.upsert({
-            where: {
-                entityType_entityId: {
-                    entityType,
-                    entityId
-                }
-            },
-            create: {
+    // Upsert into RatingAggregate
+    await client.ratingAggregate.upsert({
+        where: {
+            entityType_entityId: {
                 entityType,
-                entityId,
-                ratingCount: count,
-                averageRating: avg
-            },
-            update: {
-                ratingCount: count,
-                averageRating: avg
+                entityId
             }
-        })
+        },
+        create: {
+            entityType,
+            entityId,
+            ratingCount: count,
+            averageRating: avg
+        },
+        update: {
+            ratingCount: count,
+            averageRating: avg
+        }
+    })
 
-        return { count, avg }
-    }
-
-    // Future entity types can be added here
-    throw new Error(`Unsupported entityType: ${entityType}`)
+    return { count, avg }
 }
 
 export async function backfillAllBookAggregates(batchSize = 200) {
