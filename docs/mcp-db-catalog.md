@@ -362,7 +362,6 @@ List content creators with optional search and pagination.
 
 CRUD tools for `ContentCreator` including `description` and `website` fields.
 
-
 **Parameters:**
 
 - `limit` (number, optional): Maximum results (default: 50)

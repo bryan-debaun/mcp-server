@@ -31,7 +31,7 @@ describe('RLS content entities tests', () => {
 
     it('enforces creator/admin writes for Movie', async () => {
         const userA = await prisma.user.create({ data: { email: 'rls-movie-a@example.com', name: 'Movie A' } })
-        const userB = await prisma.user.create({ data: { email: 'rls-movie-b@example.com', name: 'Movie B' } })
+        await prisma.user.create({ data: { email: 'rls-movie-b@example.com', name: 'Movie B' } })
 
         const movie = await prisma.movie.create({ data: { title: 'RLS Movie', createdBy: userA.id } })
 
@@ -63,7 +63,7 @@ describe('RLS content entities tests', () => {
 
     it('enforces creator/admin writes for VideoGame', async () => {
         const userA = await prisma.user.create({ data: { email: 'rls-game-a@example.com', name: 'Game A' } })
-        const userB = await prisma.user.create({ data: { email: 'rls-game-b@example.com', name: 'Game B' } })
+        await prisma.user.create({ data: { email: 'rls-game-b@example.com', name: 'Game B' } })
 
         const game = await prisma.videoGame.create({ data: { title: 'RLS Game', platform: 'PC', createdBy: userA.id } })
 
@@ -92,7 +92,7 @@ describe('RLS content entities tests', () => {
 
     it('enforces creator/admin writes for ContentCreator', async () => {
         const userA = await prisma.user.create({ data: { email: 'rls-cc-a@example.com', name: 'CC A' } })
-        const userB = await prisma.user.create({ data: { email: 'rls-cc-b@example.com', name: 'CC B' } })
+        await prisma.user.create({ data: { email: 'rls-cc-b@example.com', name: 'CC B' } })
 
         const cc = await prisma.contentCreator.create({ data: { name: 'RLS CC', createdBy: userA.id } })
 
