@@ -17,8 +17,7 @@ export async function runSeed(prismaClient?: any) {
     try {
         const existingAdmin = await db.role.findUnique({ where: { name: 'admin' } })
         if (existingAdmin) {
-            console.log('DB already seeded; skipping.')
-            return
+            console.log('DB already seeded; proceeding to ensure content seed entries exist.')
         }
     } catch (err) {
         // If the check fails (e.g., table missing), proceed with seeding to surface errors
@@ -104,7 +103,7 @@ export async function runSeed(prismaClient?: any) {
 
     // Create sample books
     const book1 = await db.book.upsert({
-        where: { id: 1 },
+        where: { isbn: '9780765326355' },
         update: {},
         create: {
             title: 'The Way of Kings',
@@ -117,7 +116,7 @@ export async function runSeed(prismaClient?: any) {
     })
 
     const book2 = await db.book.upsert({
-        where: { id: 2 },
+        where: { isbn: '9780756404079' },
         update: {},
         create: {
             title: 'The Name of the Wind',
@@ -130,7 +129,7 @@ export async function runSeed(prismaClient?: any) {
     })
 
     const book3 = await db.book.upsert({
-        where: { id: 3 },
+        where: { isbn: '9780765311788' },
         update: {},
         create: {
             title: 'Mistborn: The Final Empire',
@@ -172,9 +171,11 @@ export async function runSeed(prismaClient?: any) {
 
     // Create sample ratings
     const rating1 = await db.rating.upsert({
-        where: { bookId_userId: { bookId: book1.id, userId: bryanAdmin.id } },
+        where: { entityType_entityId_userId: { entityType: 'book', entityId: book1.id, userId: bryanAdmin.id } },
         update: {},
         create: {
+            entityType: 'book',
+            entityId: book1.id,
             bookId: book1.id,
             userId: bryanAdmin.id,
             rating: 10,
@@ -183,13 +184,129 @@ export async function runSeed(prismaClient?: any) {
     })
 
     const rating2 = await db.rating.upsert({
-        where: { bookId_userId: { bookId: book2.id, userId: admin.id } },
+        where: { entityType_entityId_userId: { entityType: 'book', entityId: book2.id, userId: admin.id } },
         update: {},
         create: {
+            entityType: 'book',
+            entityId: book2.id,
             bookId: book2.id,
             userId: admin.id,
             rating: 9,
             review: 'Beautiful prose and compelling story.',
+        },
+    })
+
+    // Sample Movies
+    const movie1 = await db.movie.upsert({
+        where: { id: 1 },
+        update: {},
+        create: {
+            title: 'Dune',
+            description: 'Epic science fiction adaptation',
+            iasn: 'IASN-001',
+            imdbId: 'tt1160419',
+            releasedAt: new Date('2021-10-22'),
+            createdBy: bryanAdmin.id,
+        },
+    })
+
+    const movie2 = await db.movie.upsert({
+        where: { id: 2 },
+        update: {},
+        create: {
+            title: 'Blade Runner 2049',
+            description: 'Neo-noir science fiction film',
+            iasn: 'IASN-002',
+            imdbId: 'tt1856101',
+            releasedAt: new Date('2017-10-6'),
+            createdBy: bryanAdmin.id,
+        },
+    })
+
+    const movie3 = await db.movie.upsert({
+        where: { id: 3 },
+        update: {},
+        create: {
+            title: 'The Matrix',
+            description: 'Groundbreaking sci-fi action film',
+            iasn: 'IASN-003',
+            imdbId: 'tt0133093',
+            releasedAt: new Date('1999-03-31'),
+            createdBy: bryanAdmin.id,
+        },
+    })
+
+    // Sample VideoGames
+    const game1 = await db.videoGame.upsert({
+        where: { id: 1 },
+        update: {},
+        create: {
+            title: 'The Witcher 3',
+            description: 'Open world RPG',
+            platform: 'PC',
+            igdbId: 'wg-001',
+            releasedAt: new Date('2015-05-18'),
+            createdBy: bryanAdmin.id,
+        },
+    })
+
+    const game2 = await db.videoGame.upsert({
+        where: { id: 2 },
+        update: {},
+        create: {
+            title: 'God of War',
+            description: 'Action-adventure',
+            platform: 'PlayStation',
+            igdbId: 'wg-002',
+            releasedAt: new Date('2018-04-20'),
+            createdBy: bryanAdmin.id,
+        },
+    })
+
+    const game3 = await db.videoGame.upsert({
+        where: { id: 3 },
+        update: {},
+        create: {
+            title: 'Halo Infinite',
+            description: 'First-person shooter',
+            platform: 'Xbox',
+            igdbId: 'wg-003',
+            releasedAt: new Date('2021-12-08'),
+            createdBy: bryanAdmin.id,
+        },
+    })
+
+    // Sample ContentCreators
+    const cc1 = await db.contentCreator.upsert({
+        where: { id: 1 },
+        update: {},
+        create: {
+            name: 'GameTheory',
+            description: 'Video game analysis & lore',
+            website: 'https://youtube.com/gametheory',
+            createdBy: bryanAdmin.id,
+        },
+    })
+
+    const cc2 = await db.contentCreator.upsert({
+        where: { id: 2 },
+        update: {},
+        create: {
+            name: 'FilmCritic',
+            description: 'Film reviews and essays',
+            website: 'https://filmcritic.example',
+            createdBy: bryanAdmin.id,
+        },
+    })
+
+    const cc3 = await db.contentCreator.upsert({
+        where: { id: 3 },
+        update: {},
+        create: {
+            name: 'IndieDevChannel',
+            description: 'Indie game dev diaries',
+            website: 'https://indiedev.example',
+            createdBy: bryanAdmin.id,
         },
     })
 
@@ -198,7 +315,10 @@ export async function runSeed(prismaClient?: any) {
         users: { bryanAdmin, admin },
         authors: { author1, author2 },
         books: { book1, book2, book3 },
-        ratings: { rating1, rating2 }
+        ratings: { rating1, rating2 },
+        movies: { movie1, movie2, movie3 },
+        games: { game1, game2, game3 },
+        contentCreators: { cc1, cc2, cc3 }
     })
 }
 

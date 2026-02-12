@@ -77,6 +77,30 @@ export async function initPrisma() {
             deleteMany: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
         }
 
+        prisma.movie = {
+            findMany: async (_opts?: any) => [],
+            findUnique: async (_opts?: any) => null,
+            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
+            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+            delete: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+        }
+
+        prisma.videoGame = {
+            findMany: async (_opts?: any) => [],
+            findUnique: async (_opts?: any) => null,
+            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
+            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+            delete: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+        }
+
+        prisma.contentCreator = {
+            findMany: async (_opts?: any) => [],
+            findUnique: async (_opts?: any) => null,
+            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
+            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+            delete: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
+        }
+
         prisma.rating = {
             findMany: async (_opts?: any) => [],
             findUnique: async (_opts?: any) => null,
@@ -86,7 +110,6 @@ export async function initPrisma() {
             upsert: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
             delete: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
         }
-
         prismaReadyPromise = Promise.resolve()
         return prismaReadyPromise
     }
@@ -130,7 +153,7 @@ export async function initPrisma() {
 
             // Explicitly forward model accessors (user, book, etc.) to ensure they're available
             // These are often defined as getters on the Prisma client and may not be enumerable
-            const modelNames = ['user', 'invite', 'role', 'auditLog', 'accessRequest', 'author', 'book', 'bookAuthor', 'rating', 'authMagicLink'];
+            const modelNames = ['user', 'invite', 'role', 'auditLog', 'accessRequest', 'author', 'book', 'bookAuthor', 'movie', 'videoGame', 'contentCreator', 'rating', 'authMagicLink'];
             for (const modelName of modelNames) {
                 if (modelName in real) {
                     Object.defineProperty(prisma, modelName, {

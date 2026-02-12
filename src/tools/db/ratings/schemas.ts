@@ -3,12 +3,14 @@
 export const CreateOrUpdateRatingInputSchema = {
     type: "object",
     properties: {
-        bookId: { type: "number", description: "Book ID to rate" },
+        bookId: { type: "number", description: "Book ID to rate (backwards-compatible)" },
+        entityType: { type: "string", description: "Entity type (e.g., 'book','movie','videogame')" },
+        entityId: { type: "number", description: "ID of the entity being rated" },
         userId: { type: "number", description: "User ID creating the rating" },
         rating: { type: "number", description: "Rating value (1-10)", minimum: 1, maximum: 10 },
         review: { type: "string", description: "Optional review text" },
     },
-    required: ["bookId", "userId", "rating"],
+    required: ["userId", "rating"],
 } as const;
 
 export const DeleteRatingInputSchema = {
@@ -22,7 +24,9 @@ export const DeleteRatingInputSchema = {
 export const ListRatingsInputSchema = {
     type: "object",
     properties: {
-        bookId: { type: "number", description: "Filter by book ID" },
+        bookId: { type: "number", description: "Filter by book ID (backwards-compatible)" },
+        entityType: { type: "string", description: "Filter by entity type (e.g., 'book','movie','videogame')" },
+        entityId: { type: "number", description: "Filter by entity ID" },
         userId: { type: "number", description: "Filter by user ID" },
         limit: { type: "number", description: "Maximum number of results (default 50)" },
         offset: { type: "number", description: "Number of results to skip (default 0)" },
