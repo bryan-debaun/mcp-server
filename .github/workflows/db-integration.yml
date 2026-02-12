@@ -37,8 +37,8 @@ jobs:
         run: echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/mcp_test" >> $GITHUB_ENV
       - name: Parse SQL migrations (fast syntax check) 🔍
         run: npm run sql:parse
-      - name: Run Prisma DB push & generate
-        run: npx prisma db push && npx prisma generate
+      - name: Run Prisma migrate deploy & generate
+        run: npx prisma migrate deploy && npx prisma generate
       - name: Validate SQL against test DB (apply statements) ✅
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mcp_test
