@@ -13,11 +13,14 @@ const prisma = new PrismaClient({ adapter })
 export async function runSeed(prismaClient?: any) {
     const db = prismaClient ?? prisma
 
-    // Quick presence check to avoid re-seeding on every cold start
+    // Quick presence check to avoid re-seeding on every cold start.
+    // If the canonical marker (admin role) exists we EXIT EARLY to prevent
+    // runtime re-seeding on cold-starts (avoids repeated failures / deploy loops).
     try {
         const existingAdmin = await db.role.findUnique({ where: { name: 'admin' } })
         if (existingAdmin) {
-            console.log('DB already seeded; proceeding to ensure content seed entries exist.')
+            console.log('DB already seeded; skipping.')
+            return
         }
     } catch (err) {
         // If the check fails (e.g., table missing), proceed with seeding to surface errors
@@ -197,8 +200,10 @@ export async function runSeed(prismaClient?: any) {
     })
 
     // Sample Movies
+    // Use the unique `iasn` as the upsert key so creating this seed won't
+    // conflict if a different row already exists with the same IASN.
     const movie1 = await db.movie.upsert({
-        where: { id: 1 },
+        where: { iasn: 'IASN-001' },
         update: {},
         create: {
             title: 'Dune',
@@ -211,7 +216,7 @@ export async function runSeed(prismaClient?: any) {
     })
 
     const movie2 = await db.movie.upsert({
-        where: { id: 2 },
+        where: { iasn: 'IASN-002' },
         update: {},
         create: {
             title: 'Blade Runner 2049',
@@ -224,7 +229,7 @@ export async function runSeed(prismaClient?: any) {
     })
 
     const movie3 = await db.movie.upsert({
-        where: { id: 3 },
+        where: { iasn: 'IASN-003' },
         update: {},
         create: {
             title: 'The Matrix',
