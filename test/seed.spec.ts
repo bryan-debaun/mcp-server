@@ -18,6 +18,7 @@ describe('prisma seed', () => {
             user: { upsert: vi.fn().mockResolvedValue({ id: 1 }) },
             author: { upsert: vi.fn().mockResolvedValue({ id: 1 }) },
             book: { upsert: vi.fn().mockResolvedValue({ id: 1 }) },
+            movie: { upsert: vi.fn().mockResolvedValue({ id: 1, iasn: 'IASN-001' }) },
             bookAuthor: { upsert: vi.fn().mockResolvedValue({}) },
             rating: { upsert: vi.fn().mockResolvedValue({}) },
             $disconnect: vi.fn().mockResolvedValue(undefined),
@@ -95,6 +96,15 @@ describe('prisma seed', () => {
             expect(arg).toHaveProperty('create')
             expect(arg.create).toHaveProperty('status', 'NOT_STARTED')
         })
+    })
+
+    it('handles existing movie with same iasn but different id without throwing', async () => {
+        // Simulate a DB row that already exists with the same IASN but different id
+        mockPrisma.role.findUnique.mockResolvedValue(null)
+        mockPrisma.movie.upsert = vi.fn().mockResolvedValue({ id: 99, iasn: 'IASN-001' })
+
+        await expect(runSeed(mockPrisma)).resolves.not.toThrow()
+        expect(mockPrisma.movie.upsert).toHaveBeenCalledWith(expect.objectContaining({ where: { iasn: 'IASN-001' } }))
     })
 
     it('continues to seed when presence check throws (surfaces errors via log)', async () => {
