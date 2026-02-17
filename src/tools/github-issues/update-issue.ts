@@ -1,13 +1,18 @@
+import fs from "fs";
+import os from "os";
+import path from "path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { UpdateIssueInputSchema } from "./schemas.js";
 import { runGhCommand } from "./gh-cli.js";
 import { createSuccessResult, createErrorResult } from "./results.js";
+import { jsonToMarkdown } from "./json-to-markdown.js";
+import { ensureLabelsExist } from "./label-helper.js";
 
 const name = "update-issue";
 const config = {
     title: "Update Issue",
-    description: "Update a GitHub issue's title, body, labels, or add a comment",
+    description: "Update a GitHub issue's title, body (Markdown allowed), labels, or add a comment",
     inputSchema: UpdateIssueInputSchema
 };
 
@@ -19,12 +24,16 @@ export function registerUpdateIssueTool(server: McpServer): void {
         name,
         config,
         async (args: any): Promise<CallToolResult> => {
+            let tempFile: string | undefined;
+
             try {
-                const { repo, issueNumber, title, body, labels, comment } = args as {
+                const { repo, issueNumber, title, body, bodyFile, bodyJson, labels, comment } = args as {
                     repo: string;
                     issueNumber: number;
                     title?: string;
                     body?: string;
+                    bodyFile?: string;
+                    bodyJson?: any;
                     labels?: string;
                     comment?: string;
                 };
@@ -32,7 +41,7 @@ export function registerUpdateIssueTool(server: McpServer): void {
                 const updates: string[] = [];
 
                 // Update issue fields if provided
-                if (title || body || labels) {
+                if (title || body || labels || bodyFile || bodyJson) {
                     const editArgs = [
                         "issue", "edit",
                         String(issueNumber),
@@ -44,20 +53,38 @@ export function registerUpdateIssueTool(server: McpServer): void {
                         updates.push("title");
                     }
 
-                    if (body) {
-                        editArgs.push("--body", `"${body.replace(/"/g, '\\"')}"`);
-                        updates.push("body");
-                    }
-
+                    // Ensure labels exist before assigning
                     if (labels) {
+                        const requested = labels.split(",").map(s => s.trim()).filter(Boolean);
+                        await ensureLabelsExist(repo, requested);
                         editArgs.push("--add-label", labels);
                         updates.push("labels");
+                    }
+
+                    // Body handling: prefer file when provided / multi-line / JSON
+                    if (bodyFile) {
+                        editArgs.push("--body-file", bodyFile);
+                        updates.push("body");
+                    } else if (bodyJson !== undefined) {
+                        const md = jsonToMarkdown(bodyJson);
+                        tempFile = path.join(os.tmpdir(), `mcp-issue-body-${Date.now()}.md`);
+                        fs.writeFileSync(tempFile, md, "utf8");
+                        editArgs.push("--body-file", tempFile);
+                        updates.push("body");
+                    } else if (body && body.includes("\n")) {
+                        tempFile = path.join(os.tmpdir(), `mcp-issue-body-${Date.now()}.md`);
+                        fs.writeFileSync(tempFile, body, "utf8");
+                        editArgs.push("--body-file", tempFile);
+                        updates.push("body");
+                    } else if (body) {
+                        editArgs.push("--body", `"${body.replace(/"/g, '\\"')}"`);
+                        updates.push("body");
                     }
 
                     await runGhCommand(editArgs);
                 }
 
-                // Add comment if provided
+                // Add comment if provided (single-line comments continue to use --body)
                 if (comment) {
                     const commentArgs = [
                         "issue", "comment",
@@ -85,6 +112,10 @@ export function registerUpdateIssueTool(server: McpServer): void {
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
                 return createErrorResult(message);
+            } finally {
+                if (tempFile) {
+                    try { fs.unlinkSync(tempFile); } catch { /* ignore */ }
+                }
             }
         }
     );

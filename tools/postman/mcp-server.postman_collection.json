@@ -171,6 +171,107 @@
             ]
         },
         {
+            "name": "Spotify - Now Playing",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/spotify/now-playing",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "spotify",
+                        "now-playing"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                            "pm.test('Has source and timestamp', function () { var json = pm.response.json(); pm.expect(json).to.have.property('source'); pm.expect(json).to.have.property('timestamp'); });",
+                            "pm.test('is_playing is boolean', function () { var json = pm.response.json(); pm.expect(typeof json.is_playing).to.equal('boolean'); });",
+                            "pm.test('source is spotify', function () { var json = pm.response.json(); pm.expect(json.source).to.equal('spotify'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Spotify - Liked Tracks",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/spotify/liked?limit=5",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "spotify",
+                        "liked"
+                    ],
+                    "query": [
+                        {
+                            "key": "limit",
+                            "value": "5"
+                        }
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200,500 or 401', function () { pm.expect(pm.response.status).to.be.oneOf([200,401,500]); });",
+                            "pm.test('If 200, response is JSON object', function () { if (pm.response.code === 200) { var json = pm.response.json(); pm.expect(json).to.be.an('object'); } });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Spotify - Playlists",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/spotify/playlists?limit=10",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "spotify",
+                        "playlists"
+                    ],
+                    "query": [
+                        {
+                            "key": "limit",
+                            "value": "10"
+                        }
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200,500 or 401', function () { pm.expect(pm.response.status).to.be.oneOf([200,401,500]); });",
+                            "pm.test('If 200, response is JSON object', function () { if (pm.response.code === 200) { var json = pm.response.json(); pm.expect(json).to.be.an('object'); } });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
             "name": "Metrics",
             "request": {
                 "method": "GET",

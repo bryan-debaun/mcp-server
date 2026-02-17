@@ -48,7 +48,9 @@ export const GetIssueInputSchema = {
 export const CreateIssueInputSchema = {
     repo: RepoSchema,
     title: z.string().min(1).describe("Issue title"),
-    body: z.string().optional().describe("Issue body/description"),
+    body: z.string().optional().describe("Issue body/description (Markdown allowed)"),
+    bodyFile: z.string().optional().describe("Path to a Markdown file to use as the issue body"),
+    bodyJson: z.any().optional().describe("JSON payload to convert to Markdown for the issue body"),
     labels: z.string().optional().describe("Comma-separated labels to add")
 };
 
@@ -59,7 +61,9 @@ export const UpdateIssueInputSchema = {
     repo: RepoSchema,
     issueNumber: IssueNumberSchema,
     title: z.string().optional().describe("New issue title"),
-    body: z.string().optional().describe("New issue body"),
+    body: z.string().optional().describe("New issue body (Markdown allowed)"),
+    bodyFile: z.string().optional().describe("Path to a Markdown file to use as the issue body"),
+    bodyJson: z.any().optional().describe("JSON payload to convert to Markdown for the issue body"),
     labels: z.string().optional().describe("Comma-separated labels to set"),
     comment: z.string().optional().describe("Comment to add to the issue")
 };
