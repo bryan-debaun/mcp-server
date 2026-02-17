@@ -56,6 +56,22 @@ The response contains `access_token`, `expires_in`, and `refresh_token`. Store t
 - In Render Dashboard → Service → Environment → Environment Variables
   - Add `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` (secure)
   - Add `SPOTIFY_REFRESH_TOKEN` (secure) — optional if the server handles initial authorization via a temporary flow. Alternatively, use a one-time admin route to set the refresh token.
+
+  Example (one-time admin helper):
+
+  ```bash
+  # seed refresh token directly
+  curl -X POST --data '{"refreshToken":"<REFRESH_TOKEN>"}' \
+    -H "Content-Type: application/json" \
+    https://<your-domain>/api/admin/spotify/oauth-callback?key=<MCP_API_KEY>
+
+  # or exchange an authorization code server-side (server must have CLIENT_ID/SECRET/REDIRECT_URI configured)
+  curl -X POST --data '{"code":"<AUTH_CODE_FROM_SPOTIFY>"}' \
+    -H "Content-Type: application/json" \
+    https://<your-domain>/api/admin/spotify/oauth-callback?key=<MCP_API_KEY>
+  ```
+
+  Note: In development the endpoint will persist the token to `.env.local`. In production prefer storing the token in your host's secret manager (Render, etc.) and restart the service if required.
   - Ensure `SPOTIFY_REDIRECT_URI` matches the value configured in the Spotify app.
 
 1) Token Refresh Flow (server behavior)

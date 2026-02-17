@@ -53,7 +53,14 @@ export async function createHttpApp() {
     registerBooksRoute(app)
     registerAuthorsRoute(app)
     registerRatingsRoute(app)
-
+    // Spotify read-only endpoints (require MCP API key when MCP_API_KEY set)
+    try {
+        const mod = await import('./spotify-route.js');
+        mod.registerSpotifyRoute(app);
+        console.error('registered Spotify HTTP routes at /api/spotify/*');
+    } catch (e) {
+        console.error('failed to register spotify-route', e);
+    }
     // Register tsoa-generated routes
     RegisterRoutes(app);
 
@@ -147,6 +154,15 @@ export async function registerDbDependentRoutes(app: any) {
     registerBooksRoute(app)
     registerAuthorsRoute(app)
     registerRatingsRoute(app)
+
+    // Spotify read-only endpoints (require MCP API key when MCP_API_KEY set)
+    try {
+        const mod = await import('./spotify-route.js');
+        mod.registerSpotifyRoute(app);
+        console.error('registered Spotify HTTP routes at /api/spotify/*');
+    } catch (e) {
+        console.error('failed to register spotify-route', e);
+    }
 
     // Register tsoa-generated routes
     RegisterRoutes(app);
