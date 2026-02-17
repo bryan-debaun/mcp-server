@@ -20,6 +20,6 @@ export async function ensureLabelsExist(repo: string, labels: string[]): Promise
     const missing = labels.map(l => l.trim()).filter(l => l && !existing.includes(l));
     for (const name of missing) {
         // Create with a default yellow color (fbca04)
-        await runGhCommand(["label", "create", "--repo", repo, "--name", `"${name.replace(/\"/g, '\\\"')}"`, "--color", "fbca04"]);
+        await runGhCommand(["label", "create", "--repo", repo, "--name", `"${name.replace(/"/g, '\\"')}"`, "--color", "fbca04"]);
     }
 }

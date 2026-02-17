@@ -7,9 +7,6 @@ vi.mock('../../../src/tools/github-issues/gh-cli.js', () => ({
 
 import { registerCreateIssueTool } from '../../../src/tools/github-issues/create-issue.js'
 import * as ghCli from '../../../src/tools/github-issues/gh-cli.js'
-import fs from 'fs'
-import os from 'os'
-import path from 'path'
 
 describe('create-issue tool', () => {
     beforeEach(() => {
