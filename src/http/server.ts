@@ -60,6 +60,13 @@ export async function createHttpApp() {
     // Register Swagger UI documentation
     registerSwaggerRoute(app);
 
+    // Global JSON error handler — ensure API routes always return structured JSON
+    app.use((err: any, _req: express.Request, res: express.Response, _next: any) => {
+        try { console.error('unhandled error', err) } catch (e) { /* noop */ }
+        const status = (res.statusCode && res.statusCode >= 400) ? res.statusCode : (err?.status || 500)
+        const message = (process.env.NODE_ENV === 'production') ? 'internal error' : (err?.message ?? 'internal error')
+        res.status(status).json({ error: message })
+    })
 
 
     // MCP HTTP transport (HTTP Stream + SSE fallback)
@@ -146,6 +153,14 @@ export async function registerDbDependentRoutes(app: any) {
 
     // Register Swagger UI documentation
     registerSwaggerRoute(app);
+
+    // Global JSON error handler — ensure API routes always return structured JSON
+    app.use((err: any, _req: express.Request, res: express.Response, _next: any) => {
+        try { console.error('unhandled error', err) } catch (e) { /* noop */ }
+        const status = (res.statusCode && res.statusCode >= 400) ? res.statusCode : (err?.status || 500)
+        const message = (process.env.NODE_ENV === 'production') ? 'internal error' : (err?.message ?? 'internal error')
+        res.status(status).json({ error: message })
+    })
 
     // MCP HTTP transport (HTTP Stream + SSE fallback)
     try {
