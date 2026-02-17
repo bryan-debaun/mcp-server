@@ -1,3 +1,6 @@
+import fs from "fs";
+import os from "os";
+import path from "path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { CloseIssueInputSchema } from "./schemas.js";
@@ -7,7 +10,7 @@ import { createSuccessResult, createErrorResult } from "./results.js";
 const name = "close-issue";
 const config = {
     title: "Close Issue",
-    description: "Close a GitHub issue with an optional comment",
+    description: "Close a GitHub issue with an optional comment (supports Markdown/file)",
     inputSchema: CloseIssueInputSchema
 };
 
@@ -19,6 +22,8 @@ export function registerCloseIssueTool(server: McpServer): void {
         name,
         config,
         async (args: any): Promise<CallToolResult> => {
+            let tempFile: string | undefined;
+
             try {
                 const { repo, issueNumber, comment } = args as {
                     repo: string;
@@ -28,14 +33,27 @@ export function registerCloseIssueTool(server: McpServer): void {
 
                 // Add comment first if provided
                 if (comment) {
-                    const commentArgs = [
-                        "issue", "comment",
-                        String(issueNumber),
-                        "--repo", repo,
-                        "--body", `"${comment.replace(/"/g, '\\"')}"`
-                    ];
+                    if (comment.includes("\n")) {
+                        tempFile = path.join(os.tmpdir(), `mcp-issue-comment-${Date.now()}.md`);
+                        fs.writeFileSync(tempFile, comment, "utf8");
+                        const commentArgs = [
+                            "issue", "comment",
+                            String(issueNumber),
+                            "--repo", repo,
+                            "--body-file", tempFile
+                        ];
 
-                    await runGhCommand(commentArgs);
+                        await runGhCommand(commentArgs);
+                    } else {
+                        const commentArgs = [
+                            "issue", "comment",
+                            String(issueNumber),
+                            "--repo", repo,
+                            "--body", `"${comment.replace(/"/g, '\\"')}"`
+                        ];
+
+                        await runGhCommand(commentArgs);
+                    }
                 }
 
                 // Close the issue
@@ -55,6 +73,10 @@ export function registerCloseIssueTool(server: McpServer): void {
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
                 return createErrorResult(message);
+            } finally {
+                if (tempFile) {
+                    try { fs.unlinkSync(tempFile); } catch { /* ignore */ }
+                }
             }
         }
     );
