@@ -88,7 +88,7 @@ describe('magic-link routes', () => {
         expect(email.sendMagicLinkEmail).toHaveBeenCalledWith('reg@example.com', 'tkn', expect.any(String))
     })
 
-    it('POST /api/auth/register with password unsupported returns 400', async () => {
+    it('POST /api/auth/register with password unsupported returns JSON 400', async () => {
         const app = express()
         app.use(express.json())
         RegisterRoutes(app)
@@ -98,5 +98,53 @@ describe('magic-link routes', () => {
 
         const res = await request(app).post('/api/auth/magic-link/register').send({ email: 'x@example.com', password: 'secret' })
         expect(res.status).toBe(400)
+        expect(res.headers['content-type']).toMatch(/json/)
+        expect(res.body).toEqual({ error: 'password not supported' })
+    })
+
+    it('POST /api/auth/magic-link/register returns JSON on validation failure', async () => {
+        const app = express()
+        app.use(express.json())
+        RegisterRoutes(app)
+
+        // Install JSON error handler like the real server so template/validation
+        // errors are returned as structured JSON in tests.
+        app.use((err: any, _req: any, res: any, _next: any) => {
+            const status = (res.statusCode && res.statusCode >= 400) ? res.statusCode : (err?.status || 500)
+            res.status(status).json({ error: err?.message ?? 'internal error' })
+        })
+
+        const res = await request(app).post('/api/auth/magic-link/register').send({})
+        expect(res.status).toBe(400)
+        expect(res.headers['content-type']).toMatch(/json/)
+        expect(res.body).toHaveProperty('error')
+    })
+
+    it('POST /api/auth/magic-link/register existing user returns JSON 400', async () => {
+        const app = express()
+        app.use(express.json())
+        RegisterRoutes(app)
+
+        const svc: any = await import('../../src/services/admin-service.js')
+        vi.spyOn(svc as any, 'registerUser').mockRejectedValue(new Error('user already exists'))
+
+        const res = await request(app).post('/api/auth/magic-link/register').send({ email: 'exists@example.com' })
+        expect(res.status).toBe(400)
+        expect(res.headers['content-type']).toMatch(/json/)
+        expect(res.body).toEqual({ error: 'user already exists' })
+    })
+
+    it('POST /api/auth/magic-link/register supabase provisioning failure returns JSON 502', async () => {
+        const app = express()
+        app.use(express.json())
+        RegisterRoutes(app)
+
+        const svc: any = await import('../../src/services/admin-service.js')
+        vi.spyOn(svc as any, 'registerUser').mockRejectedValue(new Error('supabase provisioning failed'))
+
+        const res = await request(app).post('/api/auth/magic-link/register').send({ email: 's@example.com' })
+        expect(res.status).toBe(502)
+        expect(res.headers['content-type']).toMatch(/json/)
+        expect(res.body).toEqual({ error: 'supabase provisioning failed' })
     })
 })

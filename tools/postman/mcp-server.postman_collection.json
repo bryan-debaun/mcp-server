@@ -550,11 +550,11 @@
                             "pm.test('Sets session cookie and stores it', function () {",
                             "  var sc = pm.response.headers.get('set-cookie');",
                             "  pm.expect(sc, 'set-cookie header').to.exist;",
-                            "  var m = sc && sc.match(/session=([^;]+)/);"  if (m) { pm.collectionVariables.set('session_cookie', m[1]); } else { pm.expect.fail('session cookie not found in set-cookie'); }",
+                            "  var m = sc && sc.match(/session=([^;]+)/);",
+                            "  if (m) { pm.collectionVariables.set('session_cookie', m[1]); } else { pm.expect.fail('session cookie not found in set-cookie'); }",
                             "});"
                         ]
-                    },
-                    {}
+                    }
                 }
             ]
         },
@@ -1204,6 +1204,626 @@
                     "path": [
                         "api",
                         "authors",
+                        "99"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200 or 404', function () { pm.expect(pm.response.status).to.be.oneOf([200,404]); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Movies - List",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/movies?limit=10",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "movies"
+                    ],
+                    "query": [
+                        {
+                            "key": "limit",
+                            "value": "10"
+                        },
+                        {
+                            "key": "search",
+                            "value": "",
+                            "disabled": true
+                        }
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                            "pm.test('Has movies array', function () { var json = pm.response.json(); pm.expect(json).to.have.property('movies'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Movies - Get by ID",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/movies/1",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "movies",
+                        "1"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200 or 404', function () { pm.expect(pm.response.status).to.be.oneOf([200,404]); });",
+                            "pm.test('If 200, has title', function () { if (pm.response.code===200) { var json=pm.response.json(); pm.expect(json).to.have.property('title'); } });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Movies - Create (Admin)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "X-INTERNAL-KEY",
+                        "value": "{{internal_admin_key}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{ \"title\": \"Test Movie\", \"description\": \"A test movie\", \"iasn\": \"IASN123\" }",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/movies",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "movies"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                            "pm.test('Has id', function () { var json = pm.response.json(); pm.expect(json).to.have.property('id'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Movies - Update (Admin)",
+            "request": {
+                "method": "PUT",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "X-INTERNAL-KEY",
+                        "value": "{{internal_admin_key}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{ \"title\": \"Updated Test Movie\" }",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/movies/1",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "movies",
+                        "1"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200 or 404', function () { pm.expect(pm.response.status).to.be.oneOf([200,404]); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Movies - Delete (Admin)",
+            "request": {
+                "method": "DELETE",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "X-INTERNAL-KEY",
+                        "value": "{{internal_admin_key}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/movies/99",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "movies",
+                        "99"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200 or 404', function () { pm.expect(pm.response.status).to.be.oneOf([200,404]); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "VideoGames - List",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/videogames?limit=10",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "videogames"
+                    ],
+                    "query": [
+                        {
+                            "key": "limit",
+                            "value": "10"
+                        },
+                        {
+                            "key": "platform",
+                            "value": "",
+                            "disabled": true
+                        },
+                        {
+                            "key": "search",
+                            "value": "",
+                            "disabled": true
+                        }
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                            "pm.test('Has videoGames array', function () { var json = pm.response.json(); pm.expect(json).to.have.property('videoGames'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "VideoGames - Get by ID",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/videogames/1",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "videogames",
+                        "1"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200 or 404', function () { pm.expect(pm.response.status).to.be.oneOf([200,404]); });",
+                            "pm.test('If 200, has title and platform', function () { if (pm.response.code===200) { var json=pm.response.json(); pm.expect(json).to.have.property('title'); pm.expect(json).to.have.property('platform'); } });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "VideoGames - Create (Admin)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "X-INTERNAL-KEY",
+                        "value": "{{internal_admin_key}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{ \"title\": \"Test Game\", \"platform\": \"PC\" }",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/videogames",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "videogames"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                            "pm.test('Has id', function () { var json = pm.response.json(); pm.expect(json).to.have.property('id'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "VideoGames - Update (Admin)",
+            "request": {
+                "method": "PUT",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "X-INTERNAL-KEY",
+                        "value": "{{internal_admin_key}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{ \"title\": \"Updated Test Game\" }",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/videogames/1",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "videogames",
+                        "1"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200 or 404', function () { pm.expect(pm.response.status).to.be.oneOf([200,404]); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "VideoGames - Delete (Admin)",
+            "request": {
+                "method": "DELETE",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "X-INTERNAL-KEY",
+                        "value": "{{internal_admin_key}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/videogames/99",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "videogames",
+                        "99"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200 or 404', function () { pm.expect(pm.response.status).to.be.oneOf([200,404]); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "ContentCreators - List",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/content-creators?limit=10",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "content-creators"
+                    ],
+                    "query": [
+                        {
+                            "key": "limit",
+                            "value": "10"
+                        },
+                        {
+                            "key": "search",
+                            "value": "",
+                            "disabled": true
+                        }
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                            "pm.test('Has creators array', function () { var json = pm.response.json(); pm.expect(json).to.have.property('creators'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "ContentCreators - Get by ID",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/content-creators/1",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "content-creators",
+                        "1"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200 or 404', function () { pm.expect(pm.response.status).to.be.oneOf([200,404]); });",
+                            "pm.test('If 200, has name', function () { if (pm.response.code===200) { var json=pm.response.json(); pm.expect(json).to.have.property('name'); } });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "ContentCreators - Create (Admin)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "X-INTERNAL-KEY",
+                        "value": "{{internal_admin_key}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{ \"name\": \"Test Creator\", \"bio\": \"Bio text\" }",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/content-creators",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "content-creators"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                            "pm.test('Has id', function () { var json = pm.response.json(); pm.expect(json).to.have.property('id'); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "ContentCreators - Update (Admin)",
+            "request": {
+                "method": "PUT",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "X-INTERNAL-KEY",
+                        "value": "{{internal_admin_key}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{ \"name\": \"Updated Creator\" }",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/content-creators/1",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "content-creators",
+                        "1"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200 or 404', function () { pm.expect(pm.response.status).to.be.oneOf([200,404]); });"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "ContentCreators - Delete (Admin)",
+            "request": {
+                "method": "DELETE",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_jwt}}"
+                    },
+                    {
+                        "key": "X-INTERNAL-KEY",
+                        "value": "{{internal_admin_key}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/content-creators/99",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "content-creators",
                         "99"
                     ]
                 }
