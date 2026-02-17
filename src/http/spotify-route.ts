@@ -38,4 +38,24 @@ export function registerSpotifyRoute(app: any) {
             res.status(500).json({ error: err?.message ?? 'spotify error' });
         }
     });
+
+    // Attempt to auto-start the Spotify adapter when the route is registered.
+    // This lets the adapter begin polling automatically on server boot when
+    // credentials and refresh token are present.
+    (async () => {
+        // Only attempt auto-start when the Spotify configuration looks complete.
+        if (!(process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET && process.env.SPOTIFY_REFRESH_TOKEN)) {
+            console.error('spotify-adapter: auto-start skipped (missing SPOTIFY env)');
+            return;
+        }
+
+        try {
+            const { startSpotifyAdapter } = await import('../adapters/spotify/spotify-adapter.js');
+            startSpotifyAdapter().catch((err) => console.error('spotify-adapter: auto-start failed', err));
+            console.error('spotify-adapter: auto-start requested');
+        } catch (err) {
+            // Non-fatal — adapter may be unavailable in this runtime
+            console.error('spotify-adapter: auto-start import failed', (err as any)?.message ?? err);
+        }
+    })();
 }
