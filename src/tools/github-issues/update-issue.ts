@@ -84,16 +84,31 @@ export function registerUpdateIssueTool(server: McpServer): void {
                     await runGhCommand(editArgs);
                 }
 
-                // Add comment if provided (single-line comments continue to use --body)
+                // Add comment if provided. Use --body-file for multiline/large comments
                 if (comment) {
-                    const commentArgs = [
-                        "issue", "comment",
-                        String(issueNumber),
-                        "--repo", repo,
-                        "--body", `"${comment.replace(/"/g, '\\"')}"`
-                    ];
+                    if (comment.includes('\n') || comment.length > 1000) {
+                        tempFile = path.join(os.tmpdir(), `mcp-issue-comment-${Date.now()}.md`);
+                        fs.writeFileSync(tempFile, comment, 'utf8');
 
-                    await runGhCommand(commentArgs);
+                        const commentArgs = [
+                            "issue", "comment",
+                            String(issueNumber),
+                            "--repo", repo,
+                            "--body-file", tempFile
+                        ];
+
+                        await runGhCommand(commentArgs);
+                    } else {
+                        const commentArgs = [
+                            "issue", "comment",
+                            String(issueNumber),
+                            "--repo", repo,
+                            "--body", `"${comment.replace(/"/g, '\\"')}"`
+                        ];
+
+                        await runGhCommand(commentArgs);
+                    }
+
                     updates.push("comment added");
                 }
 
