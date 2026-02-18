@@ -68,6 +68,48 @@ describe('magic-link routes', () => {
         expect(res.headers['set-cookie']).toBeDefined()
     })
 
+    it('GET /api/auth/magic-link/verify remains public when MCP_API_KEY set', async () => {
+        const orig = process.env.MCP_API_KEY
+        process.env.MCP_API_KEY = 'testkey'
+
+        const { mcpAuthMiddleware } = await import('../../src/http/middleware/mcp-auth.js')
+        const app = express()
+        app.use(express.json())
+        app.use(mcpAuthMiddleware)
+        RegisterRoutes(app)
+
+        const auth: any = await import('../../src/auth/magic-link.ts')
+        auth.verifyMagicLinkToken.mockResolvedValue({ jti: 'j1', email: 'u@example.com', userId: null })
+
+        const res = await request(app).get('/api/auth/magic-link/verify').query({ token: 'tkn' })
+        expect([302, 301, 307, 308]).toContain(res.status)
+        expect(res.headers['set-cookie']).toBeDefined()
+
+        if (typeof orig === 'undefined') delete process.env.MCP_API_KEY
+        else process.env.MCP_API_KEY = orig
+    })
+
+    it('POST /api/auth/magic-link/verify remains public when MCP_API_KEY set', async () => {
+        const orig = process.env.MCP_API_KEY
+        process.env.MCP_API_KEY = 'testkey'
+
+        const { mcpAuthMiddleware } = await import('../../src/http/middleware/mcp-auth.js')
+        const app = express()
+        app.use(express.json())
+        app.use(mcpAuthMiddleware)
+        RegisterRoutes(app)
+
+        const auth: any = await import('../../src/auth/magic-link.ts')
+        auth.verifyMagicLinkToken.mockResolvedValue({ jti: 'j1', email: 'u@example.com', userId: null })
+
+        const res = await request(app).post('/api/auth/magic-link/verify').send({ token: 'tkn' })
+        expect(res.status).toBe(200)
+        expect(res.body).toEqual({ status: 'ok' })
+
+        if (typeof orig === 'undefined') delete process.env.MCP_API_KEY
+        else process.env.MCP_API_KEY = orig
+    })
+
     it('POST /api/auth/register without password creates user and sends magic link', async () => {
         const app = express()
         app.use(express.json())

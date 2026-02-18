@@ -66,4 +66,29 @@ describe('update-issue tool', () => {
         const payload = JSON.parse(res.content[0].text)
         expect(payload.updates).toContain('labels')
     })
+
+    it('uses --body-file for multiline comment when updating', async () => {
+        const fake: any = {}
+        fake.registerTool = (_name: string, _cfg: any, handler: any) => { fake.handler = handler }
+
+        registerUpdateIssueTool(fake)
+
+        const run = ghCli.runGhCommand as unknown as ReturnType<typeof vi.fn>
+        (run as any).mockImplementation((args: string[]) => {
+            const cmd = args.join(' ')
+            if (cmd.includes('issue comment')) return Promise.resolve('')
+            return Promise.resolve('[]')
+        })
+
+        const longComment = 'line1\nline2\n- list item\n\n**markdown**'
+        const res = await fake.handler({ repo: 'bryan-debaun/mcp-server', issueNumber: 12, comment: longComment })
+        expect(run).toHaveBeenCalled()
+
+        const commentCall = (run as any).mock.calls.find((c: any) => c[0][0] === 'issue' && c[0].includes('comment'))
+        expect(commentCall).toBeTruthy()
+        expect(commentCall[0]).toContain('--body-file')
+
+        const payload = JSON.parse(res.content[0].text)
+        expect(payload.updates).toContain('comment added')
+    })
 })
