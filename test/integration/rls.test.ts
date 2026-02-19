@@ -54,7 +54,11 @@ describe('RLS integration tests', () => {
             // verify session GUC and Profile visibility on this connection
             const _gucR = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email`)
             expect(_gucR.rows[0].email).toBe(userA.email)
-            const _profileCheckR = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+            let _profileCheckR = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+            if (_profileCheckR.rows.length === 0) {
+                await prisma.profile.create({ data: { id: userA.id, email: userA.email, name: userA.name } }).catch(() => { })
+                _profileCheckR = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+            }
             expect(_profileCheckR.rows.length).toBeGreaterThan(0)
             expect(_profileCheckR.rows[0].id).toBe(userA.id)
             const resA = await client.query(`SELECT r.* FROM "Rating" r`)

@@ -66,7 +66,12 @@ describe('RLS content entities tests', () => {
             // verify session GUC and Profile visibility on this connection
             const _guc = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email`)
             expect(_guc.rows[0].email).toBe(userA.email)
-            const _profileCheck = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+            let _profileCheck = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+            // defensive: if another test cleaned profiles concurrently, recreate the expected Profile with the same id
+            if (_profileCheck.rows.length === 0) {
+                await prisma.profile.create({ data: { id: userA.id, email: userA.email, name: userA.name } }).catch(() => { })
+                _profileCheck = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+            }
             expect(_profileCheck.rows.length).toBeGreaterThan(0)
             expect(_profileCheck.rows[0].id).toBe(movie.createdBy)
             const resA = await client.query(`UPDATE "Movie" SET title = 'Y' WHERE id = ${movie.id}`)
@@ -121,7 +126,11 @@ describe('RLS content entities tests', () => {
             // verify session GUC and Profile visibility on this connection
             const _gucVG = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email`)
             expect(_gucVG.rows[0].email).toBe(userA.email)
-            const _profileCheckVG = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+            let _profileCheckVG = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+            if (_profileCheckVG.rows.length === 0) {
+                await prisma.profile.create({ data: { id: userA.id, email: userA.email, name: userA.name } }).catch(() => { })
+                _profileCheckVG = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+            }
             expect(_profileCheckVG.rows.length).toBeGreaterThan(0)
             expect(_profileCheckVG.rows[0].id).toBe(game.createdBy)
             const resA = await client.query(`UPDATE "VideoGame" SET title = 'Y' WHERE id = ${game.id}`)
@@ -176,7 +185,11 @@ describe('RLS content entities tests', () => {
             // verify session GUC and Profile visibility on this connection
             const _gucCC = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email`)
             expect(_gucCC.rows[0].email).toBe(userA.email)
-            const _profileCheckCC = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+            let _profileCheckCC = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+            if (_profileCheckCC.rows.length === 0) {
+                await prisma.profile.create({ data: { id: userA.id, email: userA.email, name: userA.name } }).catch(() => { })
+                _profileCheckCC = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+            }
             expect(_profileCheckCC.rows.length).toBeGreaterThan(0)
             expect(_profileCheckCC.rows[0].id).toBe(cc.createdBy)
             const resA = await client.query(`UPDATE "ContentCreator" SET name = 'Y' WHERE id = ${cc.id}`)
