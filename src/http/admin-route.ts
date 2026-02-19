@@ -46,40 +46,44 @@ export function registerAdminRoute(app: Application) {
         res.status(201).json(resp)
     })
 
-    app.patch(`${base}/users/:id`, jwtMiddleware, requireAdmin, async (req: Request, res: Response) => {
-        const id = Number(req.params.id)
-        const { role, blocked } = req.body
-        if (role === undefined && blocked === undefined) return res.status(400).json({ error: 'role or blocked is required' })
-        const actorId = (req as any).user?.sub ? Number((req as any).user.sub) : undefined
-        const { setUserRole, setUserBlocked } = await import('../services/admin-service.js')
-        let user: any = null
-        if (role !== undefined) user = await setUserRole(id, role, actorId)
-        if (blocked !== undefined) user = await setUserBlocked(id, !!blocked, actorId)
-        res.json(user)
-    })
+    // DISABLED: Multi-user functionality removed for single-user system
+    // app.patch(`${base}/users/:id`, jwtMiddleware, requireAdmin, async (req: Request, res: Response) => {
+    //     const id = Number(req.params.id)
+    //     const { role, blocked } = req.body
+    //     if (role === undefined && blocked === undefined) return res.status(400).json({ error: 'role or blocked is required' })
+    //     const actorId = (req as any).user?.sub ? Number((req as any).user.sub) : undefined
+    //     const { setUserRole, setUserBlocked } = await import('../services/admin-service.js')
+    //     let user: any = null
+    //     if (role !== undefined) user = await setUserRole(id, role, actorId)
+    //     if (blocked !== undefined) user = await setUserBlocked(id, !!blocked, actorId)
+    //     res.json(user)
+    // })
 
-    app.delete(`${base}/users/:id`, jwtMiddleware, requireAdmin, async (req: Request, res: Response) => {
-        const id = Number(req.params.id)
-        const actorId = (req as any).user?.sub ? Number((req as any).user.sub) : undefined
-        const hard = (req.query.hard === '1' || req.query.hard === 'true')
-        const { deleteUser } = await import('../services/admin-service.js')
-        await deleteUser(id, actorId, { hard })
-        res.json({ success: true })
-    })
+    // DISABLED: Multi-user functionality removed for single-user system
+    // app.delete(`${base}/users/:id`, jwtMiddleware, requireAdmin, async (req: Request, res: Response) => {
+    //     const id = Number(req.params.id)
+    //     const actorId = (req as any).user?.sub ? Number((req as any).user.sub) : undefined
+    //     const hard = (req.query.hard === '1' || req.query.hard === 'true')
+    //     const { deleteUser } = await import('../services/admin-service.js')
+    //     await deleteUser(id, actorId, { hard })
+    //     res.json({ success: true })
+    // })
 
-    app.get(`${base}/access-requests`, jwtMiddleware, requireAdmin, async (_req: Request, res: Response) => {
-        const { listAccessRequests } = await import('../services/admin-service.js')
-        const r = await listAccessRequests()
-        res.json(r)
-    })
+    // DISABLED: Multi-user functionality removed for single-user system
+    // app.get(`${base}/access-requests`, jwtMiddleware, requireAdmin, async (_req: Request, res: Response) => {
+    //     const { listAccessRequests } = await import('../services/admin-service.js')
+    //     const r = await listAccessRequests()
+    //     res.json(r)
+    // })
 
-    app.post(`${base}/access-requests/:id/approve`, jwtMiddleware, requireAdmin, async (req: Request, res: Response) => {
-        const id = Number(req.params.id)
-        const reviewerId = (req as any).user?.sub ? Number((req as any).user.sub) : undefined
-        const { approveAccessRequest } = await import('../services/admin-service.js')
-        const r = await approveAccessRequest(id, reviewerId!)
-        res.json(r)
-    })
+    // DISABLED: Multi-user functionality removed for single-user system
+    // app.post(`${base}/access-requests/:id/approve`, jwtMiddleware, requireAdmin, async (req: Request, res: Response) => {
+    //     const id = Number(req.params.id)
+    //     const reviewerId = (req as any).user?.sub ? Number((req as any).user.sub) : undefined
+    //     const { approveAccessRequest } = await import('../services/admin-service.js')
+    //     const r = await approveAccessRequest(id, reviewerId!)
+    //     res.json(r)
+    // })
 
     // Debug endpoint to help diagnose gateway/auth issues on preview hosts.
     // Protected with the same admin checks (jwtMiddleware + requireAdmin).
@@ -99,7 +103,7 @@ export function registerAdminRoute(app: Application) {
             }
 
             try {
-                await prisma.auditLog.create({ data: { action: 'admin-debug', metadata: { ip, path: req.path } } })
+                await prisma.profile.findFirst()
             } catch (e) { /* noop */ }
 
             try { adminDebugRequestsTotal.inc() } catch (e) { /* noop */ }

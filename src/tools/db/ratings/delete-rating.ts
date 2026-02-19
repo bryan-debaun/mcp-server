@@ -46,13 +46,6 @@ export function registerDeleteRatingTool(server: McpServer): void {
                         }
                     });
 
-                    // Upsert into RatingAggregate as well for polymorphic support
-                    await tx.ratingAggregate.upsert({
-                        where: { entityType_entityId: { entityType: 'book', entityId: rating.bookId } },
-                        create: { entityType: 'book', entityId: rating.bookId, ratingCount: count, averageRating: avg },
-                        update: { ratingCount: count, averageRating: avg }
-                    });
-
                     return rating;
                 });
 

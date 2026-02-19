@@ -12,11 +12,10 @@ describe('db create-content-creator tool', () => {
 
         registerCreateContentCreatorTool(fake)
 
-        const result = await fake.handler({ name: 'Creator', description: 'desc', createdBy: 2 })
+        const result = await fake.handler({ name: 'Creator', description: 'desc' })
 
         const parsed = JSON.parse(result.content[0].text)
         expect(parsed.name).toBe('Creator')
         expect(parsed.description).toBe('desc')
-        expect(parsed.createdBy).toBe(2)
     })
 })

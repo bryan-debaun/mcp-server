@@ -12,11 +12,10 @@ describe('db create-movie tool', () => {
 
         registerCreateMovieTool(fake)
 
-        const result = await fake.handler({ title: 'My Movie', status: 'In progress', createdBy: 2 })
+        const result = await fake.handler({ title: 'My Movie', status: 'In progress' })
 
         const parsed = JSON.parse(result.content[0].text)
         expect(parsed.status).toBe('IN_PROGRESS')
         expect(parsed.title).toBe('My Movie')
-        expect(parsed.createdBy).toBe(2)
     })
 })

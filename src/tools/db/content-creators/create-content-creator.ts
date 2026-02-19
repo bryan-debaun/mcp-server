@@ -17,14 +17,13 @@ export function registerCreateContentCreatorTool(server: McpServer): void {
         config,
         async (args: any): Promise<CallToolResult> => {
             try {
-                const { name, description, website, createdBy } = args;
+                const { name, description, website } = args;
 
                 const cc = await prisma.contentCreator.create({
                     data: {
                         name,
                         description,
-                        website,
-                        createdBy
+                        website
                     }
                 });
 

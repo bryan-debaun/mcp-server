@@ -12,12 +12,11 @@ describe('db create-book tool', () => {
 
         registerCreateBookTool(fake)
 
-        const result = await fake.handler({ title: 'My Book', status: 'In progress', createdBy: 2 })
+        const result = await fake.handler({ title: 'My Book', status: 'In progress' })
 
         // parse returned JSON
         const parsed = JSON.parse(result.content[0].text)
         expect(parsed.status).toBe('IN_PROGRESS')
         expect(parsed.title).toBe('My Book')
-        expect(parsed.createdBy).toBe(2)
     })
 })

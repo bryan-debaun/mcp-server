@@ -12,11 +12,10 @@ describe('db create-videogame tool', () => {
 
         registerCreateVideoGameTool(fake)
 
-        const result = await fake.handler({ title: 'My Game', platform: 'PC', status: 'Completed', createdBy: 2 })
+        const result = await fake.handler({ title: 'My Game', platform: 'PC', status: 'Completed' })
 
         const parsed = JSON.parse(result.content[0].text)
         expect(parsed.status).toBe('COMPLETED')
         expect(parsed.title).toBe('My Game')
-        expect(parsed.createdBy).toBe(2)
     })
 })

@@ -6,7 +6,6 @@ export const CreateAuthorInputSchema = {
         name: { type: "string", description: "Author name" },
         bio: { type: "string", description: "Author biography" },
         website: { type: "string", description: "Author website URL" },
-        createdBy: { type: "number", description: "User ID of creator (optional)" },
     },
     required: ["name"],
 } as const;

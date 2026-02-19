@@ -13,7 +13,6 @@ export const CreateBookInputSchema = {
             items: { type: "number" },
             description: "Array of author IDs to associate with this book"
         },
-        createdBy: { type: "number", description: "User ID of creator (optional)" },
     },
     required: ["title"],
 } as const;

@@ -104,13 +104,6 @@ export function registerCreateOrUpdateRatingTool(server: McpServer): void {
                         });
                     }
 
-                    // Upsert into RatingAggregate as well for polymorphic support
-                    await tx.ratingAggregate.upsert({
-                        where: { entityType_entityId: { entityType, entityId } },
-                        create: { entityType, entityId, ratingCount: count, averageRating: avg },
-                        update: { ratingCount: count, averageRating: avg }
-                    });
-
                     // Attach minimal entity info to the returned object for convenience
                     // Fetch the parent entity title for book/movie/videogame
                     if (entityType === 'book') {

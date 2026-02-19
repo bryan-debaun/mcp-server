@@ -18,7 +18,7 @@ export function registerCreateVideoGameTool(server: McpServer): void {
         config,
         async (args: any): Promise<CallToolResult> => {
             try {
-                const { title, description, platform, igdbId, releasedAt, createdBy, status } = args;
+                const { title, description, platform, igdbId, releasedAt, status } = args;
                 const normalizedStatus = normalizeStatusInput(status);
 
                 const game = await prisma.videoGame.create({
@@ -28,7 +28,6 @@ export function registerCreateVideoGameTool(server: McpServer): void {
                         platform,
                         igdbId,
                         releasedAt: releasedAt ? new Date(releasedAt) : null,
-                        createdBy,
                         status: normalizedStatus
                     }
                 });

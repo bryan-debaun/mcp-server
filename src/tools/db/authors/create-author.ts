@@ -17,23 +17,13 @@ export function registerCreateAuthorTool(server: McpServer): void {
         config,
         async (args: any): Promise<CallToolResult> => {
             try {
-                const { name, bio, website, createdBy } = args;
+                const { name, bio, website } = args;
 
                 const author = await prisma.author.create({
                     data: {
                         name,
                         bio,
-                        website,
-                        createdBy
-                    },
-                    include: {
-                        creator: {
-                            select: {
-                                id: true,
-                                name: true,
-                                email: true
-                            }
-                        }
+                        website
                     }
                 });
 
