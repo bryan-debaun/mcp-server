@@ -20,7 +20,7 @@ export async function initPrisma() {
         prisma.$disconnect = async () => { /* noop */ }
 
         // Model stubs
-        prisma.user = {
+        prisma.profile = {
             findMany: async (_opts?: any) => [],
             findUnique: async (_opts?: any) => null,
             create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
@@ -153,7 +153,7 @@ export async function initPrisma() {
 
             // Explicitly forward model accessors (user, book, etc.) to ensure they're available
             // These are often defined as getters on the Prisma client and may not be enumerable
-            const modelNames = ['user', 'invite', 'role', 'auditLog', 'accessRequest', 'author', 'book', 'bookAuthor', 'movie', 'videoGame', 'contentCreator', 'rating', 'authMagicLink'];
+            const modelNames = ['user', 'profile', 'invite', 'role', 'auditLog', 'accessRequest', 'author', 'book', 'bookAuthor', 'movie', 'videoGame', 'contentCreator', 'rating', 'authMagicLink'];
             for (const modelName of modelNames) {
                 if (modelName in real) {
                     Object.defineProperty(prisma, modelName, {
@@ -177,7 +177,7 @@ export async function initPrisma() {
         // Provide minimal model stubs to avoid runtime TypeErrors when code attempts
         // to call model methods in preview or non-DB environments. Read methods return
         // empty results or null; write methods throw a clear error to fail fast.
-        prisma.user = {
+        prisma.profile = {
             findMany: async (_opts?: any) => [],
             findUnique: async (_opts?: any) => null,
             create: async (_data?: any) => { throw new Error('PrismaClient not initialized') },

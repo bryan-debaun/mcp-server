@@ -16,13 +16,13 @@ describe('RLS integration tests', () => {
         // Clean up tables used in test
         await prisma.rating.deleteMany().catch(() => { })
         await prisma.book.deleteMany().catch(() => { })
-        await prisma.user.deleteMany().catch(() => { })
+        await prisma.profile.deleteMany().catch(() => { })
     })
 
     afterAll(async () => {
         await prisma.rating.deleteMany().catch(() => { })
         await prisma.book.deleteMany().catch(() => { })
-        await prisma.user.deleteMany().catch(() => { })
+        await prisma.profile.deleteMany().catch(() => { })
         if (typeof prisma.$disconnect === 'function') await prisma.$disconnect()
         // Intentionally do not drop the test role here to avoid races when tests run in parallel
 
@@ -30,10 +30,10 @@ describe('RLS integration tests', () => {
 
     it('enforces owner-based access for ratings (user A cannot see user B ratings)', async () => {
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', 'rls-a@example.com', false)`;
-        const userA = await prisma.user.create({ data: { email: 'rls-a@example.com', name: 'User A' } })
+        const userA = await prisma.profile.create({ data: { email: 'rls-a@example.com', name: 'User A' } })
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', 'rls-b@example.com', false)`;
-        const userB = await prisma.user.create({ data: { email: 'rls-b@example.com', name: 'User B' } })
+        const userB = await prisma.profile.create({ data: { email: 'rls-b@example.com', name: 'User B' } })
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
 
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${userA.email}, false)`;

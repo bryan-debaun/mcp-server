@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose'
 import { verifySessionToken } from './session.js'
+import { prisma } from '../db/index.js'
 
 const jwksUrl = process.env.SUPABASE_JWKS_URL
 
@@ -10,8 +11,8 @@ if (!jwksUrl) {
 
 
 export async function verifySupabaseJwt(token: string): Promise<JWTPayload> {
-    let _jwksUrl = process.env.SUPABASE_JWKS_URL
-    const _issuer = process.env.SUPABASE_ISS
+    let _jwksUrl = process.env.SUPABASE_JWKS_URL ?? (process.env.PUBLIC_SUPABASE_URL ? `${String(process.env.PUBLIC_SUPABASE_URL).replace(/\/$/, '')}/.well-known/jwks.json` : undefined)
+    const _issuer = process.env.SUPABASE_ISS ?? process.env.PUBLIC_SUPABASE_URL
     const _audience = process.env.SUPABASE_AUD
 
     if (!_jwksUrl) throw new Error('JWKS URL not configured')
@@ -21,10 +22,10 @@ export async function verifySupabaseJwt(token: string): Promise<JWTPayload> {
     try {
         const res = await fetch(_jwksUrl, { method: 'GET' })
         if (!res.ok) {
-            // Try fallback using SUPABASE_ANON_KEY against the /auth/v1/keys endpoint if available
-            const anon = process.env.SUPABASE_ANON_KEY
-            if (anon) {
-                const fallback = `${_issuer.replace(/\/$/, '')}/auth/v1/keys?apikey=${anon}`
+            // Try fallback using publishable key (PUBLIC_SUPABASE_PUBLISHABLE_KEY) or legacy SUPABASE_ANON_KEY
+            const publishable = process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY
+            if (publishable) {
+                const fallback = `${_issuer.replace(/\/$/, '')}/auth/v1/keys?apikey=${publishable}`
                 const res2 = await fetch(fallback, { method: 'GET' })
                 if (res2.ok) {
                     _jwksUrl = fallback
@@ -55,7 +56,7 @@ export async function verifySupabaseJwt(token: string): Promise<JWTPayload> {
 export async function jwtMiddleware(req: Request, res: Response, next: NextFunction) {
     try {
         const auth = req.headers.authorization
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+        const serviceRoleKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY
 
         if (auth) {
             // If Authorization header exists it must be a Bearer token
@@ -71,8 +72,33 @@ export async function jwtMiddleware(req: Request, res: Response, next: NextFunct
 
             const token = auth.slice('Bearer '.length)
             const payload = await verifySupabaseJwt(token)
-                // attach a minimal user object
+
+                // attach a minimal user object (from token)
                 ; (req as any).user = { sub: payload.sub, ...payload }
+
+            // If the token represents a Supabase user (sub is UUID or email), try to attach local role/isAdmin
+            try {
+                if (payload.sub) {
+                    const sub = String(payload.sub)
+                    console.debug('jwtMiddleware: payload.sub=', sub)
+                    let localProfile: any = null
+                    if (/^[0-9a-fA-F-]{36}$/.test(sub)) {
+                        localProfile = await prisma.profile.findUnique({ where: { external_id: sub } as any, include: { role: true } })
+                    } else if (sub.includes('@')) {
+                        localProfile = await prisma.profile.findUnique({ where: { email: sub } as any, include: { role: true } })
+                    }
+                    console.debug('jwtMiddleware: localProfile=', localProfile)
+                    if (localProfile) {
+                        ; (req as any).user.role = localProfile.role?.name ?? (localProfile.isAdmin ? 'admin' : 'user')
+                            ; (req as any).user.isAdmin = Boolean(localProfile.isAdmin)
+                            ; (req as any).user.localUserId = localProfile.id
+                            ; (req as any).user.external_id = localProfile.external_id
+                    }
+                }
+            } catch (err) {
+                console.debug('jwtMiddleware: failed to lookup local user for token sub', err)
+            }
+
             return next()
         }
 

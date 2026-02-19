@@ -16,14 +16,14 @@ describe('RLS content entities tests', () => {
         await prisma.movie.deleteMany().catch(() => { })
         await prisma.videoGame.deleteMany().catch(() => { })
         await prisma.contentCreator.deleteMany().catch(() => { })
-        await prisma.user.deleteMany().catch(() => { })
+        await prisma.profile.deleteMany().catch(() => { })
     })
 
     afterAll(async () => {
         await prisma.movie.deleteMany().catch(() => { })
         await prisma.videoGame.deleteMany().catch(() => { })
         await prisma.contentCreator.deleteMany().catch(() => { })
-        await prisma.user.deleteMany().catch(() => { })
+        await prisma.profile.deleteMany().catch(() => { })
         if (typeof prisma.$disconnect === 'function') await prisma.$disconnect()
         // Intentionally do not drop the test role here to avoid races when tests run in parallel
 
@@ -31,10 +31,10 @@ describe('RLS content entities tests', () => {
 
     it('enforces creator/admin writes for Movie', async () => {
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', 'rls-movie-a@example.com', false)`;
-        const userA = await prisma.user.create({ data: { email: 'rls-movie-a@example.com', name: 'Movie A' } })
+        const userA = await prisma.profile.create({ data: { email: 'rls-movie-a@example.com', name: 'Movie A' } })
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', 'rls-movie-b@example.com', false)`;
-        await prisma.user.create({ data: { email: 'rls-movie-b@example.com', name: 'Movie B' } })
+        await prisma.profile.create({ data: { email: 'rls-movie-b@example.com', name: 'Movie B' } })
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
 
         // Set session-level JWT claim so RLS INSERT WITH CHECK (creator match) succeeds
@@ -77,10 +77,10 @@ describe('RLS content entities tests', () => {
 
     it('enforces creator/admin writes for VideoGame', async () => {
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', 'rls-game-a@example.com', false)`;
-        const userA = await prisma.user.create({ data: { email: 'rls-game-a@example.com', name: 'Game A' } })
+        const userA = await prisma.profile.create({ data: { email: 'rls-game-a@example.com', name: 'Game A' } })
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', 'rls-game-b@example.com', false)`;
-        await prisma.user.create({ data: { email: 'rls-game-b@example.com', name: 'Game B' } })
+        await prisma.profile.create({ data: { email: 'rls-game-b@example.com', name: 'Game B' } })
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
 
         // Set session claim for insert
@@ -124,10 +124,10 @@ describe('RLS content entities tests', () => {
 
     it('enforces creator/admin writes for ContentCreator', async () => {
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', 'rls-cc-a@example.com', false)`;
-        const userA = await prisma.user.create({ data: { email: 'rls-cc-a@example.com', name: 'CC A' } })
+        const userA = await prisma.profile.create({ data: { email: 'rls-cc-a@example.com', name: 'CC A' } })
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', 'rls-cc-b@example.com', false)`;
-        await prisma.user.create({ data: { email: 'rls-cc-b@example.com', name: 'CC B' } })
+        await prisma.profile.create({ data: { email: 'rls-cc-b@example.com', name: 'CC B' } })
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
 
         // Set session claim for insert

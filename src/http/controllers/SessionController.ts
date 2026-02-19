@@ -65,13 +65,51 @@ export class SessionController extends Controller {
         let user: any = null
         try {
             if (payload.userId) {
-                user = await prisma.user.findUnique({ where: { id: Number(payload.userId) } as any, include: { role: true } })
+                user = await prisma.profile.findUnique({ where: { id: Number(payload.userId) } as any, include: { role: true } })
             }
+
             if (!user && payload.sub && /^[0-9a-fA-F-]{36}$/.test(String(payload.sub))) {
-                user = await prisma.user.findUnique({ where: { external_id: String(payload.sub) } as any, include: { role: true } })
+                // lookup by external_id (Supabase user id)
+                user = await prisma.profile.findFirst({ where: { external_id: String(payload.sub) } as any, include: { role: true } })
             }
+
             if (!user && payload.sub) {
-                user = await prisma.user.findUnique({ where: { email: String(payload.sub) } as any, include: { role: true } })
+                user = await prisma.profile.findUnique({ where: { email: String(payload.sub) } as any, include: { role: true } })
+            }
+
+            // Lazy-provision local profile if Supabase Auth is configured and we found a Supabase subject
+            const supabaseUrlEnv = process.env.PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_ISS
+            const supabaseKeyEnv = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY
+            if (!user && supabaseUrlEnv && supabaseKeyEnv && payload.sub) {
+                try {
+                    const supabaseUrl = String(supabaseUrlEnv).replace(/\/$/, '')
+                    const supabaseKey = String(supabaseKeyEnv)
+                    let supUser: any = null
+
+                    if (/^[0-9a-fA-F-]{36}$/.test(String(payload.sub))) {
+                        // Treat sub as Supabase user id
+                        const r = await fetch(`${supabaseUrl}/auth/v1/admin/users/${String(payload.sub)}`, { headers: { Authorization: `Bearer ${supabaseKey}`, apikey: supabaseKey } })
+                        if (r.ok) supUser = await r.json().catch(() => null)
+                    } else if (String(payload.sub).includes('@')) {
+                        const r = await fetch(`${supabaseUrl}/auth/v1/admin/users?email=${encodeURIComponent(String(payload.sub))}`, { headers: { Authorization: `Bearer ${supabaseKey}`, apikey: supabaseKey } })
+                        if (r.ok) {
+                            const body = await r.json().catch(() => null)
+                            // Admin API might return an array or an object
+                            supUser = Array.isArray(body) ? body[0] ?? null : body
+                        }
+                    }
+
+                    if (supUser && supUser.id && supUser.email) {
+                        // Ensure role exists (upsert works with in-memory test stub)
+                        const role = await prisma.role.upsert({ where: { name: 'user' }, update: {}, create: { name: 'user' } })
+
+                        // Create local profile record linked to external_id
+                        const created = await prisma.profile.create({ data: { email: supUser.email, name: supUser.user_metadata?.name ?? null, roleId: role.id, external_id: supUser.id } })
+                        user = await prisma.profile.findUnique({ where: { id: created.id } as any, include: { role: true } })
+                    }
+                } catch (err) {
+                    console.error('Supabase lookup during session provisioning failed', err)
+                }
             }
         } catch (err) {
             console.error('failed to lookup user for session', err)

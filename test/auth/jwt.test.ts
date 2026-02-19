@@ -152,8 +152,9 @@ describe('JWT middleware', () => {
         await expect(verifySupabaseJwt(token)).rejects.toThrow()
     })
 
-    it('falls back to anon-key endpoint when primary JWKS URL returns non-200', async () => {
-        // stub fetch: primary returns 401, fallback returns keys
+    it('falls back to anon/publishable-key endpoint when primary JWKS URL returns non-200 (supports PUBLIC_SUPABASE_PUBLISHABLE_KEY)', async () => {
+        // preserve and replace global.fetch for this test only
+        const prevFetch = (global as any).fetch
         vi.stubGlobal('fetch', async (url: string) => {
             if (url.toString().startsWith('https://primary.local')) {
                 return { ok: false, status: 401, statusText: 'Unauthorized', text: async () => 'nope' }
@@ -164,10 +165,11 @@ describe('JWT middleware', () => {
             return { ok: false, status: 404 }
         })
 
+        const prevJwksEnv = process.env.SUPABASE_JWKS_URL
         process.env.SUPABASE_JWKS_URL = 'https://primary.local/jwks'
         process.env.SUPABASE_ISS = issuer
         process.env.SUPABASE_AUD = audience
-        process.env.SUPABASE_ANON_KEY = 'anon-key'
+        process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'publishable-key'
 
         const sig = await new SignJWT({ role: 'authenticated' })
             .setProtectedHeader({ alg: 'RS256', kid: publicJwk.kid })
@@ -179,14 +181,18 @@ describe('JWT middleware', () => {
             .sign(privateKey as any)
 
         const payload = await verifySupabaseJwt(sig)
-        expect(payload.sub).toBe('user-3')
+        if (!payload || String((payload as any).sub) !== 'user-3') {
+            throw new Error(`unexpected payload from verifySupabaseJwt: ${JSON.stringify(payload)}`)
+        }
 
-        // cleanup
-        delete process.env.SUPABASE_ANON_KEY
-        vi.unstubAllGlobals()
+        // cleanup - restore previous fetch and env
+        (global as any).fetch = prevFetch
+        delete process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        process.env.SUPABASE_JWKS_URL = prevJwksEnv
     })
 
     it('throws helpful error when JWKS primary and fallback fail', async () => {
+        const prevFetch = (global as any).fetch
         vi.stubGlobal('fetch', async (_url: string) => {
             return { ok: false, status: 404, statusText: 'Not Found', text: async () => 'notfound' }
         })
@@ -205,13 +211,14 @@ describe('JWT middleware', () => {
             .sign(privateKey as any)
 
         await expect(verifySupabaseJwt(token)).rejects.toThrow(/JWKS fetch failed/)
-        vi.unstubAllGlobals()
+            ; (global as any).fetch = prevFetch
     })
 
     it('rejects service role key when not allowed by header or IP allowlist', async () => {
         const app = express()
         const serviceKey = 'super-secret-service-key'
         process.env.SUPABASE_SERVICE_ROLE_KEY = serviceKey
+        process.env.SUPABASE_SECRET_KEY = serviceKey
         app.get('/whoami', jwtMiddleware, (req, res) => res.json({ user: (req as any).user }))
 
         // requireAdmin is applied; without proper header/IP it should be forbidden
@@ -220,12 +227,14 @@ describe('JWT middleware', () => {
         const res = await request(app).get('/admin').set('Authorization', `Bearer ${serviceKey}`)
         expect(res.status).toBe(403)
         delete process.env.SUPABASE_SERVICE_ROLE_KEY
+        delete process.env.SUPABASE_SECRET_KEY
     })
 
     it('allows service key when ip is allowlisted and header present and writes audit log + metric', async () => {
         const app = express()
         const serviceKey = 'super-secret-service-key'
         process.env.SUPABASE_SERVICE_ROLE_KEY = serviceKey
+        process.env.SUPABASE_SECRET_KEY = serviceKey
 
         // Mock prisma.auditLog.create and metric
         const p = await import('../../src/db/index.js') as any
@@ -248,7 +257,79 @@ describe('JWT middleware', () => {
         expect(incSpy).toHaveBeenCalled()
 
         delete process.env.SUPABASE_SERVICE_ROLE_KEY
+        delete process.env.SUPABASE_SECRET_KEY
         delete process.env.ADMIN_IP_ALLOWLIST
         delete process.env.INTERNAL_ADMIN_KEY
+    })
+
+    it('maps a Supabase JWT sub (external_id) to local user and grants admin when local user is admin', async () => {
+        const supabaseSub = '00b72aac-2286-48e5-955a-c8012cceb9c5'
+        const token = await new SignJWT({ role: 'authenticated' })
+            .setProtectedHeader({ alg: 'RS256', kid: publicJwk.kid })
+            .setIssuer(issuer)
+            .setAudience(audience)
+            .setSubject(supabaseSub)
+            .setIssuedAt()
+            .setExpirationTime('2h')
+            .sign(privateKey as any)
+
+        // stub verifySupabaseJwt to avoid network JWKS dependency and return the token payload
+        const jwtMod = await import('../../src/auth/jwt.js') as any
+        vi.spyOn(jwtMod, 'verifySupabaseJwt').mockResolvedValue({ sub: supabaseSub, iss: issuer, aud: audience } as any)
+
+        // stub prisma user lookup by external_id
+        const p = await import('../../src/db/index.js') as any
+        p.prisma.profile = {
+            findUnique: vi.fn().mockResolvedValue({
+                id: 1,
+                email: 'brn.dbn@gmail.com',
+                external_id: supabaseSub,
+                isAdmin: true,
+                role: { name: 'admin' },
+            })
+        }
+
+        const app = express()
+        app.get('/admin', jwtMiddleware, requireAdmin, (req, res) => res.json({ ok: true }))
+
+        const res = await request(app).get('/admin').set('Authorization', `Bearer ${token}`)
+        expect(res.status).toBe(200)
+        expect(p.prisma.profile.findUnique).toHaveBeenCalled()
+    })
+
+    it('maps a Supabase JWT sub that is an email to local user and attaches role', async () => {
+        const emailSub = 'brn.dbn@gmail.com'
+        const token = await new SignJWT({ role: 'authenticated' })
+            .setProtectedHeader({ alg: 'RS256', kid: publicJwk.kid })
+            .setIssuer(issuer)
+            .setAudience(audience)
+            .setSubject(emailSub)
+            .setIssuedAt()
+            .setExpirationTime('2h')
+            .sign(privateKey as any)
+
+        // stub verifySupabaseJwt to avoid network JWKS dependency and return the token payload
+        const jwtMod = await import('../../src/auth/jwt.js') as any
+        vi.spyOn(jwtMod, 'verifySupabaseJwt').mockResolvedValue({ sub: emailSub, iss: issuer, aud: audience } as any)
+
+        // stub prisma user lookup by email
+        const p = await import('../../src/db/index.js') as any
+        p.prisma.profile = {
+            findUnique: vi.fn().mockResolvedValue({
+                id: 1,
+                email: emailSub,
+                external_id: '00b72aac-2286-48e5-955a-c8012cceb9c5',
+                isAdmin: false,
+                role: { name: 'user' },
+            })
+        }
+
+        const app = express()
+        app.get('/whoami', jwtMiddleware, (req, res) => res.json({ user: (req as any).user }))
+
+        const res = await request(app).get('/whoami').set('Authorization', `Bearer ${token}`)
+        expect(res.status).toBe(200)
+        expect(res.body.user.role).toBe('user')
+        expect(p.prisma.profile.findUnique).toHaveBeenCalled()
     })
 })

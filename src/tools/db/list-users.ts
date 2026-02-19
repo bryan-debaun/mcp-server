@@ -17,7 +17,7 @@ export function registerListUsersTool(server: McpServer): void {
         config,
         async (_args: any): Promise<CallToolResult> => {
             try {
-                const users = await prisma.user.findMany({ include: { role: true } });
+                const users = await prisma.profile.findMany({ include: { role: true } });
                 return createSuccessResult(users);
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);

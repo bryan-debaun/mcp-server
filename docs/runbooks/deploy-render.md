@@ -26,10 +26,11 @@ Set these in Render Dashboard > Environment > Environment Variables (secure):
 Supabase / Auth-related (required for admin & JWT validation):
 
 - `DATABASE_URL` (Postgres connection string used by Prisma)
-- `SUPABASE_SERVICE_ROLE_KEY` (full-privilege service role key; store securely and rotate regularly)
+- `SUPABASE_SECRET_KEY` (preferred server/service role key) — fallback: `SUPABASE_SERVICE_ROLE_KEY`
+- `PUBLIC_SUPABASE_URL` (preferred issuer / public URL) — fallback: `SUPABASE_ISS`
 - `SUPABASE_JWKS_URL` (JWKS endpoint used to validate Supabase-issued JWTs)
 - `SUPABASE_AUD` (expected JWT audience / client id)
-- `SUPABASE_ISS` (expected JWT issuer)
+- `PUBLIC_SUPABASE_PUBLISHABLE_KEY` (preferred publishable/anon key) — fallback: `SUPABASE_ANON_KEY`
 
 Add these to the Render service environment and to GitHub Actions secrets (for CI jobs that run DB migrations and integration tests). For local development, use `.env` files and the local Postgres from `docker-compose.yml` with seeded data.
 
@@ -64,7 +65,7 @@ Secrets & Token Management
 
 Supabase JWT / JWKS configuration
 
-- Store Supabase-related secrets in Render: `SUPABASE_JWKS_URL`, `SUPABASE_AUD`, `SUPABASE_ISS`, `SUPABASE_SERVICE_ROLE_KEY`, and `DATABASE_URL`.
+- Store Supabase-related secrets in Render: `SUPABASE_JWKS_URL`, `SUPABASE_AUD`, `PUBLIC_SUPABASE_URL` (or `SUPABASE_ISS`), `SUPABASE_SECRET_KEY` (or `SUPABASE_SERVICE_ROLE_KEY`), and `DATABASE_URL`.
 - Configure the JWT middleware to validate tokens using the JWKS endpoint (`SUPABASE_JWKS_URL`) and by verifying `aud` and `iss` claims against `SUPABASE_AUD` and `SUPABASE_ISS`.
 - For local development and tests, include a mock JWKS JSON file (e.g., `test/fixtures/mock-jwks.json`) and helper utilities to generate test tokens signed with a test key (do **not** commit private keys). Tests should exercise authorized vs unauthorized flows using these fixtures.
 - The `SUPABASE_SERVICE_ROLE_KEY` is highly sensitive (server-only). Use it for admin CLI operations or server-to-server calls only; never expose it in client code or logs. When rotating the service role key: update Render secrets, update CI secrets, and redeploy; verify any long-lived sessions/tokens are revoked as part of rotation.

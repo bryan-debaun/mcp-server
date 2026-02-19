@@ -36,7 +36,7 @@ export async function callTool(name: string, args: any) {
     if (!prismaVerified) {
         await prismaReady();
         // Verify at least one model exists (as a sanity check that initialization completed)
-        if (!prisma.user || typeof prisma.user.findMany !== 'function') {
+        if (!prisma.profile || typeof prisma.profile.findMany !== 'function') {
             throw new Error('Prisma client not properly initialized - database connection may be unavailable');
         }
         prismaVerified = true;

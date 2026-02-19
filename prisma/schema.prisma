@@ -19,14 +19,14 @@ enum ItemStatus {
 // See `prisma.config.ts` for local dev config and CI usage.
 
 model Role {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  users     User[]
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  users     Profile[]
 }
 
-model User {
+model Profile {
   id                     Int              @id @default(autoincrement())
   email                  String           @unique
   name                   String?
@@ -57,7 +57,7 @@ model Invite {
   email      String
   token      String    @unique
   invitedBy  Int?
-  inviter    User?     @relation(fields: [invitedBy], references: [id])
+  inviter    Profile?  @relation(fields: [invitedBy], references: [id])
   accepted   Boolean   @default(false)
   acceptedAt DateTime?
   expiresAt  DateTime?
@@ -78,7 +78,7 @@ model AuditLog {
   id        Int      @id @default(autoincrement())
   action    String
   actorId   Int?
-  actor     User?    @relation(fields: [actorId], references: [id])
+  actor     Profile? @relation(fields: [actorId], references: [id])
   metadata  Json?
   createdAt DateTime @default(now())
 }
@@ -91,7 +91,7 @@ model Author {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
   createdBy Int?
-  creator   User?        @relation("AuthorCreator", fields: [createdBy], references: [id])
+  creator   Profile?     @relation("AuthorCreator", fields: [createdBy], references: [id])
   books     BookAuthor[]
 
   @@index([name])
@@ -107,7 +107,7 @@ model Book {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   createdBy   Int?
-  creator     User?        @relation("BookCreator", fields: [createdBy], references: [id])
+  creator     Profile?     @relation("BookCreator", fields: [createdBy], references: [id])
   authors     BookAuthor[]
   ratings     Rating[]
 
@@ -149,7 +149,7 @@ model Movie {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   createdBy   Int?
-  creator     User?      @relation("MovieCreator", fields: [createdBy], references: [id])
+  creator     Profile?   @relation("MovieCreator", fields: [createdBy], references: [id])
 
   averageRating Decimal? @map("average_rating") @db.Decimal(5, 2)
   ratingCount   Int      @default(0) @map("rating_count")
@@ -169,7 +169,7 @@ model VideoGame {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   createdBy   Int?
-  creator     User?      @relation("VideoGameCreator", fields: [createdBy], references: [id])
+  creator     Profile?   @relation("VideoGameCreator", fields: [createdBy], references: [id])
 
   averageRating Decimal? @map("average_rating") @db.Decimal(5, 2)
   ratingCount   Int      @default(0) @map("rating_count")
@@ -186,7 +186,7 @@ model ContentCreator {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   createdBy   Int?
-  creator     User?    @relation("ContentCreatorCreator", fields: [createdBy], references: [id])
+  creator     Profile? @relation("ContentCreatorCreator", fields: [createdBy], references: [id])
 
   @@index([name])
 }
@@ -198,7 +198,7 @@ model Rating {
   bookId     Int?     @map("bookId")
   book       Book?    @relation(fields: [bookId], references: [id])
   userId     Int
-  user       User     @relation("UserRatings", fields: [userId], references: [id])
+  user       Profile  @relation("UserRatings", fields: [userId], references: [id])
   rating     Int
   review     String?
   createdAt  DateTime @default(now())
@@ -227,7 +227,7 @@ model AuthMagicLink {
   jti        String    @unique
   email      String
   userId     Int?
-  user       User?     @relation(fields: [userId], references: [id])
+  user       Profile?  @relation(fields: [userId], references: [id])
   expiresAt  DateTime
   consumed   Boolean   @default(false)
   consumedAt DateTime?

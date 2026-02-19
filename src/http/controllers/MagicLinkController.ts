@@ -42,24 +42,7 @@ function rateLimitEmail(email: string): boolean {
     return false
 }
 
-function setSessionCookie(res: any, payload: Record<string, any>) {
-    const secret = process.env.SESSION_JWT_SECRET
-    const maxAge = Number(process.env.SESSION_COOKIE_MAX_AGE_SEC ?? 60 * 60 * 24 * 7) // 7 days
-    if (!secret) {
-        console.warn('SESSION_JWT_SECRET not set; session cookie will not be signed')
-        const token = Buffer.from(JSON.stringify(payload)).toString('base64')
-        res.cookie('session', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge })
-        return
-    }
-    const encoder = new TextEncoder().encode(secret)
-    return import('jose').then(({ SignJWT }) =>
-        new SignJWT(payload).setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime(`${maxAge}s`).sign(encoder as any)
-    ).then((token: string) => {
-        res.cookie('session', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge })
-    }).catch((err: any) => {
-        console.error('failed to sign session token', err)
-    })
-}
+import { setSessionCookie } from './_session-utils.js'
 
 export interface SendMagicLinkRequest { email: string }
 export interface RegisterRequest { email: string; name?: string; password?: string }
@@ -137,7 +120,7 @@ export class MagicLinkController extends Controller {
             try {
                 user = await registerUser(email, name, password)
             } catch (err: any) {
-                if (err.message === 'user already exists' || err.message === 'password not supported' || err.message === 'SUPABASE_ISS missing') {
+                if (err.message === 'user already exists' || err.message === 'password not supported' || err.message === 'SUPABASE_ISS missing' || err.message === 'PUBLIC_SUPABASE_URL or SUPABASE_ISS missing') {
                     try { (request as any).res.status(400).json({ error: err.message }) } catch (e) { /* noop */ }
                     return
                 }
@@ -191,28 +174,26 @@ export class MagicLinkController extends Controller {
     @Response('410', 'expired')
     @Response('404', 'invalid')
     public async verifyGet(@Query() token: string, @Request() request?: ExpressRequest): Promise<void> {
-        if (!token) { this.setStatus(400); throw new Error('token required') }
+        const res = (request as any).res
+        if (!token) { res.status(400).json({ error: 'token required' }); return }
         try {
             const info = await verifyMagicLinkToken(token)
-            const res = (request as any).res
             await setSessionCookie(res, { sub: info.email, userId: info.userId })
             magicLinkVerified.inc()
             console.info('magic_link.verified', { email: info.email })
             const redirect = process.env.MAGIC_LINK_SUCCESS_URL ?? (process.env.MAGIC_LINK_FRONTEND_URL ?? '/')
             try {
                 res.redirect(String(redirect))
-                console.error('after redirect headersSent=', res.headersSent, 'statusCode=', res.statusCode)
                 return
             } catch (err) {
                 console.error('redirect failed', err)
-                this.setStatus(500)
-                throw new Error('redirect failed')
+                res.status(500).json({ error: 'redirect failed' })
+                return
             }
         } catch (err: any) {
-            if (err.message === 'expired token') { this.setStatus(410); throw new Error('expired token') }
-            if (err.message === 'replayed token') { magicLinkReplayed.inc(); this.setStatus(410); throw new Error('replayed token') }
-            this.setStatus(404)
-            throw new Error('invalid token')
+            if (err.message === 'expired token') { res.status(410).json({ error: 'expired token' }); return }
+            if (err.message === 'replayed token') { magicLinkReplayed.inc(); res.status(410).json({ error: 'replayed token' }); return }
+            res.status(404).json({ error: 'invalid token' }); return
         }
     }
 
@@ -223,7 +204,8 @@ export class MagicLinkController extends Controller {
     @Response('404', 'invalid')
     public async verifyPost(@Body() body: { token?: string }, @Request() request?: ExpressRequest): Promise<{ status: 'ok' }> {
         const token = String(body?.token || '')
-        if (!token) { this.setStatus(400); throw new Error('token required') }
+        const res = (request as any).res
+        if (!token) { res.status(400).json({ error: 'token required' }); return undefined as any }
         try {
             const info = await verifyMagicLinkToken(token)
             await setSessionCookie((request as any).res, { sub: info.email, userId: info.userId })
@@ -231,12 +213,12 @@ export class MagicLinkController extends Controller {
             console.info('magic_link.verified', { email: info.email })
             return { status: 'ok' }
         } catch (err: any) {
-            if (err.message === 'expired token') { this.setStatus(410); throw new Error('expired token') }
-            if (err.message === 'replayed token') { magicLinkReplayed.inc(); this.setStatus(410); throw new Error('replayed token') }
-            this.setStatus(404)
-            throw new Error('invalid token')
+            if (err.message === 'expired token') { res.status(410).json({ error: 'expired token' }); return undefined as any }
+            if (err.message === 'replayed token') { magicLinkReplayed.inc(); res.status(410).json({ error: 'replayed token' }); return undefined as any }
+            res.status(404).json({ error: 'invalid token' }); return undefined as any
         }
     }
+
 }
 
 // Test helper: clear internal rate limit maps

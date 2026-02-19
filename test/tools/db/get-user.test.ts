@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 
 // Mock prisma user.findUnique
-vi.mock('../../../src/db/index', () => ({ prisma: { user: { findUnique: async () => ({ id: 2, email: 'found@example.com' }) } } }))
+vi.mock('../../../src/db/index', () => ({ prisma: { profile: { findUnique: async () => ({ id: 2, email: 'found@example.com' }) } } }))
 
 import { registerGetUserTool } from '../../../src/tools/db/get-user.js'
 

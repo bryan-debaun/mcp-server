@@ -43,7 +43,7 @@ export async function runSeed(prismaClient?: any) {
     })
 
     // Create Bryan's admin user
-    const bryanAdmin = await db.user.upsert({
+    const bryanAdmin = await db.profile.upsert({
         where: { email: 'brn.dbn@gmail.com' },
         update: { isAdmin: true },
         create: {
@@ -55,7 +55,7 @@ export async function runSeed(prismaClient?: any) {
     })
 
     // Create a test admin user (for local development only)
-    const admin = await db.user.upsert({
+    const admin = await db.profile.upsert({
         where: { email: 'admin@example.com' },
         update: { isAdmin: true },
         create: {
@@ -69,14 +69,14 @@ export async function runSeed(prismaClient?: any) {
     // If ADMIN_EMAIL is set, mark that user as admin or create a minimal users row
     const adminEmail = process.env.ADMIN_EMAIL
     if (adminEmail) {
-        const existing = await db.user.findUnique({ where: { email: adminEmail } })
+        const existing = await db.profile.findUnique({ where: { email: adminEmail } })
         if (existing) {
-            await db.user.update({ where: { id: existing.id }, data: { isAdmin: true } })
+            await db.profile.update({ where: { id: existing.id }, data: { isAdmin: true } })
             console.log(`Marked existing user ${adminEmail} as isAdmin = true`)
         } else {
             const createData: any = { email: adminEmail, isAdmin: true }
             if (process.env.ADMIN_EXTERNAL_ID) createData.external_id = process.env.ADMIN_EXTERNAL_ID
-            const minimal = await db.user.create({ data: createData })
+            const minimal = await db.profile.create({ data: createData })
             console.warn(`Created minimal users row for ADMIN_EMAIL ${adminEmail}. Please create a Supabase Auth user for this email and sync external_id if needed.`)
         }
     }

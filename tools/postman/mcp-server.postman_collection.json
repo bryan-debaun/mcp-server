@@ -738,6 +738,93 @@
             ]
         },
         {
+            "name": "Auth - Password: Reset Request",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\"email\":\"{{register_email}}\"}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/auth/password/reset-request",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "auth",
+                        "password",
+                        "reset-request"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200 or 400', function () { pm.expect(pm.response.status).to.be.oneOf([200,400]); });"
+                        ]
+                    }
+                }
+            ],
+        },
+        {
+            "name": "Auth - Password: Login",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\"email\":\"{{register_email}}\",\"password\":\"{{register_password}}\"}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/auth/password/login",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "auth",
+                        "password",
+                        "login"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200 or 401', function () { pm.expect(pm.response.status).to.be.oneOf([200,401]); });",
+                            "if (pm.response.code === 200) { var sc = pm.response.headers.get('set-cookie'); if (sc) { var m = sc.match(/session=([^;]+)/); if (m) pm.collectionVariables.set('session_cookie', m[1]); } }"
+                        ]
+                    }
+                }
+            ],
+        },
+        {
             "name": "Admin - List Users",
             "request": {
                 "method": "GET",

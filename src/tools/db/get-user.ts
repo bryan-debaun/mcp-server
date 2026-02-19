@@ -19,7 +19,7 @@ export function registerGetUserTool(server: McpServer): void {
             try {
                 const { id, email } = args as { id?: number; email?: string };
                 if (!id && !email) throw new Error('id or email is required');
-                const user = await prisma.user.findUnique({ where: id ? { id } : { email } as any, include: { role: true } });
+                const user = await prisma.profile.findUnique({ where: id ? { id } : { email } as any, include: { role: true } });
                 if (!user) throw new Error('user not found');
                 return createSuccessResult(user);
             } catch (error) {

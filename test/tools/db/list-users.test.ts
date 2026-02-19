@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 
 // Mock prisma user.findMany
-vi.mock('../../../src/db/index', () => ({ prisma: { user: { findMany: async () => [{ id: 1, email: 'u1@example.com' }] } } }))
+vi.mock('../../../src/db/index', () => ({ prisma: { profile: { findMany: async () => [{ id: 1, email: 'u1@example.com' }] } } }))
 
 import { registerListUsersTool } from '../../../src/tools/db/list-users.js'
 

@@ -68,6 +68,42 @@ describe('magic-link routes', () => {
         expect(res.headers['set-cookie']).toBeDefined()
     })
 
+    it('GET /api/auth/magic-link/verify returns 404 for invalid token and 410 for expired token', async () => {
+        const app = express()
+        app.use(express.json())
+        RegisterRoutes(app)
+
+        const auth: any = await import('../../src/auth/magic-link.ts')
+        auth.verifyMagicLinkToken.mockRejectedValueOnce(new Error('invalid token'))
+
+        const resInvalid = await request(app).get('/api/auth/magic-link/verify').query({ token: 'bad' })
+        expect(resInvalid.status).toBe(404)
+        expect(resInvalid.body).toEqual({ error: 'invalid token' })
+
+        auth.verifyMagicLinkToken.mockRejectedValueOnce(new Error('expired token'))
+        const resExpired = await request(app).get('/api/auth/magic-link/verify').query({ token: 'expired' })
+        expect(resExpired.status).toBe(410)
+        expect(resExpired.body).toEqual({ error: 'expired token' })
+    })
+
+    it('POST /api/auth/magic-link/verify returns 404 for invalid token and 410 for expired token', async () => {
+        const app = express()
+        app.use(express.json())
+        RegisterRoutes(app)
+
+        const auth: any = await import('../../src/auth/magic-link.ts')
+        auth.verifyMagicLinkToken.mockRejectedValueOnce(new Error('invalid token'))
+
+        const resInvalid = await request(app).post('/api/auth/magic-link/verify').send({ token: 'bad' })
+        expect(resInvalid.status).toBe(404)
+        expect(resInvalid.body).toEqual({ error: 'invalid token' })
+
+        auth.verifyMagicLinkToken.mockRejectedValueOnce(new Error('expired token'))
+        const resExpired = await request(app).post('/api/auth/magic-link/verify').send({ token: 'expired' })
+        expect(resExpired.status).toBe(410)
+        expect(resExpired.body).toEqual({ error: 'expired token' })
+    })
+
     it('GET /api/auth/magic-link/verify remains public when MCP_API_KEY set', async () => {
         const orig = process.env.MCP_API_KEY
         process.env.MCP_API_KEY = 'testkey'

@@ -16,7 +16,8 @@ import { registerAdminRoute } from '../../src/http/admin-route'
 
 describe('Admin debug endpoint', () => {
     it('returns ip and jwks status when enabled and records audit/metric', async () => {
-        // stub fetch to return ok
+        // stub fetch to return ok (restore previous fetch after test)
+        const prevFetch = (global as any).fetch
         vi.stubGlobal('fetch', async () => ({ ok: true, status: 200 }))
         process.env.SUPABASE_JWKS_URL = 'https://example.local/.well-known/jwks.json'
         process.env.ADMIN_DEBUG_ENABLED = '1'
@@ -40,7 +41,7 @@ describe('Admin debug endpoint', () => {
 
         delete process.env.SUPABASE_JWKS_URL
         delete process.env.ADMIN_DEBUG_ENABLED
-        vi.unstubAllGlobals()
+            ; (global as any).fetch = prevFetch
     })
 
     it('is not registered when ADMIN_DEBUG_ENABLED is not set', async () => {

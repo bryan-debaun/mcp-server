@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../src/db', () => ({
     prisma: {
         invite: { findUnique: vi.fn(), update: vi.fn() },
-        user: { findUnique: vi.fn(), create: vi.fn() },
+        profile: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), upsert: vi.fn() },
         role: { findUnique: vi.fn(), create: vi.fn() },
         auditLog: { create: vi.fn() }
     }
@@ -21,14 +21,14 @@ describe('admin service - acceptInvite', () => {
 
     it('accepts a valid invite and creates a user', async () => {
         p.invite.findUnique.mockResolvedValue({ id: 1, email: 'new@example.com', token: 't', accepted: false, expiresAt: null })
-        p.user.findUnique.mockResolvedValue(null)
+        p.profile.findUnique.mockResolvedValue(null)
         p.role.findUnique.mockResolvedValue({ id: 2, name: 'user' })
-        p.user.create.mockResolvedValue({ id: 5, email: 'new@example.com' })
+        p.profile.create.mockResolvedValue({ id: 5, email: 'new@example.com' })
         p.invite.update.mockResolvedValue({ id: 1, accepted: true })
 
         const user = await svc.acceptInvite('t', { name: 'New User' })
         expect(user).toEqual({ id: 5, email: 'new@example.com' })
-        expect(prisma.user.create).toHaveBeenCalled()
+        expect(prisma.profile.create).toHaveBeenCalled()
         expect(prisma.invite.update).toHaveBeenCalledWith({ where: { id: 1 }, data: expect.objectContaining({ accepted: true }) })
         expect(prisma.auditLog.create).toHaveBeenCalled()
     })
@@ -50,59 +50,101 @@ describe('admin service - acceptInvite', () => {
     })
 
     it('sets blocked flag and writes audit log', async () => {
-        p.user.update = vi.fn().mockResolvedValue({ id: 1, blocked: true })
+        p.profile.update = vi.fn().mockResolvedValue({ id: 1, blocked: true })
         await svc.setUserBlocked(1, true, 5)
-        expect(p.user.update).toHaveBeenCalledWith({ where: { id: 1 }, data: { blocked: true } })
+        expect(p.profile.update).toHaveBeenCalledWith({ where: { id: 1 }, data: { blocked: true } })
         expect(p.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: 'set-blocked' }) }))
     })
 
     it('soft-deletes user by default and writes audit log', async () => {
-        p.user.update = vi.fn().mockResolvedValue({ id: 1, deletedAt: new Date(), blocked: true })
+        p.profile.update = vi.fn().mockResolvedValue({ id: 1, deletedAt: new Date(), blocked: true })
         await svc.deleteUser(1, 5, {})
-        expect(p.user.update).toHaveBeenCalled()
+        expect(p.profile.update).toHaveBeenCalled()
         expect(p.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: 'delete-user' }) }))
     })
 
     it('hard-deletes user when hard=true', async () => {
-        p.user.delete = vi.fn().mockResolvedValue({ id: 1 })
+        p.profile.delete = vi.fn().mockResolvedValue({ id: 1 })
         await svc.deleteUser(1, 5, { hard: true })
-        expect(p.user.delete).toHaveBeenCalledWith({ where: { id: 1 } })
+        expect(p.profile.delete).toHaveBeenCalledWith({ where: { id: 1 } })
         expect(p.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: 'delete-user' }) }))
     })
 
     it('registers a new user without password and writes audit log', async () => {
-        p.user.findUnique.mockResolvedValue(null)
+        p.profile.findUnique.mockResolvedValue(null)
         p.role.findUnique.mockResolvedValue({ id: 2, name: 'user' })
-        p.user.create.mockResolvedValue({ id: 7, email: 'reg@example.com' })
+        p.profile.create.mockResolvedValue({ id: 7, email: 'reg@example.com' })
 
         const user = await svc.registerUser('reg@example.com', 'Reg User')
         expect(user).toEqual({ id: 7, email: 'reg@example.com' })
-        expect(prisma.user.create).toHaveBeenCalled()
+        expect(prisma.profile.create).toHaveBeenCalled()
         expect(prisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: 'register-user' }) }))
     })
 
     it('throws when registering an existing user', async () => {
-        p.user.findUnique.mockResolvedValue({ id: 1, email: 'exists@example.com' })
+        p.profile.findUnique.mockResolvedValue({ id: 1, email: 'exists@example.com' })
         await expect(svc.registerUser('exists@example.com')).rejects.toThrow('user already exists')
     })
 
     it('rejects password when SUPABASE not configured', async () => {
-        p.user.findUnique.mockResolvedValue(null)
+        p.profile.findUnique.mockResolvedValue(null)
         await expect(svc.registerUser('pw@example.com', 'PW', 'secret')).rejects.toThrow('password not supported')
     })
 
     it('propagates supabase provisioning failure and writes audit log', async () => {
-        p.user.findUnique.mockResolvedValue(null)
-        process.env.SUPABASE_SERVICE_ROLE_KEY = 'key'
-        process.env.SUPABASE_ISS = 'https://supabase.example'
+        p.profile.findUnique.mockResolvedValue(null)
+        process.env.SUPABASE_SECRET_KEY = 'key'
+        process.env.PUBLIC_SUPABASE_URL = 'https://supabase.example'
         const oldFetch = (global as any).fetch
             ; (global as any).fetch = vi.fn().mockResolvedValue({ ok: false, text: async () => 'bad' })
 
         await expect(svc.registerUser('s@example.com', 'S', 'secret')).rejects.toThrow('supabase provisioning failed')
         expect(prisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: 'register-supabase-failed' }) }))
 
-        delete process.env.SUPABASE_SERVICE_ROLE_KEY
-        delete process.env.SUPABASE_ISS
+        delete process.env.SUPABASE_SECRET_KEY
+        delete process.env.PUBLIC_SUPABASE_URL
+            ; (global as any).fetch = oldFetch
+    })
+
+    it('records external_id when Supabase provisioning succeeds during register (new env vars)', async () => {
+        p.profile.findUnique.mockResolvedValue(null)
+        process.env.SUPABASE_SECRET_KEY = 'key'
+        process.env.PUBLIC_SUPABASE_URL = 'https://supabase.example'
+
+        const supabaseId = '11111111-2222-3333-4444-555555555555'
+        const oldFetch = (global as any).fetch
+            ; (global as any).fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: supabaseId }) })
+
+        p.role.findUnique.mockResolvedValue({ id: 2, name: 'user' })
+        p.profile.create.mockResolvedValue({ id: 7, email: 'sup@example.com', external_id: supabaseId })
+
+        const user = await svc.registerUser('sup@example.com', 'Sup', 'secret')
+        expect(prisma.profile.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ external_id: supabaseId }) }))
+
+        delete process.env.SUPABASE_SECRET_KEY
+        delete process.env.PUBLIC_SUPABASE_URL
+            ; (global as any).fetch = oldFetch
+    })
+
+    it('records external_id when Supabase provisioning succeeds during acceptInvite', async () => {
+        p.invite.findUnique.mockResolvedValue({ id: 1, email: 'new@example.com', token: 't', accepted: false, expiresAt: null })
+        p.profile.findUnique.mockResolvedValue(null)
+        p.role.findUnique.mockResolvedValue({ id: 2, name: 'user' })
+
+        process.env.SUPABASE_SECRET_KEY = 'key'
+        process.env.PUBLIC_SUPABASE_URL = 'https://supabase.example'
+        const supabaseId = '22222222-3333-4444-5555-666666666666'
+        const oldFetch = (global as any).fetch
+            ; (global as any).fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: supabaseId }) })
+
+        p.profile.create.mockResolvedValue({ id: 5, email: 'new@example.com', external_id: supabaseId })
+        p.invite.update.mockResolvedValue({ id: 1, accepted: true })
+
+        const user = await svc.acceptInvite('t', { name: 'New User' })
+        expect(prisma.profile.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ external_id: supabaseId }) }))
+
+        delete process.env.SUPABASE_SECRET_KEY
+        delete process.env.PUBLIC_SUPABASE_URL
             ; (global as any).fetch = oldFetch
     })
 })
