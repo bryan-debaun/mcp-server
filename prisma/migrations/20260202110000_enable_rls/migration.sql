@@ -180,6 +180,7 @@ BEGIN
       OR (current_setting('request.jwt.claims.email', true) IS NOT NULL
           AND exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "createdBy"))
     );
+    $policy$;
   END IF;
 END $do$;
 
