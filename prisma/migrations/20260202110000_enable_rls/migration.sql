@@ -19,50 +19,54 @@ ALTER TABLE IF EXISTS "Profile" ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF to_regclass('public.Profile') IS NOT NULL THEN
-    DROP POLICY IF EXISTS "User_self_or_admin_select" ON "Profile";
-    CREATE POLICY "User_self_or_admin_select" ON "Profile" FOR SELECT USING (
-      current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
-    );
+    EXECUTE $policy$
+      DROP POLICY IF EXISTS "User_self_or_admin_select" ON "Profile";
+      CREATE POLICY "User_self_or_admin_select" ON "Profile" FOR SELECT USING (
+        current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
+      );
 
-    DROP POLICY IF EXISTS "User_self_or_admin_insert" ON "Profile";
-    CREATE POLICY "User_self_or_admin_insert" ON "Profile" FOR INSERT WITH CHECK (
-      current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
-    );
+      DROP POLICY IF EXISTS "User_self_or_admin_insert" ON "Profile";
+      CREATE POLICY "User_self_or_admin_insert" ON "Profile" FOR INSERT WITH CHECK (
+        current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
+      );
 
-    DROP POLICY IF EXISTS "User_self_or_admin_update" ON "Profile";
-    CREATE POLICY "User_self_or_admin_update" ON "Profile" FOR UPDATE USING (
-      current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
-    ) WITH CHECK (
-      current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
-    );
+      DROP POLICY IF EXISTS "User_self_or_admin_update" ON "Profile";
+      CREATE POLICY "User_self_or_admin_update" ON "Profile" FOR UPDATE USING (
+        current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
+      ) WITH CHECK (
+        current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
+      );
 
-    DROP POLICY IF EXISTS "User_self_or_admin_delete" ON "Profile";
-    CREATE POLICY "User_self_or_admin_delete" ON "Profile" FOR DELETE USING (
-      current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
-    );
+      DROP POLICY IF EXISTS "User_self_or_admin_delete" ON "Profile";
+      CREATE POLICY "User_self_or_admin_delete" ON "Profile" FOR DELETE USING (
+        current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
+      );
+    $policy$;
 
   ELSIF to_regclass('public.User') IS NOT NULL THEN
-    DROP POLICY IF EXISTS "User_self_or_admin_select" ON "User";
-    CREATE POLICY "User_self_or_admin_select" ON "User" FOR SELECT USING (
-      current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
-    );
+    EXECUTE $policy$
+      DROP POLICY IF EXISTS "User_self_or_admin_select" ON "User";
+      CREATE POLICY "User_self_or_admin_select" ON "User" FOR SELECT USING (
+        current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
+      );
 
-    DROP POLICY IF EXISTS "User_self_or_admin_insert" ON "User";
-    CREATE POLICY "User_self_or_admin_insert" ON "User" FOR INSERT WITH CHECK (
-      current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
-    );
+      DROP POLICY IF EXISTS "User_self_or_admin_insert" ON "User";
+      CREATE POLICY "User_self_or_admin_insert" ON "User" FOR INSERT WITH CHECK (
+        current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
+      );
 
-    DROP POLICY IF EXISTS "User_self_or_admin_update" ON "User";
-    CREATE POLICY "User_self_or_admin_update" ON "User" FOR UPDATE USING (
-      current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
-    ) WITH CHECK (
-      current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
-    );
+      DROP POLICY IF EXISTS "User_self_or_admin_update" ON "User";
+      CREATE POLICY "User_self_or_admin_update" ON "User" FOR UPDATE USING (
+        current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
+      ) WITH CHECK (
+        current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
+      );
 
-    DROP POLICY IF EXISTS "User_self_or_admin_delete" ON "User";
-    CREATE POLICY "User_self_or_admin_delete" ON "User" FOR DELETE USING (
-      current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
-    );
+      DROP POLICY IF EXISTS "User_self_or_admin_delete" ON "User";
+      CREATE POLICY "User_self_or_admin_delete" ON "User" FOR DELETE USING (
+        current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
+      );
+    $policy$;
   END IF;
 END$$;
 
@@ -120,6 +124,7 @@ CREATE POLICY "Author_public_select" ON "Author" FOR SELECT USING (true);
 DO $$
 BEGIN
   IF to_regclass('public.Profile') IS NOT NULL THEN
+    EXECUTE $policy$
     DROP POLICY IF EXISTS "Author_creator_or_admin_insert" ON "Author";
     CREATE POLICY "Author_creator_or_admin_insert" ON "Author" FOR INSERT WITH CHECK (
       current_setting('request.jwt.claims.role', true) = 'admin'
@@ -147,8 +152,10 @@ BEGIN
       OR (current_setting('request.jwt.claims.email', true) IS NOT NULL
           AND exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "createdBy"))
     );
+    $policy$;
 
   ELSIF to_regclass('public.User') IS NOT NULL THEN
+    EXECUTE $policy$
     DROP POLICY IF EXISTS "Author_creator_or_admin_insert" ON "Author";
     CREATE POLICY "Author_creator_or_admin_insert" ON "Author" FOR INSERT WITH CHECK (
       current_setting('request.jwt.claims.role', true) = 'admin'
@@ -183,6 +190,7 @@ CREATE POLICY "Book_public_select" ON "Book" FOR SELECT USING (true);
 DO $$
 BEGIN
   IF to_regclass('public.Profile') IS NOT NULL THEN
+    EXECUTE $policy$
     DROP POLICY IF EXISTS "Book_creator_or_admin_insert" ON "Book";
     CREATE POLICY "Book_creator_or_admin_insert" ON "Book" FOR INSERT WITH CHECK (
       current_setting('request.jwt.claims.role', true) = 'admin'
@@ -211,8 +219,10 @@ BEGIN
           AND (exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "Book"."createdBy")
                OR exists (select 1 from "Profile" p where p.email = current_setting('request.jwt.claims.email', true) and p.id = "Book"."createdBy")))
     );
+    $policy$;
 
   ELSIF to_regclass('public.User') IS NOT NULL THEN
+    EXECUTE $policy$
     DROP POLICY IF EXISTS "Book_creator_or_admin_insert" ON "Book";
     CREATE POLICY "Book_creator_or_admin_insert" ON "Book" FOR INSERT WITH CHECK (
       current_setting('request.jwt.claims.role', true) = 'admin'
@@ -237,6 +247,7 @@ BEGIN
       OR (current_setting('request.jwt.claims.email', true) IS NOT NULL
           AND exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "Book"."createdBy"))
     );
+    $policy$;
   END IF;
 END$$;
 
@@ -262,6 +273,7 @@ CREATE POLICY "Rating_admin_all" ON "Rating" FOR ALL USING (current_setting('req
 DO $$
 BEGIN
   IF to_regclass('public.Profile') IS NOT NULL THEN
+    EXECUTE $policy$
     DROP POLICY IF EXISTS "Rating_owner_select" ON "Rating";
     CREATE POLICY "Rating_owner_select" ON "Rating" FOR SELECT USING (
       current_setting('request.jwt.claims.email', true) IS NOT NULL
@@ -284,8 +296,10 @@ BEGIN
       current_setting('request.jwt.claims.email', true) IS NOT NULL
       AND (exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "userId") OR exists (select 1 from "Profile" p where p.email = current_setting('request.jwt.claims.email', true) and p.id = "userId"))
     );
+    $policy$;
 
   ELSIF to_regclass('public.User') IS NOT NULL THEN
+    EXECUTE $policy$
     DROP POLICY IF EXISTS "Rating_owner_select" ON "Rating";
     CREATE POLICY "Rating_owner_select" ON "Rating" FOR SELECT USING (
       current_setting('request.jwt.claims.email', true) IS NOT NULL
@@ -308,6 +322,7 @@ BEGIN
       current_setting('request.jwt.claims.email', true) IS NOT NULL
       AND (exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "userId"))
     );
+    $policy$;
   END IF;
 END$$;
 
