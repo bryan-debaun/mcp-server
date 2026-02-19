@@ -29,11 +29,13 @@ describe('RLS integration tests', () => {
     })
 
     it('enforces owner-based access for ratings (user A cannot see user B ratings)', async () => {
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', 'rls-a@example.com', false)`;
-        const userA = await prisma.profile.create({ data: { email: 'rls-a@example.com', name: 'User A' } })
+        const userAEmail = `rls-a+${Date.now()}@example.com`
+        const userBEmail = `rls-b+${Date.now()}@example.com`
+        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${userAEmail}, false)`;
+        const userA = await prisma.profile.create({ data: { email: userAEmail, name: 'User A' } })
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', 'rls-b@example.com', false)`;
-        const userB = await prisma.profile.create({ data: { email: 'rls-b@example.com', name: 'User B' } })
+        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${userBEmail}, false)`;
+        const userB = await prisma.profile.create({ data: { email: userBEmail, name: 'User B' } })
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
 
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${userA.email}, false)`;
@@ -48,7 +50,13 @@ describe('RLS integration tests', () => {
         await client.connect()
         try {
             await client.query(`SET ROLE rls_test_role`)
-            await client.query(`SELECT set_config('request.jwt.claims.email', 'rls-a@example.com', false)`) // session-level
+            await client.query(`SELECT set_config('request.jwt.claims.email', '${userAEmail}', false)`) // session-level
+            // verify session GUC and Profile visibility on this connection
+            const _gucR = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email`)
+            expect(_gucR.rows[0].email).toBe(userA.email)
+            const _profileCheckR = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+            expect(_profileCheckR.rows.length).toBeGreaterThan(0)
+            expect(_profileCheckR.rows[0].id).toBe(userA.id)
             const resA = await client.query(`SELECT r.* FROM "Rating" r`)
             // Reset role on this connection
             await client.query(`RESET ROLE`)

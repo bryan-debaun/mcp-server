@@ -30,11 +30,13 @@ describe('RLS content entities tests', () => {
     })
 
     it('enforces creator/admin writes for Movie', async () => {
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', 'rls-movie-a@example.com', false)`;
-        const userA = await prisma.profile.create({ data: { email: 'rls-movie-a@example.com', name: 'Movie A' } })
+        const movieAEmail = `rls-movie-a+${Date.now()}@example.com`
+        const movieBEmail = `rls-movie-b+${Date.now()}@example.com`
+        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${movieAEmail}, false)`;
+        const userA = await prisma.profile.create({ data: { email: movieAEmail, name: 'Movie A' } })
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', 'rls-movie-b@example.com', false)`;
-        await prisma.profile.create({ data: { email: 'rls-movie-b@example.com', name: 'Movie B' } })
+        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${movieBEmail}, false)`;
+        const userB = await prisma.profile.create({ data: { email: movieBEmail, name: 'Movie B' } })
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
 
         // Set session-level JWT claim so RLS INSERT WITH CHECK (creator match) succeeds
@@ -55,12 +57,18 @@ describe('RLS content entities tests', () => {
                 await client.query(`SET ROLE rls_test_role`)
             }
             // User B should not be able to update
-            await client.query(`SELECT set_config('request.jwt.claims.email', 'rls-movie-b@example.com', false)`)
+            await client.query(`SELECT set_config('request.jwt.claims.email', '${movieBEmail}', false)`)
             const resB = await client.query(`UPDATE "Movie" SET title = 'X' WHERE id = ${movie.id}`)
             expect(resB.rowCount).toBe(0)
 
             // User A should be able to update
-            await client.query(`SELECT set_config('request.jwt.claims.email', 'rls-movie-a@example.com', false)`)
+            await client.query(`SELECT set_config('request.jwt.claims.email', '${movieAEmail}', false)`)
+            // verify session GUC and Profile visibility on this connection
+            const _guc = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email`)
+            expect(_guc.rows[0].email).toBe(userA.email)
+            const _profileCheck = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+            expect(_profileCheck.rows.length).toBeGreaterThan(0)
+            expect(_profileCheck.rows[0].id).toBe(movie.createdBy)
             const resA = await client.query(`UPDATE "Movie" SET title = 'Y' WHERE id = ${movie.id}`)
             expect(resA.rowCount).toBeGreaterThan(0)
 
@@ -76,16 +84,23 @@ describe('RLS content entities tests', () => {
     })
 
     it('enforces creator/admin writes for VideoGame', async () => {
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', 'rls-game-a@example.com', false)`;
-        const userA = await prisma.profile.create({ data: { email: 'rls-game-a@example.com', name: 'Game A' } })
+        const gameAEmail = `rls-game-a+${Date.now()}@example.com`
+        const gameBEmail = `rls-game-b+${Date.now()}@example.com`
+        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${gameAEmail}, false)`;
+        const userA = await prisma.profile.create({ data: { email: gameAEmail, name: 'Game A' } })
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', 'rls-game-b@example.com', false)`;
-        await prisma.profile.create({ data: { email: 'rls-game-b@example.com', name: 'Game B' } })
+        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${gameBEmail}, false)`;
+        const userB = await prisma.profile.create({ data: { email: gameBEmail, name: 'Game B' } })
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
 
         // Set session claim for insert
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${userA.email}, false)`;
-        const game = await prisma.videoGame.create({ data: { title: 'RLS Game', platform: 'PC', createdBy: userA.id } })
+        // defensive: ensure the Profile still exists (other tests may call profile.deleteMany concurrently)
+        let profileForCreate = await prisma.profile.findUnique({ where: { email: userA.email } })
+        if (!profileForCreate) {
+            profileForCreate = await prisma.profile.create({ data: { email: userA.email, name: userA.name } })
+        }
+        const game = await prisma.videoGame.create({ data: { title: 'RLS Game', platform: 'PC', createdBy: profileForCreate.id } })
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
 
         const { Client } = await import('pg')
@@ -98,11 +113,17 @@ describe('RLS content entities tests', () => {
                 await ensureRlsTestRoleReady(prisma)
                 await client.query(`SET ROLE rls_test_role`)
             }
-            await client.query(`SELECT set_config('request.jwt.claims.email', 'rls-game-b@example.com', false)`)
+            await client.query(`SELECT set_config('request.jwt.claims.email', '${gameBEmail}', false)`)
             const resB = await client.query(`UPDATE "VideoGame" SET title = 'X' WHERE id = ${game.id}`)
             expect(resB.rowCount).toBe(0)
 
-            await client.query(`SELECT set_config('request.jwt.claims.email', 'rls-game-a@example.com', false)`)
+            await client.query(`SELECT set_config('request.jwt.claims.email', '${gameAEmail}', false)`)
+            // verify session GUC and Profile visibility on this connection
+            const _gucVG = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email`)
+            expect(_gucVG.rows[0].email).toBe(userA.email)
+            const _profileCheckVG = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+            expect(_profileCheckVG.rows.length).toBeGreaterThan(0)
+            expect(_profileCheckVG.rows[0].id).toBe(game.createdBy)
             const resA = await client.query(`UPDATE "VideoGame" SET title = 'Y' WHERE id = ${game.id}`)
             expect(resA.rowCount).toBeGreaterThan(0)
 
@@ -123,11 +144,13 @@ describe('RLS content entities tests', () => {
     })
 
     it('enforces creator/admin writes for ContentCreator', async () => {
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', 'rls-cc-a@example.com', false)`;
-        const userA = await prisma.profile.create({ data: { email: 'rls-cc-a@example.com', name: 'CC A' } })
+        const ccAEmail = `rls-cc-a+${Date.now()}@example.com`
+        const ccBEmail = `rls-cc-b+${Date.now()}@example.com`
+        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${ccAEmail}, false)`;
+        const userA = await prisma.profile.create({ data: { email: ccAEmail, name: 'CC A' } })
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', 'rls-cc-b@example.com', false)`;
-        await prisma.profile.create({ data: { email: 'rls-cc-b@example.com', name: 'CC B' } })
+        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${ccBEmail}, false)`;
+        await prisma.profile.create({ data: { email: ccBEmail, name: 'CC B' } })
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
 
         // Set session claim for insert
@@ -145,11 +168,17 @@ describe('RLS content entities tests', () => {
                 await ensureRlsTestRoleReady(prisma)
                 await client.query(`SET ROLE rls_test_role`)
             }
-            await client.query(`SELECT set_config('request.jwt.claims.email', 'rls-cc-b@example.com', false)`)
+            await client.query(`SELECT set_config('request.jwt.claims.email', '${ccBEmail}', false)`)
             const resB = await client.query(`UPDATE "ContentCreator" SET name = 'X' WHERE id = ${cc.id}`)
             expect(resB.rowCount).toBe(0)
 
-            await client.query(`SELECT set_config('request.jwt.claims.email', 'rls-cc-a@example.com', false)`)
+            await client.query(`SELECT set_config('request.jwt.claims.email', '${ccAEmail}', false)`)
+            // verify session GUC and Profile visibility on this connection
+            const _gucCC = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email`)
+            expect(_gucCC.rows[0].email).toBe(userA.email)
+            const _profileCheckCC = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+            expect(_profileCheckCC.rows.length).toBeGreaterThan(0)
+            expect(_profileCheckCC.rows[0].id).toBe(cc.createdBy)
             const resA = await client.query(`UPDATE "ContentCreator" SET name = 'Y' WHERE id = ${cc.id}`)
             expect(resA.rowCount).toBeGreaterThan(0)
 
