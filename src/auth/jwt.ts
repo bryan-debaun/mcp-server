@@ -53,6 +53,36 @@ export async function verifySupabaseJwt(token: string): Promise<JWTPayload> {
     return payload
 }
 
+async function findLocalProfileBySub(sub: string) {
+    if (!sub) return null
+    const s = String(sub)
+    if (/^[0-9a-fA-F-]{36}$/.test(s)) return prisma.profile.findUnique({ where: { external_id: s } as any, include: { role: true } })
+    if (s.includes('@')) return prisma.profile.findUnique({ where: { email: s } as any, include: { role: true } })
+    return null
+}
+
+function attachLocalProfileToReq(req: any, profile: any) {
+    if (!profile) return
+    req.user.role = profile.role?.name ?? (profile.isAdmin ? 'admin' : 'user')
+    req.user.isAdmin = Boolean(profile.isAdmin)
+    req.user.localUserId = profile.id
+    req.user.external_id = profile.external_id
+}
+
+function parseCookies(header?: string) {
+    if (!header) return {}
+    return Object.fromEntries(
+        header
+            .split(';')
+            .map((c) => c.trim())
+            .filter(Boolean)
+            .map((s) => {
+                const i = s.indexOf('=')
+                return [s.slice(0, i), s.slice(i + 1)]
+            })
+    )
+}
+
 export async function jwtMiddleware(req: Request, res: Response, next: NextFunction) {
     try {
         const auth = req.headers.authorization
@@ -66,34 +96,21 @@ export async function jwtMiddleware(req: Request, res: Response, next: NextFunct
                 // Mark the request as coming from a service role. Authorization checks (header + IP allowlist)
                 // are enforced in the `requireAdmin` middleware which will reject with 403 if the request
                 // is not allowed. We avoid writing audit logs here to centralize auditing/metrics in one place.
-                (req as any).user = { sub: 'service', role: 'admin', service: true }
+                (<any>req).user = { sub: 'service', role: 'admin', service: true }
                 return next()
             }
 
             const token = auth.slice('Bearer '.length)
-            const payload = await verifySupabaseJwt(token)
+            const payload = await verifySupabaseJwt(token);
 
-                // attach a minimal user object (from token)
-                ; (req as any).user = { sub: payload.sub, ...payload }
+            // attach a minimal user object (from token)
+            (<any>req).user = Object.assign({ sub: payload.sub }, payload);
 
-            // If the token represents a Supabase user (sub is UUID or email), try to attach local role/isAdmin
+            // If the token represents a Supabase user (sub is UUID or email), attach local profile when present
             try {
                 if (payload.sub) {
-                    const sub = String(payload.sub)
-                    console.debug('jwtMiddleware: payload.sub=', sub)
-                    let localProfile: any = null
-                    if (/^[0-9a-fA-F-]{36}$/.test(sub)) {
-                        localProfile = await prisma.profile.findUnique({ where: { external_id: sub } as any, include: { role: true } })
-                    } else if (sub.includes('@')) {
-                        localProfile = await prisma.profile.findUnique({ where: { email: sub } as any, include: { role: true } })
-                    }
-                    console.debug('jwtMiddleware: localProfile=', localProfile)
-                    if (localProfile) {
-                        ; (req as any).user.role = localProfile.role?.name ?? (localProfile.isAdmin ? 'admin' : 'user')
-                            ; (req as any).user.isAdmin = Boolean(localProfile.isAdmin)
-                            ; (req as any).user.localUserId = localProfile.id
-                            ; (req as any).user.external_id = localProfile.external_id
-                    }
+                    const localProfile = await findLocalProfileBySub(String(payload.sub))
+                    if (localProfile) attachLocalProfileToReq(req as any, localProfile)
                 }
             } catch (err) {
                 console.debug('jwtMiddleware: failed to lookup local user for token sub', err)
@@ -103,46 +120,22 @@ export async function jwtMiddleware(req: Request, res: Response, next: NextFunct
         }
 
         // No Authorization header: try session cookie
-        const cookieHeader = req.headers.cookie
-        if (cookieHeader) {
-            const cookies = Object.fromEntries(
-                cookieHeader
-                    .split(';')
-                    .map((c) => c.trim())
-                    .filter(Boolean)
-                    .map((s) => {
-                        const i = s.indexOf('=')
-                        return [s.slice(0, i), s.slice(i + 1)] as [string, string]
-                    })
-            )
-            const sessionToken = (cookies as any).session
-            if (sessionToken) {
-                const payload = await verifySessionToken(sessionToken)
-                    ; (req as any).user = { sub: payload.sub ?? payload.userId, ...payload }
+        const cookies = parseCookies(req.headers.cookie)
+        const sessionToken = (cookies as any).session
+        if (sessionToken) {
+            const payload = await verifySessionToken(sessionToken)
+                ; (req as any).user = Object.assign({ sub: payload.sub ?? payload.userId }, payload)
 
-                // Attach local role/isAdmin when possible (same behavior as Authorization header path)
-                try {
-                    if (payload.sub) {
-                        const sub = String(payload.sub)
-                        let localProfile: any = null
-                        if (/^[0-9a-fA-F-]{36}$/.test(sub)) {
-                            localProfile = await prisma.profile.findUnique({ where: { external_id: sub } as any, include: { role: true } })
-                        } else if (sub.includes('@')) {
-                            localProfile = await prisma.profile.findUnique({ where: { email: sub } as any, include: { role: true } })
-                        }
-                        if (localProfile) {
-                            ; (req as any).user.role = localProfile.role?.name ?? (localProfile.isAdmin ? 'admin' : 'user')
-                                ; (req as any).user.isAdmin = Boolean(localProfile.isAdmin)
-                                ; (req as any).user.localUserId = localProfile.id
-                                ; (req as any).user.external_id = localProfile.external_id
-                        }
-                    }
-                } catch (err) {
-                    console.debug('jwtMiddleware: failed to lookup local user for session payload', err)
+            try {
+                if (payload.sub) {
+                    const localProfile = await findLocalProfileBySub(String(payload.sub))
+                    if (localProfile) attachLocalProfileToReq(req as any, localProfile)
                 }
-
-                return next()
+            } catch (err) {
+                console.debug('jwtMiddleware: failed to lookup local user for session payload', err)
             }
+
+            return next()
         }
 
         return res.status(401).json({ error: 'Missing token' })

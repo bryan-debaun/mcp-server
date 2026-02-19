@@ -19,13 +19,8 @@ export class PasswordController extends Controller {
         const email = String(body?.email || '').toLowerCase()
         if (!email) { res.status(400).json({ error: 'email required' }); return undefined as any }
 
-        // simple per-IP rate limiting reuse from magic-link controller expectations
-        const ip = request?.ip || 'unknown'
-        const now = Date.now()
-        const windowMs = Number(process.env.MAGIC_LINK_RATE_WINDOW_MS ?? 60 * 60 * 1000)
-        // naive in-memory rate limiting kept intentionally small for the example
-        // (production should use redis / infra rate limiter)
-        // allow through here; the controller-level rate limiting in MagicLinkController is independent
+        // Note: per-IP rate limiting is handled elsewhere (MagicLinkController).
+        // Left here as a placeholder for future enhancement.
 
         const supabaseUrl = process.env.PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_ISS
         const supabaseKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY

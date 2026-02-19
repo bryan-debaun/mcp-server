@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import express from 'express'
 import request from 'supertest'
 
@@ -38,10 +38,10 @@ describe('password routes', () => {
         process.env.PUBLIC_SUPABASE_URL = 'https://supabase.example'
         process.env.SUPABASE_SECRET_KEY = 'srk'
 
-        vi.stubGlobal('fetch', async (url: string, opts?: any) => {
+        vi.stubGlobal('fetch', async (url: string, _opts?: any) => {
             expect(url).toMatch(/supabase.example\/auth\/v1\/recover$/)
-            expect(opts?.method).toBe('POST')
-            const body = JSON.parse(opts.body)
+            expect(_opts?.method).toBe('POST')
+            const body = JSON.parse(_opts.body)
             expect(body.email).toBe('u@example.com')
             return { ok: true, status: 200, text: async () => '' }
         })
@@ -77,7 +77,7 @@ describe('password routes', () => {
         process.env.PUBLIC_SUPABASE_URL = 'https://supabase.example'
         process.env.SUPABASE_SECRET_KEY = 'srk'
 
-        vi.stubGlobal('fetch', async (url: string, opts?: any) => {
+        vi.stubGlobal('fetch', async (url: string, _opts?: any) => {
             expect(url).toMatch(/supabase.example\/auth\/v1\/token\?grant_type=password$/)
             return { ok: false, status: 401, json: async () => ({ error: 'Invalid login' }) }
         })
@@ -95,7 +95,7 @@ describe('password routes', () => {
         process.env.PUBLIC_SUPABASE_URL = 'https://supabase.example'
         process.env.SUPABASE_SECRET_KEY = 'srk'
 
-        vi.stubGlobal('fetch', async (url: string, opts?: any) => {
+        vi.stubGlobal('fetch', async (url: string, _opts?: any) => {
             expect(url).toMatch(/supabase.example\/auth\/v1\/token\?grant_type=password$/)
             return { ok: true, status: 200, json: async () => ({ access_token: 'at', refresh_token: 'rt', user: { id: 'uuid', email: 'u@example.com' } }) }
         })

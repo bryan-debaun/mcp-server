@@ -118,7 +118,7 @@ describe('admin service - acceptInvite', () => {
         p.role.findUnique.mockResolvedValue({ id: 2, name: 'user' })
         p.profile.create.mockResolvedValue({ id: 7, email: 'sup@example.com', external_id: supabaseId })
 
-        const user = await svc.registerUser('sup@example.com', 'Sup', 'secret')
+        await svc.registerUser('sup@example.com', 'Sup', 'secret')
         expect(prisma.profile.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ external_id: supabaseId }) }))
 
         delete process.env.SUPABASE_SECRET_KEY
@@ -140,7 +140,7 @@ describe('admin service - acceptInvite', () => {
         p.profile.create.mockResolvedValue({ id: 5, email: 'new@example.com', external_id: supabaseId })
         p.invite.update.mockResolvedValue({ id: 1, accepted: true })
 
-        const user = await svc.acceptInvite('t', { name: 'New User' })
+        await svc.acceptInvite('t', { name: 'New User' })
         expect(prisma.profile.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ external_id: supabaseId }) }))
 
         delete process.env.SUPABASE_SECRET_KEY

@@ -27,7 +27,7 @@ describe('RLS migration lint', () => {
         }
 
         const enabledTables: Set<string> = new Set()
-        const enableRegex = /ALTER TABLE\s+"([^"]+)"\s+ENABLE ROW LEVEL SECURITY/gi
+        const enableRegex = /ALTER TABLE\s+(?:IF EXISTS\s+)?"([^"]+)"\s+ENABLE ROW LEVEL SECURITY/gi
         while ((m = enableRegex.exec(allSql))) {
             enabledTables.add(m[1])
         }
