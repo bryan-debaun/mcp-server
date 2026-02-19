@@ -72,7 +72,8 @@ describe('RLS content entities tests', () => {
             // defensive: if another test cleaned profiles concurrently, create the expected Profile on *this* connection
             if (_profileCheck.rows.length === 0) {
                 // create the row using the same session so RLS + visibility are satisfied
-                await client.query(`INSERT INTO "Profile" (id, email, name, "createdAt", "updatedAt", blocked) VALUES (${userA.id}, '${userA.email}', '${userA.name}', now(), now(), false) ON CONFLICT (id) DO NOTHING`)
+                // insert the email using the session GUC so the INSERT's WITH CHECK passes under RLS
+                await client.query(`INSERT INTO "Profile" (id, email, name, "createdAt", "updatedAt", blocked) VALUES (${userA.id}, current_setting('request.jwt.claims.email', true), '${userA.name}', now(), now(), false) ON CONFLICT (id) DO NOTHING`)
                 _profileCheck = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             }
             expect(_profileCheck.rows.length).toBeGreaterThan(0)
@@ -131,7 +132,8 @@ describe('RLS content entities tests', () => {
             expect(_gucVG.rows[0].email).toBe(userA.email)
             let _profileCheckVG = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             if (_profileCheckVG.rows.length === 0) {
-                await client.query(`INSERT INTO "Profile" (id, email, name, "createdAt", "updatedAt", blocked) VALUES (${userA.id}, '${userA.email}', '${userA.name}', now(), now(), false) ON CONFLICT (id) DO NOTHING`)
+                // insert using the session GUC to guarantee the RLS WITH CHECK condition
+                await client.query(`INSERT INTO "Profile" (id, email, name, "createdAt", "updatedAt", blocked) VALUES (${userA.id}, current_setting('request.jwt.claims.email', true), '${userA.name}', now(), now(), false) ON CONFLICT (id) DO NOTHING`)
                 _profileCheckVG = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             }
             expect(_profileCheckVG.rows.length).toBeGreaterThan(0)
@@ -198,7 +200,8 @@ describe('RLS content entities tests', () => {
             expect(_gucCC.rows[0].email).toBe(userA.email)
             let _profileCheckCC = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             if (_profileCheckCC.rows.length === 0) {
-                await client.query(`INSERT INTO "Profile" (id, email, name, "createdAt", "updatedAt", blocked) VALUES (${userA.id}, '${userA.email}', '${userA.name}', now(), now(), false) ON CONFLICT (id) DO NOTHING`)
+                // insert using the session GUC to guarantee the RLS WITH CHECK condition
+                await client.query(`INSERT INTO "Profile" (id, email, name, "createdAt", "updatedAt", blocked) VALUES (${userA.id}, current_setting('request.jwt.claims.email', true), '${userA.name}', now(), now(), false) ON CONFLICT (id) DO NOTHING`)
                 _profileCheckCC = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             }
             expect(_profileCheckCC.rows.length).toBeGreaterThan(0)

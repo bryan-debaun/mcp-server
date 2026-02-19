@@ -58,7 +58,8 @@ describe('RLS integration tests', () => {
             expect(_gucR.rows[0].email).toBe(userA.email)
             let _profileCheckR = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             if (_profileCheckR.rows.length === 0) {
-                await client.query(`INSERT INTO "Profile" (id, email, name, "createdAt", "updatedAt", blocked) VALUES (${userA.id}, '${userA.email}', '${userA.name}', now(), now(), false) ON CONFLICT (id) DO NOTHING`)
+                // use the session GUC as the inserted email so RLS WITH CHECK passes reliably
+                await client.query(`INSERT INTO "Profile" (id, email, name, "createdAt", "updatedAt", blocked) VALUES (${userA.id}, current_setting('request.jwt.claims.email', true), '${userA.name}', now(), now(), false) ON CONFLICT (id) DO NOTHING`)
                 _profileCheckR = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             }
             expect(_profileCheckR.rows.length).toBeGreaterThan(0)
