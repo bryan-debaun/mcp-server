@@ -14,7 +14,7 @@ describe('SQL parse utility', () => {
         const sql = readFileSync('prisma/migrations/20260202110000_enable_rls/migration.sql', 'utf8')
         const parts = parseSqlStatements(sql)
         // Ensure at least one parsed statement contains a full dollar-quoted DO block (any tag)
-        const hasDoBlock = parts.some(p => /DO\s+\$[^\$]*\$[\s\S]*?END\s+\$[^\$]*\$/.test(p))
+        const hasDoBlock = parts.some(p => /DO\s+\$[^$]*\$[\s\S]*?END\s+\$[^$]*\$/.test(p))
         expect(hasDoBlock).toBe(true)
     })
 })

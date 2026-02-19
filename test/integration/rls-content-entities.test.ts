@@ -39,7 +39,7 @@ describe('RLS content entities tests', () => {
             const created = await tx.profile.create({ data: { email: movieAEmail, name: 'Movie A' } });
             return created;
         });
-        const userB = await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx) => {
             await tx.$executeRaw`SELECT set_config('request.jwt.claims.email', ${movieBEmail}, false)`;
             const created = await tx.profile.create({ data: { email: movieBEmail, name: 'Movie B' } });
             return created;
@@ -75,17 +75,16 @@ describe('RLS content entities tests', () => {
             let _profileCheck = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             // defensive: if another test cleaned profiles concurrently, create the expected Profile on *this* connection
             if (_profileCheck.rows.length === 0) {
-                // DEBUG: capture session GUC and current role before same-session INSERT (CI-only diagnostic)
+                // DEBUG: capture session GUC and current role before seeding Profile (CI-only diagnostic)
                 try {
                     const dbg = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email, current_setting('request.jwt.claims.role', true) AS role, session_user, current_user`)
                     console.error('DEBUG RLS (movie) session:', dbg.rows[0])
                 } catch (e) {
                     console.error('DEBUG RLS (movie) session: failed to read session settings', e)
                 }
-                // create the row using the same session so RLS + visibility are satisfied
-                // insert the email using the session GUC so the INSERT's WITH CHECK passes under RLS
-                await client.query(`INSERT INTO "Profile" (id, email, name, "createdAt", "updatedAt", blocked) VALUES (${userA.id}, current_setting('request.jwt.claims.email', true), '${userA.name}', now(), now(), false) ON CONFLICT (id) DO NOTHING`)
-                _profileCheck = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+                // ensure the Profile row exists — create via prisma (superuser) to avoid RLS blocking the test-only seed
+                await prisma.profile.create({ data: { id: userA.id, email: userA.email, name: userA.name } }).catch(() => { })
+                _profileCheck = await client.query(`SELECT id FROM "Profile" WHERE email = '${userA.email}'`)
             }
             expect(_profileCheck.rows.length).toBeGreaterThan(0)
             expect(_profileCheck.rows[0].id).toBe(movie.createdBy)
@@ -111,7 +110,7 @@ describe('RLS content entities tests', () => {
             const created = await tx.profile.create({ data: { email: gameAEmail, name: 'Game A' } });
             return created;
         });
-        const userB = await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx) => {
             await tx.$executeRaw`SELECT set_config('request.jwt.claims.email', ${gameBEmail}, false)`;
             const created = await tx.profile.create({ data: { email: gameBEmail, name: 'Game B' } });
             return created;
@@ -150,16 +149,16 @@ describe('RLS content entities tests', () => {
             expect(_gucVG.rows[0].email).toBe(userA.email)
             let _profileCheckVG = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             if (_profileCheckVG.rows.length === 0) {
-                // DEBUG: capture session GUC and current role before same-session INSERT (CI-only diagnostic)
+                // DEBUG: capture session GUC and current role before seeding Profile (CI-only diagnostic)
                 try {
                     const dbg = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email, current_setting('request.jwt.claims.role', true) AS role, session_user, current_user`)
                     console.error('DEBUG RLS (videogame) session:', dbg.rows[0])
                 } catch (e) {
                     console.error('DEBUG RLS (videogame) session: failed to read session settings', e)
                 }
-                // insert using the session GUC to guarantee the RLS WITH CHECK condition
-                await client.query(`INSERT INTO "Profile" (id, email, name, "createdAt", "updatedAt", blocked) VALUES (${userA.id}, current_setting('request.jwt.claims.email', true), '${userA.name}', now(), now(), false) ON CONFLICT (id) DO NOTHING`)
-                _profileCheckVG = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+                // ensure the Profile row exists — create via prisma (superuser) to avoid RLS blocking the test-only seed
+                await prisma.profile.create({ data: { id: userA.id, email: userA.email, name: userA.name } }).catch(() => { })
+                _profileCheckVG = await client.query(`SELECT id FROM "Profile" WHERE email = '${userA.email}'`)
             }
             expect(_profileCheckVG.rows.length).toBeGreaterThan(0)
             expect(_profileCheckVG.rows[0].id).toBe(game.createdBy)
@@ -227,16 +226,16 @@ describe('RLS content entities tests', () => {
             expect(_gucCC.rows[0].email).toBe(userA.email)
             let _profileCheckCC = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             if (_profileCheckCC.rows.length === 0) {
-                // DEBUG: capture session GUC and current role before same-session INSERT (CI-only diagnostic)
+                // DEBUG: capture session GUC and current role before seeding Profile (CI-only diagnostic)
                 try {
                     const dbg = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email, current_setting('request.jwt.claims.role', true) AS role, session_user, current_user`)
                     console.error('DEBUG RLS (content-creator) session:', dbg.rows[0])
                 } catch (e) {
                     console.error('DEBUG RLS (content-creator) session: failed to read session settings', e)
                 }
-                // insert using the session GUC to guarantee the RLS WITH CHECK condition
-                await client.query(`INSERT INTO "Profile" (id, email, name, "createdAt", "updatedAt", blocked) VALUES (${userA.id}, current_setting('request.jwt.claims.email', true), '${userA.name}', now(), now(), false) ON CONFLICT (id) DO NOTHING`)
-                _profileCheckCC = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+                // ensure the Profile row exists — create via prisma (superuser) to avoid RLS blocking the test-only seed
+                await prisma.profile.create({ data: { id: userA.id, email: userA.email, name: userA.name } }).catch(() => { })
+                _profileCheckCC = await client.query(`SELECT id FROM "Profile" WHERE email = '${userA.email}'`)
             }
             expect(_profileCheckCC.rows.length).toBeGreaterThan(0)
             expect(_profileCheckCC.rows[0].id).toBe(cc.createdBy)
