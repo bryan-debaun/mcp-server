@@ -92,6 +92,8 @@ describe('RLS content entities tests', () => {
         const { Client } = await import('pg')
         const client = new Client({ connectionString: process.env.DATABASE_URL })
         await client.connect()
+        // ensure this session uses a fresh snapshot (prevents REPEATABLE READ / pooled-connection visibility races)
+        await client.query('DISCARD ALL')
         try {
             try {
                 await client.query(`SET ROLE rls_test_role`)
@@ -187,6 +189,8 @@ describe('RLS content entities tests', () => {
         const { Client } = await import('pg')
         const client = new Client({ connectionString: process.env.DATABASE_URL })
         await client.connect()
+        // ensure fresh session snapshot before RLS role usage
+        await client.query('DISCARD ALL')
         try {
             try {
                 await client.query(`SET ROLE rls_test_role`)
@@ -271,6 +275,8 @@ describe('RLS content entities tests', () => {
         const { Client } = await import('pg')
         const client = new Client({ connectionString: process.env.DATABASE_URL })
         await client.connect()
+        // clear any open transaction / session state so snapshot is fresh
+        await client.query('DISCARD ALL')
         try {
             try {
                 await client.query(`SET ROLE rls_test_role`)

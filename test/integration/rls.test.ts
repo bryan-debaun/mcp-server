@@ -93,6 +93,8 @@ describe('RLS integration tests', () => {
         const { Client } = await import('pg')
         const client = new Client({ connectionString: process.env.DATABASE_URL })
         await client.connect()
+        // refresh session snapshot to avoid stale REPEATABLE-READ visibility
+        await client.query('DISCARD ALL')
         try {
             await client.query(`SET ROLE rls_test_role`)
             await client.query(`SELECT set_config('request.jwt.claims.email', '${userAEmail}', false)`) // session-level
