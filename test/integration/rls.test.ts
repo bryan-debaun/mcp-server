@@ -130,6 +130,13 @@ describe('RLS integration tests', () => {
             expect(_profileCheckR.rows.length).toBeGreaterThan(0)
             expect(_profileCheckR.rows[0].id).toBe(userA.id)
 
+            // --- DETERMINISTIC STEP ---
+            // recreate the connection that will perform the owner SELECT so its snapshot
+            // is guaranteed to be fresh *after* the Profile commit we just observed
+            await client.end()
+            client = new (await import('pg')).Client({ connectionString: process.env.DATABASE_URL })
+            await client.connect()
+
             // try the owner SELECT, retrying a couple times if RLS briefly blocks it
             let resA = { rows: [] } as any
             const maxAttempts = process.env.CI ? 8 : 3

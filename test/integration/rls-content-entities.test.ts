@@ -142,6 +142,13 @@ describe('RLS content entities tests', () => {
             expect(_profileCheck.rows.length).toBeGreaterThan(0)
             expect(_profileCheck.rows[0].id).toBe(movie.createdBy)
 
+            // --- DETERMINISTIC STEP ---
+            // recreate the connection that will perform the owner UPDATE so its snapshot
+            // is guaranteed to be fresh *after* the Profile commit we just observed
+            await client.end()
+            client = new (await import('pg')).Client({ connectionString: process.env.DATABASE_URL })
+            await client.connect()
+
             // try the owner UPDATE, retrying a couple times if RLS briefly blocks it
             let resA = { rowCount: 0 } as any
             const maxAttempts = process.env.CI ? 8 : 3
@@ -237,6 +244,13 @@ describe('RLS content entities tests', () => {
             expect(_profileCheckVG.rows.length).toBeGreaterThan(0)
             expect(_profileCheckVG.rows[0].id).toBe(game.createdBy)
 
+            // --- DETERMINISTIC STEP ---
+            // recreate the connection that will perform the owner UPDATE so its snapshot
+            // is guaranteed to be fresh *after* the Profile commit we just observed
+            await client.end()
+            client = new (await import('pg')).Client({ connectionString: process.env.DATABASE_URL })
+            await client.connect()
+
             // try the owner UPDATE, retrying a couple times if RLS briefly blocks it
             let resA = { rowCount: 0 } as any
             const maxAttemptsVG = process.env.CI ? 8 : 3
@@ -324,6 +338,13 @@ describe('RLS content entities tests', () => {
 
             expect(_profileCheckCC.rows.length).toBeGreaterThan(0)
             expect(_profileCheckCC.rows[0].id).toBe(cc.createdBy)
+
+            // --- DETERMINISTIC STEP ---
+            // recreate the connection that will perform the owner UPDATE so its snapshot
+            // is guaranteed to be fresh *after* the Profile commit we just observed
+            await client.end()
+            client = new (await import('pg')).Client({ connectionString: process.env.DATABASE_URL })
+            await client.connect()
 
             // try the owner UPDATE, retrying a couple times if RLS briefly blocks it
             let resA = { rowCount: 0 } as any
