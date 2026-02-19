@@ -34,12 +34,16 @@ describe('RLS content entities tests', () => {
     it('enforces creator/admin writes for Movie', async () => {
         const movieAEmail = `rls-movie-a+${Date.now()}@example.com`
         const movieBEmail = `rls-movie-b+${Date.now()}@example.com`
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${movieAEmail}, false)`;
-        const userA = await prisma.profile.create({ data: { email: movieAEmail, name: 'Movie A' } })
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${movieBEmail}, false)`;
-        const userB = await prisma.profile.create({ data: { email: movieBEmail, name: 'Movie B' } })
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
+        const userA = await prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`SELECT set_config('request.jwt.claims.email', ${movieAEmail}, false)`;
+            const created = await tx.profile.create({ data: { email: movieAEmail, name: 'Movie A' } });
+            return created;
+        });
+        const userB = await prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`SELECT set_config('request.jwt.claims.email', ${movieBEmail}, false)`;
+            const created = await tx.profile.create({ data: { email: movieBEmail, name: 'Movie B' } });
+            return created;
+        });
 
         // Set session-level JWT claim so RLS INSERT WITH CHECK (creator match) succeeds
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${userA.email}, false)`;
@@ -95,19 +99,26 @@ describe('RLS content entities tests', () => {
     it('enforces creator/admin writes for VideoGame', async () => {
         const gameAEmail = `rls-game-a+${Date.now()}@example.com`
         const gameBEmail = `rls-game-b+${Date.now()}@example.com`
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${gameAEmail}, false)`;
-        const userA = await prisma.profile.create({ data: { email: gameAEmail, name: 'Game A' } })
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${gameBEmail}, false)`;
-        const userB = await prisma.profile.create({ data: { email: gameBEmail, name: 'Game B' } })
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
+        const userA = await prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`SELECT set_config('request.jwt.claims.email', ${gameAEmail}, false)`;
+            const created = await tx.profile.create({ data: { email: gameAEmail, name: 'Game A' } });
+            return created;
+        });
+        const userB = await prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`SELECT set_config('request.jwt.claims.email', ${gameBEmail}, false)`;
+            const created = await tx.profile.create({ data: { email: gameBEmail, name: 'Game B' } });
+            return created;
+        });
 
         // Set session claim for insert
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${userA.email}, false)`;
         // defensive: ensure the Profile still exists (other tests may call profile.deleteMany concurrently)
         let profileForCreate = await prisma.profile.findUnique({ where: { email: userA.email } })
         if (!profileForCreate) {
-            profileForCreate = await prisma.profile.create({ data: { email: userA.email, name: userA.name } })
+            profileForCreate = await prisma.$transaction(async (tx) => {
+                await tx.$executeRaw`SELECT set_config('request.jwt.claims.email', ${userA.email}, false)`;
+                return await tx.profile.create({ data: { email: userA.email, name: userA.name } })
+            })
         }
         const game = await prisma.videoGame.create({ data: { title: 'RLS Game', platform: 'PC', createdBy: profileForCreate.id } })
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
@@ -176,9 +187,11 @@ describe('RLS content entities tests', () => {
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
 
         // Set session claim for insert
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${userA.email}, false)`;
-        const cc = await prisma.contentCreator.create({ data: { name: 'RLS CC', createdBy: userA.id } })
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
+        const cc = await prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`SELECT set_config('request.jwt.claims.email', ${userA.email}, false)`;
+            const created = await tx.contentCreator.create({ data: { name: 'RLS CC', createdBy: userA.id } });
+            return created;
+        });
 
         const { Client } = await import('pg')
         const client = new Client({ connectionString: process.env.DATABASE_URL })

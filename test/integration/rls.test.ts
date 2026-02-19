@@ -33,16 +33,22 @@ describe('RLS integration tests', () => {
     it('enforces owner-based access for ratings (user A cannot see user B ratings)', async () => {
         const userAEmail = `rls-a+${Date.now()}@example.com`
         const userBEmail = `rls-b+${Date.now()}@example.com`
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${userAEmail}, false)`;
-        const userA = await prisma.profile.create({ data: { email: userAEmail, name: 'User A' } })
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${userBEmail}, false)`;
-        const userB = await prisma.profile.create({ data: { email: userBEmail, name: 'User B' } })
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
+        const userA = await prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`SELECT set_config('request.jwt.claims.email', ${userAEmail}, false)`;
+            const created = await tx.profile.create({ data: { email: userAEmail, name: 'User A' } });
+            return created;
+        });
+        const userB = await prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`SELECT set_config('request.jwt.claims.email', ${userBEmail}, false)`;
+            const created = await tx.profile.create({ data: { email: userBEmail, name: 'User B' } });
+            return created;
+        });
 
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', ${userA.email}, false)`;
-        const book = await prisma.book.create({ data: { title: 'RLS Test Book', createdBy: userA.id } })
-        await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
+        const book = await prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`SELECT set_config('request.jwt.claims.email', ${userA.email}, false)`;
+            const created = await tx.book.create({ data: { title: 'RLS Test Book', createdBy: userA.id } });
+            return created;
+        });
         const ratingA = await prisma.rating.create({ data: { bookId: book.id, userId: userA.id, rating: 5 } })
         const ratingB = await prisma.rating.create({ data: { bookId: book.id, userId: userB.id, rating: 3 } })
 

@@ -149,6 +149,7 @@ export async function initPrisma() {
             // in CI and runtime environments.
             (prisma as any).$queryRaw = (...args: any[]) => (real as any).$queryRaw(...args);
             (prisma as any).$executeRaw = (...args: any[]) => (real as any).$executeRaw(...args);
+            (prisma as any).$transaction = (...args: any[]) => (real as any).$transaction(...args);
             (prisma as any).$disconnect = (real as any).$disconnect?.bind(real) ?? (async () => { });
 
             // Explicitly forward model accessors (user, book, etc.) to ensure they're available
