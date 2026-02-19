@@ -16,13 +16,15 @@ describe('RLS integration tests', () => {
         // Clean up tables used in test
         await prisma.rating.deleteMany().catch(() => { })
         await prisma.book.deleteMany().catch(() => { })
-        await prisma.profile.deleteMany().catch(() => { })
+        // only remove test-owned Profile rows (reduce cross-test race surface)
+        await prisma.profile.deleteMany({ where: { email: { startsWith: 'rls-' } } }).catch(() => { })
     })
 
     afterAll(async () => {
         await prisma.rating.deleteMany().catch(() => { })
         await prisma.book.deleteMany().catch(() => { })
-        await prisma.profile.deleteMany().catch(() => { })
+        // only remove test-owned Profile rows (reduce cross-test race surface)
+        await prisma.profile.deleteMany({ where: { email: { startsWith: 'rls-' } } }).catch(() => { })
         if (typeof prisma.$disconnect === 'function') await prisma.$disconnect()
         // Intentionally do not drop the test role here to avoid races when tests run in parallel
 

@@ -16,14 +16,16 @@ describe('RLS content entities tests', () => {
         await prisma.movie.deleteMany().catch(() => { })
         await prisma.videoGame.deleteMany().catch(() => { })
         await prisma.contentCreator.deleteMany().catch(() => { })
-        await prisma.profile.deleteMany().catch(() => { })
+        // only remove test-owned Profile rows (reduce cross-test race surface)
+        await prisma.profile.deleteMany({ where: { email: { startsWith: 'rls-' } } }).catch(() => { })
     })
 
     afterAll(async () => {
         await prisma.movie.deleteMany().catch(() => { })
         await prisma.videoGame.deleteMany().catch(() => { })
         await prisma.contentCreator.deleteMany().catch(() => { })
-        await prisma.profile.deleteMany().catch(() => { })
+        // only remove test-owned Profile rows (reduce cross-test race surface)
+        await prisma.profile.deleteMany({ where: { email: { startsWith: 'rls-' } } }).catch(() => { })
         if (typeof prisma.$disconnect === 'function') await prisma.$disconnect()
         // Intentionally do not drop the test role here to avoid races when tests run in parallel
 
@@ -133,7 +135,15 @@ describe('RLS content entities tests', () => {
             }
             expect(_profileCheckVG.rows.length).toBeGreaterThan(0)
             expect(_profileCheckVG.rows[0].id).toBe(game.createdBy)
-            const resA = await client.query(`UPDATE "VideoGame" SET title = 'Y' WHERE id = ${game.id}`)
+            let resA = await client.query(`UPDATE "VideoGame" SET title = 'Y' WHERE id = ${game.id}`)
+            if (resA.rowCount === 0) {
+                // transient: re-ensure role/grants and retry (makes CI resilient to racey setup/teardown)
+                await ensureRlsTestRoleReady(prisma)
+                await client.query(`RESET ROLE`)
+                await client.query(`SET ROLE rls_test_role`)
+                await client.query(`SELECT set_config('request.jwt.claims.email', '${gameAEmail}', false)`)
+                resA = await client.query(`UPDATE "VideoGame" SET title = 'Y' WHERE id = ${game.id}`)
+            }
             expect(resA.rowCount).toBeGreaterThan(0)
 
             await client.query(`SELECT set_config('request.jwt.claims.role', 'admin', true)`)
