@@ -16,7 +16,7 @@ ALTER TABLE IF EXISTS "User" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS "Profile" ENABLE ROW LEVEL SECURITY;
 
 -- Create policies against `Profile` when it exists, otherwise fall back to `User`.
-DO $$
+DO $do$
 BEGIN
   IF to_regclass('public.Profile') IS NOT NULL THEN
     EXECUTE $policy$
@@ -68,7 +68,7 @@ BEGIN
       );
     $policy$;
   END IF;
-END$$;
+END $do$;
 
 -- Invite: owner (email) or admin
 ALTER TABLE "Invite" ENABLE ROW LEVEL SECURITY;
@@ -121,7 +121,7 @@ CREATE POLICY "AuditLog_admin_only" ON "AuditLog" FOR ALL USING (current_setting
 ALTER TABLE "Author" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Author_public_select" ON "Author";
 CREATE POLICY "Author_public_select" ON "Author" FOR SELECT USING (true);
-DO $$
+DO $do$
 BEGIN
   IF to_regclass('public.Profile') IS NOT NULL THEN
     EXECUTE $policy$
@@ -181,13 +181,13 @@ BEGIN
           AND exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "createdBy"))
     );
   END IF;
-END$$;
+END $do$;
 
 -- Book: public SELECT, admin or creator for writes
 ALTER TABLE "Book" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Book_public_select" ON "Book";
 CREATE POLICY "Book_public_select" ON "Book" FOR SELECT USING (true);
-DO $$
+DO $do$
 BEGIN
   IF to_regclass('public.Profile') IS NOT NULL THEN
     EXECUTE $policy$
@@ -249,7 +249,7 @@ BEGIN
     );
     $policy$;
   END IF;
-END$$;
+END $do$;
 
 -- BookAuthor: public SELECT, admin-only writes
 ALTER TABLE "BookAuthor" ENABLE ROW LEVEL SECURITY;
@@ -270,7 +270,7 @@ DROP POLICY IF EXISTS "Rating_admin_all" ON "Rating";
 CREATE POLICY "Rating_admin_all" ON "Rating" FOR ALL USING (current_setting('request.jwt.claims.role', true) = 'admin');
 
 -- Allow users to SELECT their own ratings
-DO $$
+DO $do$
 BEGIN
   IF to_regclass('public.Profile') IS NOT NULL THEN
     EXECUTE $policy$
@@ -324,7 +324,7 @@ BEGIN
     );
     $policy$;
   END IF;
-END$$;
+END $do$;
 
 -- Notes:
 --  - Policies use `request.jwt.claims.*` session settings that Supabase sets from the incoming JWT.
