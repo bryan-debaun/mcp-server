@@ -63,8 +63,13 @@ describe('RLS integration tests', () => {
             const _gucR = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email`)
             expect(_gucR.rows[0].email).toBe(userA.email)
             let _profileCheckR = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
-            if (_profileCheckR.rows.length === 0) {
-                // use the session GUC as the inserted email so RLS WITH CHECK passes reliably
+            if (_profileCheckR.rows.length === 0) {                // DEBUG: capture session GUC and current role before same-session INSERT (CI-only diagnostic)
+                try {
+                    const dbg = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email, current_setting('request.jwt.claims.role', true) AS role, session_user, current_user`)
+                    console.error('DEBUG RLS (ratings) session:', dbg.rows[0])
+                } catch (e) {
+                    console.error('DEBUG RLS (ratings) session: failed to read session settings', e)
+                }                // use the session GUC as the inserted email so RLS WITH CHECK passes reliably
                 await client.query(`INSERT INTO "Profile" (id, email, name, "createdAt", "updatedAt", blocked) VALUES (${userA.id}, current_setting('request.jwt.claims.email', true), '${userA.name}', now(), now(), false) ON CONFLICT (id) DO NOTHING`)
                 _profileCheckR = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             }

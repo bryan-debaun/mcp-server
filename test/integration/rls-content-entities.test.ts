@@ -75,6 +75,13 @@ describe('RLS content entities tests', () => {
             let _profileCheck = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             // defensive: if another test cleaned profiles concurrently, create the expected Profile on *this* connection
             if (_profileCheck.rows.length === 0) {
+                // DEBUG: capture session GUC and current role before same-session INSERT (CI-only diagnostic)
+                try {
+                    const dbg = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email, current_setting('request.jwt.claims.role', true) AS role, session_user, current_user`)
+                    console.error('DEBUG RLS (movie) session:', dbg.rows[0])
+                } catch (e) {
+                    console.error('DEBUG RLS (movie) session: failed to read session settings', e)
+                }
                 // create the row using the same session so RLS + visibility are satisfied
                 // insert the email using the session GUC so the INSERT's WITH CHECK passes under RLS
                 await client.query(`INSERT INTO "Profile" (id, email, name, "createdAt", "updatedAt", blocked) VALUES (${userA.id}, current_setting('request.jwt.claims.email', true), '${userA.name}', now(), now(), false) ON CONFLICT (id) DO NOTHING`)
@@ -143,6 +150,13 @@ describe('RLS content entities tests', () => {
             expect(_gucVG.rows[0].email).toBe(userA.email)
             let _profileCheckVG = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             if (_profileCheckVG.rows.length === 0) {
+                // DEBUG: capture session GUC and current role before same-session INSERT (CI-only diagnostic)
+                try {
+                    const dbg = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email, current_setting('request.jwt.claims.role', true) AS role, session_user, current_user`)
+                    console.error('DEBUG RLS (videogame) session:', dbg.rows[0])
+                } catch (e) {
+                    console.error('DEBUG RLS (videogame) session: failed to read session settings', e)
+                }
                 // insert using the session GUC to guarantee the RLS WITH CHECK condition
                 await client.query(`INSERT INTO "Profile" (id, email, name, "createdAt", "updatedAt", blocked) VALUES (${userA.id}, current_setting('request.jwt.claims.email', true), '${userA.name}', now(), now(), false) ON CONFLICT (id) DO NOTHING`)
                 _profileCheckVG = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
@@ -213,6 +227,13 @@ describe('RLS content entities tests', () => {
             expect(_gucCC.rows[0].email).toBe(userA.email)
             let _profileCheckCC = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             if (_profileCheckCC.rows.length === 0) {
+                // DEBUG: capture session GUC and current role before same-session INSERT (CI-only diagnostic)
+                try {
+                    const dbg = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email, current_setting('request.jwt.claims.role', true) AS role, session_user, current_user`)
+                    console.error('DEBUG RLS (content-creator) session:', dbg.rows[0])
+                } catch (e) {
+                    console.error('DEBUG RLS (content-creator) session: failed to read session settings', e)
+                }
                 // insert using the session GUC to guarantee the RLS WITH CHECK condition
                 await client.query(`INSERT INTO "Profile" (id, email, name, "createdAt", "updatedAt", blocked) VALUES (${userA.id}, current_setting('request.jwt.claims.email', true), '${userA.name}', now(), now(), false) ON CONFLICT (id) DO NOTHING`)
                 _profileCheckCC = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
