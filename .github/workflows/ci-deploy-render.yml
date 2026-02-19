@@ -32,6 +32,9 @@ jobs:
         run: npm ci
       - name: Set DATABASE_URL (for Prisma client generation)
         run: echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/mcp_ci" >> $GITHUB_ENV
+      - name: Ensure rls_test_role exists (CI DB)
+        run: |
+          psql postgresql://postgres:postgres@localhost:5432/mcp_ci -c "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'rls_test_role') THEN CREATE ROLE rls_test_role NOINHERIT; END IF; END $$;"
       - name: Wait for Postgres
         run: |
           max=60

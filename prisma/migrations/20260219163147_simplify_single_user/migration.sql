@@ -117,6 +117,14 @@ ALTER TABLE "Profile_new" RENAME TO "Profile";
 ALTER INDEX "Profile_new_email_key" RENAME TO "Profile_email_key";
 ALTER INDEX "Profile_new_is_admin_idx" RENAME TO "Profile_is_admin_idx";
 
--- Step 7: Grant permissions to rls_test_role (for tests)
+-- Step 7: Ensure test RLS role exists and grant permissions
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'rls_test_role') THEN
+    CREATE ROLE rls_test_role NOINHERIT;
+  END IF;
+END
+$$;
+
 GRANT ALL ON ALL TABLES IN SCHEMA public TO rls_test_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO rls_test_role;
