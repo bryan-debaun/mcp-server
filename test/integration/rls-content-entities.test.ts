@@ -69,9 +69,10 @@ describe('RLS content entities tests', () => {
             const _guc = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email`)
             expect(_guc.rows[0].email).toBe(userA.email)
             let _profileCheck = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
-            // defensive: if another test cleaned profiles concurrently, recreate the expected Profile with the same id
+            // defensive: if another test cleaned profiles concurrently, create the expected Profile on *this* connection
             if (_profileCheck.rows.length === 0) {
-                await prisma.profile.create({ data: { id: userA.id, email: userA.email, name: userA.name } }).catch(() => { })
+                // create the row using the same session so RLS + visibility are satisfied
+                await client.query(`INSERT INTO "Profile" (id, email, name, "createdAt", "updatedAt", blocked) VALUES (${userA.id}, '${userA.email}', '${userA.name}', now(), now(), false) ON CONFLICT (id) DO NOTHING`)
                 _profileCheck = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             }
             expect(_profileCheck.rows.length).toBeGreaterThan(0)
@@ -130,7 +131,7 @@ describe('RLS content entities tests', () => {
             expect(_gucVG.rows[0].email).toBe(userA.email)
             let _profileCheckVG = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             if (_profileCheckVG.rows.length === 0) {
-                await prisma.profile.create({ data: { id: userA.id, email: userA.email, name: userA.name } }).catch(() => { })
+                await client.query(`INSERT INTO "Profile" (id, email, name, "createdAt", "updatedAt", blocked) VALUES (${userA.id}, '${userA.email}', '${userA.name}', now(), now(), false) ON CONFLICT (id) DO NOTHING`)
                 _profileCheckVG = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             }
             expect(_profileCheckVG.rows.length).toBeGreaterThan(0)
@@ -197,7 +198,7 @@ describe('RLS content entities tests', () => {
             expect(_gucCC.rows[0].email).toBe(userA.email)
             let _profileCheckCC = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             if (_profileCheckCC.rows.length === 0) {
-                await prisma.profile.create({ data: { id: userA.id, email: userA.email, name: userA.name } }).catch(() => { })
+                await client.query(`INSERT INTO "Profile" (id, email, name, "createdAt", "updatedAt", blocked) VALUES (${userA.id}, '${userA.email}', '${userA.name}', now(), now(), false) ON CONFLICT (id) DO NOTHING`)
                 _profileCheckCC = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             }
             expect(_profileCheckCC.rows.length).toBeGreaterThan(0)
