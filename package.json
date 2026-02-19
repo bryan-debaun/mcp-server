@@ -21,7 +21,7 @@
         "lint:fix": "eslint src/**/*.ts test/**/*.ts --ext .ts --fix",
         "verify": "npm run lint && npm run typecheck",
         "prisma:dev": "prisma db push && prisma generate",
-        "prisma:seed": "node dist/seed.js",
+        "prisma:seed": "tsx prisma/seed.ts",
         "prisma:seed:dev": "node --loader ts-node/esm prisma/seed.ts",
         "prisma:generate": "prisma generate",
         "backfill:books": "tsx scripts/ops/backfill-book-aggregates.ts",

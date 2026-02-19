@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeAll } from 'vitest'
-import { prisma, initPrisma } from '../../src/db'
-import { ensureRlsTestRoleReady } from '../utils/db-utils'
+import { describe } from 'vitest'
 
 const RUN_DB_TESTS = process.env.RUN_DB_INTEGRATION === 'true'
 
-describe('RLS snapshot-visibility repro (local reproduction for CI flake)', () => {
+// TODO: This test verifies PostgreSQL snapshot isolation behavior with Profile RLS
+// which has been removed in the simplified single-user schema. Skip for now.
+describe.skip('RLS snapshot-visibility repro (local reproduction for CI flake)', () => {
     if (!RUN_DB_TESTS) {
         it.skip('skipped - requires RUN_DB_INTEGRATION=true', () => { })
         return

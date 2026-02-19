@@ -14,10 +14,9 @@ export async function runSeed(prismaClient?: any) {
     const db = prismaClient ?? prisma
 
     // Quick presence check to avoid re-seeding on every cold start.
-    // If the canonical marker (admin role) exists we EXIT EARLY to prevent
-    // runtime re-seeding on cold-starts (avoids repeated failures / deploy loops).
+    // Check if Bryan's admin profile exists as the canonical marker.
     try {
-        const existingAdmin = await db.role.findUnique({ where: { name: 'admin' } })
+        const existingAdmin = await db.profile.findUnique({ where: { email: 'brn.dbn@gmail.com' } })
         if (existingAdmin) {
             console.log('DB already seeded; skipping.')
             return
@@ -29,27 +28,20 @@ export async function runSeed(prismaClient?: any) {
 
     console.log('Seeding DB...')
 
-    // Create default roles
-    const adminRole = await db.role.upsert({
-        where: { name: 'admin' },
-        update: {},
-        create: { name: 'admin' },
-    })
+    // Generate UUIDs for profiles (matching Supabase Auth format)
+    const crypto = await import('crypto')
+    const bryanUuid = crypto.randomUUID()
+    const adminUuid = crypto.randomUUID()
 
-    const userRole = await db.role.upsert({
-        where: { name: 'user' },
-        update: {},
-        create: { name: 'user' },
-    })
-
-    // Create Bryan's admin user
+    // Create Bryan's admin profile
+    // NOTE: In production, this ID should match the Supabase Auth user.id
     const bryanAdmin = await db.profile.upsert({
         where: { email: 'brn.dbn@gmail.com' },
         update: { isAdmin: true },
         create: {
+            id: bryanUuid,
             email: 'brn.dbn@gmail.com',
             name: 'Bryan DeBaun',
-            roleId: adminRole.id,
             isAdmin: true,
         },
     })
@@ -59,27 +51,14 @@ export async function runSeed(prismaClient?: any) {
         where: { email: 'admin@example.com' },
         update: { isAdmin: true },
         create: {
+            id: adminUuid,
             email: 'admin@example.com',
             name: 'Local Admin',
-            roleId: adminRole.id,
             isAdmin: true,
         },
     })
 
-    // If ADMIN_EMAIL is set, mark that user as admin or create a minimal users row
-    const adminEmail = process.env.ADMIN_EMAIL
-    if (adminEmail) {
-        const existing = await db.profile.findUnique({ where: { email: adminEmail } })
-        if (existing) {
-            await db.profile.update({ where: { id: existing.id }, data: { isAdmin: true } })
-            console.log(`Marked existing user ${adminEmail} as isAdmin = true`)
-        } else {
-            const createData: any = { email: adminEmail, isAdmin: true }
-            if (process.env.ADMIN_EXTERNAL_ID) createData.external_id = process.env.ADMIN_EXTERNAL_ID
-            const minimal = await db.profile.create({ data: createData })
-            console.warn(`Created minimal users row for ADMIN_EMAIL ${adminEmail}. Please create a Supabase Auth user for this email and sync external_id if needed.`)
-        }
-    }
+    console.log('Created admin profiles:', { bryanAdmin, admin })
 
     // Create sample authors
     const author1 = await db.author.upsert({
@@ -89,7 +68,6 @@ export async function runSeed(prismaClient?: any) {
             name: 'Brandon Sanderson',
             bio: 'American fantasy and science fiction writer',
             website: 'https://www.brandonsanderson.com',
-            createdBy: bryanAdmin.id,
         },
     })
 
@@ -100,7 +78,6 @@ export async function runSeed(prismaClient?: any) {
             name: 'Patrick Rothfuss',
             bio: 'American writer of epic fantasy',
             website: 'https://www.patrickrothfuss.com',
-            createdBy: bryanAdmin.id,
         },
     })
 
@@ -114,7 +91,6 @@ export async function runSeed(prismaClient?: any) {
             description: 'First book in The Stormlight Archive series',
             isbn: '9780765326355',
             publishedAt: new Date('2010-08-31'),
-            createdBy: bryanAdmin.id,
         },
     })
 
@@ -127,7 +103,6 @@ export async function runSeed(prismaClient?: any) {
             description: 'First book in The Kingkiller Chronicle series',
             isbn: '9780756404079',
             publishedAt: new Date('2007-03-27'),
-            createdBy: bryanAdmin.id,
         },
     })
 
@@ -140,7 +115,6 @@ export async function runSeed(prismaClient?: any) {
             description: 'First book in the Mistborn trilogy',
             isbn: '9780765311788',
             publishedAt: new Date('2006-07-17'),
-            createdBy: bryanAdmin.id,
         },
     })
 
@@ -172,28 +146,26 @@ export async function runSeed(prismaClient?: any) {
         },
     })
 
-    // Create sample ratings
+    // Create sample ratings (one per entity since this is a personal website)
     const rating1 = await db.rating.upsert({
-        where: { entityType_entityId_userId: { entityType: 'book', entityId: book1.id, userId: bryanAdmin.id } },
+        where: { entityType_entityId: { entityType: 'book', entityId: book1.id } },
         update: {},
         create: {
             entityType: 'book',
             entityId: book1.id,
             bookId: book1.id,
-            userId: bryanAdmin.id,
             rating: 10,
             review: 'Epic fantasy masterpiece. The worldbuilding is incredible.',
         },
     })
 
     const rating2 = await db.rating.upsert({
-        where: { entityType_entityId_userId: { entityType: 'book', entityId: book2.id, userId: admin.id } },
+        where: { entityType_entityId: { entityType: 'book', entityId: book2.id } },
         update: {},
         create: {
             entityType: 'book',
             entityId: book2.id,
             bookId: book2.id,
-            userId: admin.id,
             rating: 9,
             review: 'Beautiful prose and compelling story.',
         },
@@ -211,7 +183,6 @@ export async function runSeed(prismaClient?: any) {
             iasn: 'IASN-001',
             imdbId: 'tt1160419',
             releasedAt: new Date('2021-10-22'),
-            createdBy: bryanAdmin.id,
         },
     })
 
@@ -224,7 +195,6 @@ export async function runSeed(prismaClient?: any) {
             iasn: 'IASN-002',
             imdbId: 'tt1856101',
             releasedAt: new Date('2017-10-6'),
-            createdBy: bryanAdmin.id,
         },
     })
 
@@ -237,7 +207,6 @@ export async function runSeed(prismaClient?: any) {
             iasn: 'IASN-003',
             imdbId: 'tt0133093',
             releasedAt: new Date('1999-03-31'),
-            createdBy: bryanAdmin.id,
         },
     })
 
@@ -251,7 +220,6 @@ export async function runSeed(prismaClient?: any) {
             platform: 'PC',
             igdbId: 'wg-001',
             releasedAt: new Date('2015-05-18'),
-            createdBy: bryanAdmin.id,
         },
     })
 
@@ -264,7 +232,6 @@ export async function runSeed(prismaClient?: any) {
             platform: 'PlayStation',
             igdbId: 'wg-002',
             releasedAt: new Date('2018-04-20'),
-            createdBy: bryanAdmin.id,
         },
     })
 
@@ -277,7 +244,6 @@ export async function runSeed(prismaClient?: any) {
             platform: 'Xbox',
             igdbId: 'wg-003',
             releasedAt: new Date('2021-12-08'),
-            createdBy: bryanAdmin.id,
         },
     })
 
@@ -289,7 +255,6 @@ export async function runSeed(prismaClient?: any) {
             name: 'GameTheory',
             description: 'Video game analysis & lore',
             website: 'https://youtube.com/gametheory',
-            createdBy: bryanAdmin.id,
         },
     })
 
@@ -300,7 +265,6 @@ export async function runSeed(prismaClient?: any) {
             name: 'FilmCritic',
             description: 'Film reviews and essays',
             website: 'https://filmcritic.example',
-            createdBy: bryanAdmin.id,
         },
     })
 
@@ -311,13 +275,11 @@ export async function runSeed(prismaClient?: any) {
             name: 'IndieDevChannel',
             description: 'Indie game dev diaries',
             website: 'https://indiedev.example',
-            createdBy: bryanAdmin.id,
         },
     })
 
     console.log({
-        roles: { admin: adminRole, user: userRole },
-        users: { bryanAdmin, admin },
+        profiles: { bryanAdmin, admin },
         authors: { author1, author2 },
         books: { book1, book2, book3 },
         ratings: { rating1, rating2 },
@@ -325,6 +287,25 @@ export async function runSeed(prismaClient?: any) {
         games: { game1, game2, game3 },
         contentCreators: { cc1, cc2, cc3 }
     })
+
+    // Reset sequences to ensure they're ahead of any manually-inserted IDs (fixes CI test flakes with duplicate key violations)
+    // Profile now uses UUID so no sequence to reset
+    const sequenceResets = [
+        { table: 'Author', sequence: 'Author_id_seq' },
+        { table: 'Movie', sequence: 'Movie_id_seq' },
+        { table: 'VideoGame', sequence: 'VideoGame_id_seq' },
+        { table: 'ContentCreator', sequence: 'ContentCreator_id_seq' },
+    ]
+
+    for (const { table, sequence } of sequenceResets) {
+        try {
+            await db.$executeRawUnsafe(`SELECT setval('"${sequence}"', (SELECT COALESCE(MAX(id), 1) FROM "${table}"))`)
+            console.log(`${table} sequence reset successfully`)
+        } catch (err) {
+            console.error(`Failed to reset ${table} sequence:`, err)
+            // Non-fatal, continue
+        }
+    }
 }
 
 async function main() {
