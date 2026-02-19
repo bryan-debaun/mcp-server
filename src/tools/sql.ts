@@ -12,8 +12,8 @@ export function parseSqlStatements(sql: string): string[] {
     let i = 0
     const len = sql.length
 
-    let inSingle = false
-    let inDouble = false
+    const inSingle = false
+    const inDouble = false
     let inLineComment = false
     let inBlockComment = false
     let dollarTag: string | null = null
