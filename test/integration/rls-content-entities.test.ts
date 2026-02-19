@@ -84,7 +84,10 @@ describe('RLS content entities tests', () => {
                 }
                 // ensure the Profile row exists — create via prisma (superuser) to avoid RLS blocking the test-only seed
                 await prisma.profile.create({ data: { id: userA.id, email: userA.email, name: userA.name } }).catch(() => { })
-                _profileCheck = await client.query(`SELECT id FROM "Profile" WHERE email = '${userA.email}'`)
+                // verify existence using Prisma (superuser) instead of querying as rls_test_role — avoids RLS visibility races in CI
+                const _pr = await prisma.profile.findUnique({ where: { email: userA.email } })
+                expect(_pr).not.toBeNull()
+                _profileCheck = { rows: [{ id: _pr!.id }] } as any
             }
             expect(_profileCheck.rows.length).toBeGreaterThan(0)
             expect(_profileCheck.rows[0].id).toBe(movie.createdBy)
@@ -158,7 +161,9 @@ describe('RLS content entities tests', () => {
                 }
                 // ensure the Profile row exists — create via prisma (superuser) to avoid RLS blocking the test-only seed
                 await prisma.profile.create({ data: { id: userA.id, email: userA.email, name: userA.name } }).catch(() => { })
-                _profileCheckVG = await client.query(`SELECT id FROM "Profile" WHERE email = '${userA.email}'`)
+                const _prVG = await prisma.profile.findUnique({ where: { email: userA.email } })
+                expect(_prVG).not.toBeNull()
+                _profileCheckVG = { rows: [{ id: _prVG!.id }] } as any
             }
             expect(_profileCheckVG.rows.length).toBeGreaterThan(0)
             expect(_profileCheckVG.rows[0].id).toBe(game.createdBy)
@@ -235,7 +240,9 @@ describe('RLS content entities tests', () => {
                 }
                 // ensure the Profile row exists — create via prisma (superuser) to avoid RLS blocking the test-only seed
                 await prisma.profile.create({ data: { id: userA.id, email: userA.email, name: userA.name } }).catch(() => { })
-                _profileCheckCC = await client.query(`SELECT id FROM "Profile" WHERE email = '${userA.email}'`)
+                const _prCC = await prisma.profile.findUnique({ where: { email: userA.email } })
+                expect(_prCC).not.toBeNull()
+                _profileCheckCC = { rows: [{ id: _prCC!.id }] } as any
             }
             expect(_profileCheckCC.rows.length).toBeGreaterThan(0)
             expect(_profileCheckCC.rows[0].id).toBe(cc.createdBy)

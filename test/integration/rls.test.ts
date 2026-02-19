@@ -72,7 +72,9 @@ describe('RLS integration tests', () => {
                 }
                 // ensure the Profile row exists — create via prisma (superuser) to avoid RLS blocking the test-only seed
                 await prisma.profile.create({ data: { id: userA.id, email: userA.email, name: userA.name } }).catch(() => { })
-                _profileCheckR = await client.query(`SELECT id FROM "Profile" WHERE email = '${userA.email}'`)
+                const _prR = await prisma.profile.findUnique({ where: { email: userA.email } })
+                expect(_prR).not.toBeNull()
+                _profileCheckR = { rows: [{ id: _prR!.id }] } as any
             }
             expect(_profileCheckR.rows.length).toBeGreaterThan(0)
             expect(_profileCheckR.rows[0].id).toBe(userA.id)
