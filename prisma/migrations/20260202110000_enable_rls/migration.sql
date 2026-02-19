@@ -41,7 +41,7 @@ BEGIN
       current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
     );
 
-  ELSE
+  ELSIF to_regclass('public.User') IS NOT NULL THEN
     DROP POLICY IF EXISTS "User_self_or_admin_select" ON "User";
     CREATE POLICY "User_self_or_admin_select" ON "User" FOR SELECT USING (
       current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
@@ -148,7 +148,7 @@ BEGIN
           AND exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "createdBy"))
     );
 
-  ELSE
+  ELSIF to_regclass('public.User') IS NOT NULL THEN
     DROP POLICY IF EXISTS "Author_creator_or_admin_insert" ON "Author";
     CREATE POLICY "Author_creator_or_admin_insert" ON "Author" FOR INSERT WITH CHECK (
       current_setting('request.jwt.claims.role', true) = 'admin'
@@ -212,7 +212,7 @@ BEGIN
                OR exists (select 1 from "Profile" p where p.email = current_setting('request.jwt.claims.email', true) and p.id = "Book"."createdBy")))
     );
 
-  ELSE
+  ELSIF to_regclass('public.User') IS NOT NULL THEN
     DROP POLICY IF EXISTS "Book_creator_or_admin_insert" ON "Book";
     CREATE POLICY "Book_creator_or_admin_insert" ON "Book" FOR INSERT WITH CHECK (
       current_setting('request.jwt.claims.role', true) = 'admin'
@@ -285,7 +285,7 @@ BEGIN
       AND (exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "userId") OR exists (select 1 from "Profile" p where p.email = current_setting('request.jwt.claims.email', true) and p.id = "userId"))
     );
 
-  ELSE
+  ELSIF to_regclass('public.User') IS NOT NULL THEN
     DROP POLICY IF EXISTS "Rating_owner_select" ON "Rating";
     CREATE POLICY "Rating_owner_select" ON "Rating" FOR SELECT USING (
       current_setting('request.jwt.claims.email', true) IS NOT NULL
