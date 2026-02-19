@@ -22,6 +22,20 @@ async function waitForProfileVisible(client: any, attempts = process.env.CI ? 40
         );
         console.error('DEBUG RLS visibility timeout, session:', dbg.rows[0]);
 
+        // capture transaction/snapshot and activity info from this connection (helpful for CI debugging)
+        try {
+            const tx = await client.query('SELECT txid_current() AS txid, txid_current_snapshot() AS snapshot')
+            console.error('DEBUG RLS tx snapshot:', tx.rows[0])
+        } catch (e) {
+            console.error('DEBUG RLS: failed to read txid_current()', e)
+        }
+        try {
+            const activity = await client.query(`SELECT pid, usename, state, query, query_start FROM pg_stat_activity WHERE datname = current_database() ORDER BY query_start DESC LIMIT 10`)
+            console.error('DEBUG RLS pg_stat_activity (sample):', activity.rows)
+        } catch (e) {
+            console.error('DEBUG RLS: failed to read pg_stat_activity', e)
+        }
+
         // also capture a superuser view of the same profile so CI logs show whether the
         // Profile row truly exists (helps distinguish visibility vs. missing-seed)
         const email = dbg.rows[0].email
@@ -90,10 +104,12 @@ describe('RLS content entities tests', () => {
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
 
         const { Client } = await import('pg')
-        const client = new Client({ connectionString: process.env.DATABASE_URL })
+        let client = new Client({ connectionString: process.env.DATABASE_URL })
         await client.connect()
-        // ensure this session uses a fresh snapshot (prevents REPEATABLE READ / pooled-connection visibility races)
-        await client.query('DISCARD ALL')
+        // ensure fresh session snapshot by recreating the connection (deterministic for pooled environments)
+        await client.end()
+        client = new Client({ connectionString: process.env.DATABASE_URL })
+        await client.connect()
         try {
             try {
                 await client.query(`SET ROLE rls_test_role`)
@@ -187,10 +203,12 @@ describe('RLS content entities tests', () => {
         await prisma.$executeRaw`SELECT set_config('request.jwt.claims.email', '', false)`;
 
         const { Client } = await import('pg')
-        const client = new Client({ connectionString: process.env.DATABASE_URL })
+        let client = new Client({ connectionString: process.env.DATABASE_URL })
         await client.connect()
-        // ensure fresh session snapshot before RLS role usage
-        await client.query('DISCARD ALL')
+        // ensure fresh session snapshot by recreating the connection (deterministic for pooled environments)
+        await client.end()
+        client = new Client({ connectionString: process.env.DATABASE_URL })
+        await client.connect()
         try {
             try {
                 await client.query(`SET ROLE rls_test_role`)
@@ -273,10 +291,12 @@ describe('RLS content entities tests', () => {
         });
 
         const { Client } = await import('pg')
-        const client = new Client({ connectionString: process.env.DATABASE_URL })
+        let client = new Client({ connectionString: process.env.DATABASE_URL })
         await client.connect()
-        // clear any open transaction / session state so snapshot is fresh
-        await client.query('DISCARD ALL')
+        // ensure fresh session snapshot by recreating the connection (deterministic for pooled environments)
+        await client.end()
+        client = new Client({ connectionString: process.env.DATABASE_URL })
+        await client.connect()
         try {
             try {
                 await client.query(`SET ROLE rls_test_role`)

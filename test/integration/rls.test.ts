@@ -21,6 +21,20 @@ async function waitForProfileVisible(client: any, attempts = process.env.CI ? 40
         );
         console.error('DEBUG RLS visibility timeout, session:', dbg.rows[0]);
 
+        // capture transaction/snapshot and activity info from this connection (helpful for CI debugging)
+        try {
+            const tx = await client.query('SELECT txid_current() AS txid, txid_current_snapshot() AS snapshot')
+            console.error('DEBUG RLS tx snapshot:', tx.rows[0])
+        } catch (e) {
+            console.error('DEBUG RLS: failed to read txid_current()', e)
+        }
+        try {
+            const activity = await client.query(`SELECT pid, usename, state, query, query_start FROM pg_stat_activity WHERE datname = current_database() ORDER BY query_start DESC LIMIT 10`)
+            console.error('DEBUG RLS pg_stat_activity (sample):', activity.rows)
+        } catch (e) {
+            console.error('DEBUG RLS: failed to read pg_stat_activity', e)
+        }
+
         // also capture a superuser view of the same profile so CI logs show whether the
         // Profile row truly exists (helps distinguish visibility vs. missing-seed)
         const email = dbg.rows[0].email
@@ -91,10 +105,12 @@ describe('RLS integration tests', () => {
 
         // Query as User A: open a dedicated connection and switch role there so the role change and session GUCs live on the same connection
         const { Client } = await import('pg')
-        const client = new Client({ connectionString: process.env.DATABASE_URL })
+        let client = new Client({ connectionString: process.env.DATABASE_URL })
         await client.connect()
-        // refresh session snapshot to avoid stale REPEATABLE-READ visibility
-        await client.query('DISCARD ALL')
+        // ensure fresh session snapshot by recreating the connection (deterministic for pooled environments)
+        await client.end()
+        client = new Client({ connectionString: process.env.DATABASE_URL })
+        await client.connect()
         try {
             await client.query(`SET ROLE rls_test_role`)
             await client.query(`SELECT set_config('request.jwt.claims.email', '${userAEmail}', false)`) // session-level

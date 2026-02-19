@@ -19,7 +19,7 @@ describe('RLS snapshot-visibility repro (local reproduction for CI flake)', () =
         const email = `rls-repro+${Date.now()}@example.com`
 
         const { Client } = await import('pg')
-        const obs = new Client({ connectionString: process.env.DATABASE_URL })
+        let obs = new Client({ connectionString: process.env.DATABASE_URL })
         await obs.connect()
         try {
             // 1) Start a REPEATABLE READ transaction on the observer connection so its
@@ -47,11 +47,17 @@ describe('RLS snapshot-visibility repro (local reproduction for CI flake)', () =
 
             // 4) Rollback the observer transaction (refreshes snapshot) and re-check — now it should see the row
             await obs.query('ROLLBACK')
-            // ensure session-level GUC/role are re-applied on a clean session
+            // close + recreate the connection to guarantee a fresh session snapshot in pooled CI
+            await obs.end()
+            obs = new Client({ connectionString: process.env.DATABASE_URL })
+            await obs.connect()
+            // re-apply role/GUC on the fresh connection
             await obs.query('SET ROLE rls_test_role')
             await obs.query(`SELECT set_config('request.jwt.claims.email', '${email}', false)`)
+            const txObsAfter = await obs.query('SELECT txid_current() AS txid, txid_current_snapshot() AS snapshot')
+            console.error('OBS tx after reconnect:', txObsAfter.rows[0])
             const resAfter = await obs.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
-            console.error('OBS select after rollback, rows:', resAfter.rows)
+            console.error('OBS select after reconnect, rows:', resAfter.rows)
             expect(resAfter.rows.length).toBeGreaterThan(0)
             expect(resAfter.rows[0].id).toBe(created.id)
         } finally {
