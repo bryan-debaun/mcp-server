@@ -118,7 +118,29 @@ export async function jwtMiddleware(req: Request, res: Response, next: NextFunct
             const sessionToken = (cookies as any).session
             if (sessionToken) {
                 const payload = await verifySessionToken(sessionToken)
-                    ; (req as any).user = { sub: payload.sub ?? payload.userId, ...payload }
+                ; (req as any).user = { sub: payload.sub ?? payload.userId, ...payload }
+
+                // Attach local role/isAdmin when possible (same behavior as Authorization header path)
+                try {
+                    if (payload.sub) {
+                        const sub = String(payload.sub)
+                        let localProfile: any = null
+                        if (/^[0-9a-fA-F-]{36}$/.test(sub)) {
+                            localProfile = await prisma.profile.findUnique({ where: { external_id: sub } as any, include: { role: true } })
+                        } else if (sub.includes('@')) {
+                            localProfile = await prisma.profile.findUnique({ where: { email: sub } as any, include: { role: true } })
+                        }
+                        if (localProfile) {
+                            ; (req as any).user.role = localProfile.role?.name ?? (localProfile.isAdmin ? 'admin' : 'user')
+                            ; (req as any).user.isAdmin = Boolean(localProfile.isAdmin)
+                            ; (req as any).user.localUserId = localProfile.id
+                            ; (req as any).user.external_id = localProfile.external_id
+                        }
+                    }
+                } catch (err) {
+                    console.debug('jwtMiddleware: failed to lookup local user for session payload', err)
+                }
+
                 return next()
             }
         }

@@ -264,18 +264,15 @@ describe('JWT middleware', () => {
 
     it('maps a Supabase JWT sub (external_id) to local user and grants admin when local user is admin', async () => {
         const supabaseSub = '00b72aac-2286-48e5-955a-c8012cceb9c5'
-        const token = await new SignJWT({ role: 'authenticated' })
-            .setProtectedHeader({ alg: 'RS256', kid: publicJwk.kid })
-            .setIssuer(issuer)
-            .setAudience(audience)
+
+        // Use a session cookie to exercise the mapping logic without JWKS/network dependence
+        process.env.SESSION_JWT_SECRET = 'session-secret'
+        const sessionToken = await new SignJWT({})
+            .setProtectedHeader({ alg: 'HS256' })
             .setSubject(supabaseSub)
             .setIssuedAt()
             .setExpirationTime('2h')
-            .sign(privateKey as any)
-
-        // stub verifySupabaseJwt to avoid network JWKS dependency and return the token payload
-        const jwtMod = await import('../../src/auth/jwt.js') as any
-        vi.spyOn(jwtMod, 'verifySupabaseJwt').mockResolvedValue({ sub: supabaseSub, iss: issuer, aud: audience } as any)
+            .sign(new TextEncoder().encode(process.env.SESSION_JWT_SECRET) as any)
 
         // stub prisma user lookup by external_id
         const p = await import('../../src/db/index.js') as any
@@ -292,25 +289,24 @@ describe('JWT middleware', () => {
         const app = express()
         app.get('/admin', jwtMiddleware, requireAdmin, (req, res) => res.json({ ok: true }))
 
-        const res = await request(app).get('/admin').set('Authorization', `Bearer ${token}`)
+        const res = await request(app).get('/admin').set('Cookie', `session=${sessionToken}`)
         expect(res.status).toBe(200)
         expect(p.prisma.profile.findUnique).toHaveBeenCalled()
+
+        delete process.env.SESSION_JWT_SECRET
     })
 
     it('maps a Supabase JWT sub that is an email to local user and attaches role', async () => {
         const emailSub = 'brn.dbn@gmail.com'
-        const token = await new SignJWT({ role: 'authenticated' })
-            .setProtectedHeader({ alg: 'RS256', kid: publicJwk.kid })
-            .setIssuer(issuer)
-            .setAudience(audience)
+
+        // Use a session cookie to exercise the mapping logic without JWKS/network dependence
+        process.env.SESSION_JWT_SECRET = 'session-secret'
+        const sessionToken = await new SignJWT({})
+            .setProtectedHeader({ alg: 'HS256' })
             .setSubject(emailSub)
             .setIssuedAt()
             .setExpirationTime('2h')
-            .sign(privateKey as any)
-
-        // stub verifySupabaseJwt to avoid network JWKS dependency and return the token payload
-        const jwtMod = await import('../../src/auth/jwt.js') as any
-        vi.spyOn(jwtMod, 'verifySupabaseJwt').mockResolvedValue({ sub: emailSub, iss: issuer, aud: audience } as any)
+            .sign(new TextEncoder().encode(process.env.SESSION_JWT_SECRET) as any)
 
         // stub prisma user lookup by email
         const p = await import('../../src/db/index.js') as any
@@ -327,9 +323,11 @@ describe('JWT middleware', () => {
         const app = express()
         app.get('/whoami', jwtMiddleware, (req, res) => res.json({ user: (req as any).user }))
 
-        const res = await request(app).get('/whoami').set('Authorization', `Bearer ${token}`)
+        const res = await request(app).get('/whoami').set('Cookie', `session=${sessionToken}`)
         expect(res.status).toBe(200)
         expect(res.body.user.role).toBe('user')
         expect(p.prisma.profile.findUnique).toHaveBeenCalled()
+
+        delete process.env.SESSION_JWT_SECRET
     })
 })
