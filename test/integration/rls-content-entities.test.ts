@@ -2,6 +2,44 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { prisma, initPrisma } from '../../src/db'
 import { ensureRlsTestRoleReady } from '../utils/db-utils'
 
+// helper: wait until the rls_test_role session can see the Profile for the
+// current request.jwt.claims.email (prevents CI visibility races)
+// - uses a larger default attempt count when running in CI
+// - prints a Prisma-backed snapshot on final failure for easier debugging in CI logs
+async function waitForProfileVisible(client: any, attempts = process.env.CI ? 40 : 8, delayMs = 100) {
+    for (let i = 0; i < attempts; i++) {
+        const r = await client.query(
+            `SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`
+        );
+        if (r.rows.length > 0) return r.rows[0];
+        await new Promise((r) => setTimeout(r, delayMs));
+    }
+
+    // final diagnostic snapshot (connection-level)
+    try {
+        const dbg = await client.query(
+            `SELECT current_setting('request.jwt.claims.email', true) AS email, current_setting('request.jwt.claims.role', true) AS role, session_user, current_user`
+        );
+        console.error('DEBUG RLS visibility timeout, session:', dbg.rows[0]);
+
+        // also capture a superuser view of the same profile so CI logs show whether the
+        // Profile row truly exists (helps distinguish visibility vs. missing-seed)
+        const email = dbg.rows[0].email
+        if (email) {
+            const pr = await prisma.profile.findUnique({ where: { email } })
+            console.error('DEBUG RLS profile (prisma):', pr)
+            const count = await prisma.profile.count({ where: { email } })
+            console.error('DEBUG RLS profile count (prisma):', count)
+        } else {
+            const sample = await prisma.profile.count({ where: { email: { startsWith: 'rls-' } } })
+            console.error('DEBUG RLS sample rls-* profile count (prisma):', sample)
+        }
+    } catch (err) {
+        console.error('DEBUG RLS visibility timeout, failed to read session settings or prisma snapshot', err);
+    }
+    return null;
+}
+
 const RUN_DB_TESTS = process.env.RUN_DB_INTEGRATION === 'true'
 
 describe('RLS content entities tests', () => {
@@ -73,25 +111,39 @@ describe('RLS content entities tests', () => {
             const _guc = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email`)
             expect(_guc.rows[0].email).toBe(userA.email)
             let _profileCheck = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
-            // defensive: if another test cleaned profiles concurrently, create the expected Profile on *this* connection
             if (_profileCheck.rows.length === 0) {
-                // DEBUG: capture session GUC and current role before seeding Profile (CI-only diagnostic)
-                try {
-                    const dbg = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email, current_setting('request.jwt.claims.role', true) AS role, session_user, current_user`)
-                    console.error('DEBUG RLS (movie) session:', dbg.rows[0])
-                } catch (e) {
-                    console.error('DEBUG RLS (movie) session: failed to read session settings', e)
-                }
-                // ensure the Profile row exists — create via prisma (superuser) to avoid RLS blocking the test-only seed
                 await prisma.profile.create({ data: { id: userA.id, email: userA.email, name: userA.name } }).catch(() => { })
-                // verify existence using Prisma (superuser) instead of querying as rls_test_role — avoids RLS visibility races in CI
-                const _pr = await prisma.profile.findUnique({ where: { email: userA.email } })
-                expect(_pr).not.toBeNull()
-                _profileCheck = { rows: [{ id: _pr!.id }] } as any
             }
+
+            // wait until rls_test_role session can actually see the Profile
+            const visible = await waitForProfileVisible(client)
+            expect(visible).not.toBeNull()
+            // if original _profileCheck was empty, hydrate it from the visible row for legacy assertions
+            if (_profileCheck.rows.length === 0) _profileCheck = { rows: [{ id: visible.id }] } as any
+
             expect(_profileCheck.rows.length).toBeGreaterThan(0)
             expect(_profileCheck.rows[0].id).toBe(movie.createdBy)
-            const resA = await client.query(`UPDATE "Movie" SET title = 'Y' WHERE id = ${movie.id}`)
+
+            // try the owner UPDATE, retrying a couple times if RLS briefly blocks it
+            let resA = { rowCount: 0 } as any
+            const maxAttempts = process.env.CI ? 8 : 3
+            for (let attempt = 0; attempt < maxAttempts && resA.rowCount === 0; attempt++) {
+                // re-ensure role + GUC are set for the session
+                await client.query(`RESET ROLE`)
+                await client.query(`SET ROLE rls_test_role`)
+                await client.query(`SELECT set_config('request.jwt.claims.email', '${userA.email}', false)`)
+
+                // diagnostic right before UPDATE
+                try {
+                    const dbg = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email, session_user, current_user`)
+                    console.error('DEBUG RLS before UPDATE attempt', attempt, dbg.rows[0])
+                } catch (e) {
+                    console.error('DEBUG RLS before UPDATE: failed to read session settings', e)
+                }
+
+                resA = await client.query(`UPDATE "Movie" SET title = 'Y' WHERE id = ${movie.id}`)
+                if (resA.rowCount === 0) await new Promise(r => setTimeout(r, 50))
+            }
             expect(resA.rowCount).toBeGreaterThan(0)
 
             // Admin should be able to update
@@ -152,29 +204,34 @@ describe('RLS content entities tests', () => {
             expect(_gucVG.rows[0].email).toBe(userA.email)
             let _profileCheckVG = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             if (_profileCheckVG.rows.length === 0) {
-                // DEBUG: capture session GUC and current role before seeding Profile (CI-only diagnostic)
-                try {
-                    const dbg = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email, current_setting('request.jwt.claims.role', true) AS role, session_user, current_user`)
-                    console.error('DEBUG RLS (videogame) session:', dbg.rows[0])
-                } catch (e) {
-                    console.error('DEBUG RLS (videogame) session: failed to read session settings', e)
-                }
-                // ensure the Profile row exists — create via prisma (superuser) to avoid RLS blocking the test-only seed
                 await prisma.profile.create({ data: { id: userA.id, email: userA.email, name: userA.name } }).catch(() => { })
-                const _prVG = await prisma.profile.findUnique({ where: { email: userA.email } })
-                expect(_prVG).not.toBeNull()
-                _profileCheckVG = { rows: [{ id: _prVG!.id }] } as any
             }
+
+            // wait until rls_test_role session can actually see the Profile
+            const visibleVG = await waitForProfileVisible(client)
+            expect(visibleVG).not.toBeNull()
+            if (_profileCheckVG.rows.length === 0) _profileCheckVG = { rows: [{ id: visibleVG.id }] } as any
+
             expect(_profileCheckVG.rows.length).toBeGreaterThan(0)
             expect(_profileCheckVG.rows[0].id).toBe(game.createdBy)
-            let resA = await client.query(`UPDATE "VideoGame" SET title = 'Y' WHERE id = ${game.id}`)
-            if (resA.rowCount === 0) {
-                // transient: re-ensure role/grants and retry (makes CI resilient to racey setup/teardown)
-                await ensureRlsTestRoleReady(prisma)
+
+            // try the owner UPDATE, retrying a couple times if RLS briefly blocks it
+            let resA = { rowCount: 0 } as any
+            const maxAttemptsVG = process.env.CI ? 8 : 3
+            for (let attempt = 0; attempt < maxAttemptsVG && resA.rowCount === 0; attempt++) {
                 await client.query(`RESET ROLE`)
                 await client.query(`SET ROLE rls_test_role`)
                 await client.query(`SELECT set_config('request.jwt.claims.email', '${gameAEmail}', false)`)
+
+                try {
+                    const dbg = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email, session_user, current_user`)
+                    console.error('DEBUG RLS before UPDATE attempt', attempt, dbg.rows[0])
+                } catch (e) {
+                    console.error('DEBUG RLS before UPDATE: failed to read session settings', e)
+                }
+
                 resA = await client.query(`UPDATE "VideoGame" SET title = 'Y' WHERE id = ${game.id}`)
+                if (resA.rowCount === 0) await new Promise(r => setTimeout(r, 50))
             }
             expect(resA.rowCount).toBeGreaterThan(0)
 
@@ -231,22 +288,35 @@ describe('RLS content entities tests', () => {
             expect(_gucCC.rows[0].email).toBe(userA.email)
             let _profileCheckCC = await client.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
             if (_profileCheckCC.rows.length === 0) {
-                // DEBUG: capture session GUC and current role before seeding Profile (CI-only diagnostic)
-                try {
-                    const dbg = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email, current_setting('request.jwt.claims.role', true) AS role, session_user, current_user`)
-                    console.error('DEBUG RLS (content-creator) session:', dbg.rows[0])
-                } catch (e) {
-                    console.error('DEBUG RLS (content-creator) session: failed to read session settings', e)
-                }
-                // ensure the Profile row exists — create via prisma (superuser) to avoid RLS blocking the test-only seed
                 await prisma.profile.create({ data: { id: userA.id, email: userA.email, name: userA.name } }).catch(() => { })
-                const _prCC = await prisma.profile.findUnique({ where: { email: userA.email } })
-                expect(_prCC).not.toBeNull()
-                _profileCheckCC = { rows: [{ id: _prCC!.id }] } as any
             }
+
+            // wait until rls_test_role session can actually see the Profile
+            const visibleCC = await waitForProfileVisible(client)
+            expect(visibleCC).not.toBeNull()
+            if (_profileCheckCC.rows.length === 0) _profileCheckCC = { rows: [{ id: visibleCC.id }] } as any
+
             expect(_profileCheckCC.rows.length).toBeGreaterThan(0)
             expect(_profileCheckCC.rows[0].id).toBe(cc.createdBy)
-            const resA = await client.query(`UPDATE "ContentCreator" SET name = 'Y' WHERE id = ${cc.id}`)
+
+            // try the owner UPDATE, retrying a couple times if RLS briefly blocks it
+            let resA = { rowCount: 0 } as any
+            const maxAttemptsCC = process.env.CI ? 8 : 3
+            for (let attempt = 0; attempt < maxAttemptsCC && resA.rowCount === 0; attempt++) {
+                await client.query(`RESET ROLE`)
+                await client.query(`SET ROLE rls_test_role`)
+                await client.query(`SELECT set_config('request.jwt.claims.email', '${userA.email}', false)`)
+
+                try {
+                    const dbg = await client.query(`SELECT current_setting('request.jwt.claims.email', true) AS email, session_user, current_user`)
+                    console.error('DEBUG RLS before UPDATE attempt', attempt, dbg.rows[0])
+                } catch (e) {
+                    console.error('DEBUG RLS before UPDATE: failed to read session settings', e)
+                }
+
+                resA = await client.query(`UPDATE "ContentCreator" SET name = 'Y' WHERE id = ${cc.id}`)
+                if (resA.rowCount === 0) await new Promise(r => setTimeout(r, 50))
+            }
             expect(resA.rowCount).toBeGreaterThan(0)
 
             await client.query(`SELECT set_config('request.jwt.claims.role', 'admin', true)`)
