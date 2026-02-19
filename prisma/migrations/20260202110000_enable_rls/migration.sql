@@ -11,24 +11,25 @@ CREATE POLICY "Role_admin_update" ON "Role" FOR UPDATE WITH CHECK (current_setti
 DROP POLICY IF EXISTS "Role_admin_delete" ON "Role";
 CREATE POLICY "Role_admin_delete" ON "Role" FOR DELETE USING (current_setting('request.jwt.claims.role', true) = 'admin');
 
--- User: owner (email) or admin
-ALTER TABLE "User" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "User_self_or_admin_select" ON "User";
-CREATE POLICY "User_self_or_admin_select" ON "User" FOR SELECT USING (
+-- User (renamed to Profile): owner (email) or admin
+ALTER TABLE IF EXISTS "User" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS "Profile" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "User_self_or_admin_select" ON "Profile";
+CREATE POLICY "User_self_or_admin_select" ON "Profile" FOR SELECT USING (
   current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
 );
-DROP POLICY IF EXISTS "User_self_or_admin_insert" ON "User";
-CREATE POLICY "User_self_or_admin_insert" ON "User" FOR INSERT WITH CHECK (
+DROP POLICY IF EXISTS "User_self_or_admin_insert" ON "Profile";
+CREATE POLICY "User_self_or_admin_insert" ON "Profile" FOR INSERT WITH CHECK (
   current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
 );
-DROP POLICY IF EXISTS "User_self_or_admin_update" ON "User";
-CREATE POLICY "User_self_or_admin_update" ON "User" FOR UPDATE USING (
+DROP POLICY IF EXISTS "User_self_or_admin_update" ON "Profile";
+CREATE POLICY "User_self_or_admin_update" ON "Profile" FOR UPDATE USING (
   current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
 ) WITH CHECK (
   current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
 );
-DROP POLICY IF EXISTS "User_self_or_admin_delete" ON "User";
-CREATE POLICY "User_self_or_admin_delete" ON "User" FOR DELETE USING (
+DROP POLICY IF EXISTS "User_self_or_admin_delete" ON "Profile";
+CREATE POLICY "User_self_or_admin_delete" ON "Profile" FOR DELETE USING (
   current_setting('request.jwt.claims.email', true) = email OR current_setting('request.jwt.claims.role', true) = 'admin'
 );
 
@@ -85,13 +86,13 @@ DROP POLICY IF EXISTS "Author_public_select" ON "Author";
 CREATE POLICY "Author_public_select" ON "Author" FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Author_creator_or_admin_insert" ON "Author";
 CREATE POLICY "Author_creator_or_admin_insert" ON "Author" FOR INSERT WITH CHECK (
-  current_setting('request.jwt.claims.role', true) = 'admin' OR (current_setting('request.jwt.claims.email', true) IS NOT NULL AND exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "createdBy"))
+  current_setting('request.jwt.claims.role', true) = 'admin' OR (current_setting('request.jwt.claims.email', true) IS NOT NULL AND (exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "createdBy") OR exists (select 1 from "Profile" p where p.email = current_setting('request.jwt.claims.email', true) and p.id = "createdBy")))
 );
 DROP POLICY IF EXISTS "Author_creator_or_admin_update" ON "Author";
 CREATE POLICY "Author_creator_or_admin_update" ON "Author" FOR UPDATE USING (
-  current_setting('request.jwt.claims.role', true) = 'admin' OR (current_setting('request.jwt.claims.email', true) IS NOT NULL AND exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "Author"."createdBy"))
+  current_setting('request.jwt.claims.role', true) = 'admin' OR (current_setting('request.jwt.claims.email', true) IS NOT NULL AND (exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "Author"."createdBy") OR exists (select 1 from "Profile" p where p.email = current_setting('request.jwt.claims.email', true) and p.id = "Author"."createdBy")))
 ) WITH CHECK (
-  current_setting('request.jwt.claims.role', true) = 'admin' OR (current_setting('request.jwt.claims.email', true) IS NOT NULL AND exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "createdBy"))
+  current_setting('request.jwt.claims.role', true) = 'admin' OR (current_setting('request.jwt.claims.email', true) IS NOT NULL AND (exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "createdBy") OR exists (select 1 from "Profile" p where p.email = current_setting('request.jwt.claims.email', true) and p.id = "createdBy")))
 );
 DROP POLICY IF EXISTS "Author_creator_or_admin_delete" ON "Author";
 CREATE POLICY "Author_creator_or_admin_delete" ON "Author" FOR DELETE USING (
@@ -104,17 +105,17 @@ DROP POLICY IF EXISTS "Book_public_select" ON "Book";
 CREATE POLICY "Book_public_select" ON "Book" FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Book_creator_or_admin_insert" ON "Book";
 CREATE POLICY "Book_creator_or_admin_insert" ON "Book" FOR INSERT WITH CHECK (
-  current_setting('request.jwt.claims.role', true) = 'admin' OR (current_setting('request.jwt.claims.email', true) IS NOT NULL AND exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "createdBy"))
+  current_setting('request.jwt.claims.role', true) = 'admin' OR (current_setting('request.jwt.claims.email', true) IS NOT NULL AND (exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "createdBy") OR exists (select 1 from "Profile" p where p.email = current_setting('request.jwt.claims.email', true) and p.id = "createdBy")))
 );
 DROP POLICY IF EXISTS "Book_creator_or_admin_update" ON "Book";
 CREATE POLICY "Book_creator_or_admin_update" ON "Book" FOR UPDATE USING (
-  current_setting('request.jwt.claims.role', true) = 'admin' OR (current_setting('request.jwt.claims.email', true) IS NOT NULL AND exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "Book"."createdBy"))
+  current_setting('request.jwt.claims.role', true) = 'admin' OR (current_setting('request.jwt.claims.email', true) IS NOT NULL AND (exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "Book"."createdBy") OR exists (select 1 from "Profile" p where p.email = current_setting('request.jwt.claims.email', true) and p.id = "Book"."createdBy")))
 ) WITH CHECK (
-  current_setting('request.jwt.claims.role', true) = 'admin' OR (current_setting('request.jwt.claims.email', true) IS NOT NULL AND exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "createdBy"))
+  current_setting('request.jwt.claims.role', true) = 'admin' OR (current_setting('request.jwt.claims.email', true) IS NOT NULL AND (exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "createdBy") OR exists (select 1 from "Profile" p where p.email = current_setting('request.jwt.claims.email', true) and p.id = "createdBy")))
 );
 DROP POLICY IF EXISTS "Book_creator_or_admin_delete" ON "Book";
 CREATE POLICY "Book_creator_or_admin_delete" ON "Book" FOR DELETE USING (
-  current_setting('request.jwt.claims.role', true) = 'admin' OR (current_setting('request.jwt.claims.email', true) IS NOT NULL AND exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "Book"."createdBy"))
+  current_setting('request.jwt.claims.role', true) = 'admin' OR (current_setting('request.jwt.claims.email', true) IS NOT NULL AND (exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "Book"."createdBy") OR exists (select 1 from "Profile" p where p.email = current_setting('request.jwt.claims.email', true) and p.id = "Book"."createdBy")))
 );
 
 -- BookAuthor: public SELECT, admin-only writes
@@ -139,24 +140,24 @@ CREATE POLICY "Rating_admin_all" ON "Rating" FOR ALL USING (current_setting('req
 DROP POLICY IF EXISTS "Rating_owner_select" ON "Rating";
 CREATE POLICY "Rating_owner_select" ON "Rating" FOR SELECT USING (
   current_setting('request.jwt.claims.email', true) IS NOT NULL
-  AND exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "Rating"."userId")
+  AND (exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "Rating"."userId") OR exists (select 1 from "Profile" p where p.email = current_setting('request.jwt.claims.email', true) and p.id = "Rating"."userId"))
 );
 
 -- Allow users to INSERT ratings for themselves
 DROP POLICY IF EXISTS "Rating_owner_insert" ON "Rating";
 CREATE POLICY "Rating_owner_insert" ON "Rating" FOR INSERT WITH CHECK (
   current_setting('request.jwt.claims.email', true) IS NOT NULL
-  AND exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "userId")
+  AND (exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "userId") OR exists (select 1 from "Profile" p where p.email = current_setting('request.jwt.claims.email', true) and p.id = "userId"))
 );
 
 -- Allow users to UPDATE/DELETE their own ratings
 DROP POLICY IF EXISTS "Rating_owner_modify" ON "Rating";
 CREATE POLICY "Rating_owner_modify" ON "Rating" FOR UPDATE USING (
   current_setting('request.jwt.claims.email', true) IS NOT NULL
-  AND exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "Rating"."userId")
+  AND (exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "Rating"."userId") OR exists (select 1 from "Profile" p where p.email = current_setting('request.jwt.claims.email', true) and p.id = "Rating"."userId"))
 ) WITH CHECK (
   current_setting('request.jwt.claims.email', true) IS NOT NULL
-  AND exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "userId")
+  AND (exists (select 1 from "User" u where u.email = current_setting('request.jwt.claims.email', true) and u.id = "userId") OR exists (select 1 from "Profile" p where p.email = current_setting('request.jwt.claims.email', true) and p.id = "userId"))
 );
 
 -- Notes:
