@@ -18,7 +18,7 @@ export function registerCreateMovieTool(server: McpServer): void {
         config,
         async (args: any): Promise<CallToolResult> => {
             try {
-                const { title, description, iasn, imdbId, releasedAt, createdBy, status } = args;
+                const { title, description, iasn, imdbId, releasedAt, status } = args;
                 const normalizedStatus = normalizeStatusInput(status);
 
                 const movie = await prisma.movie.create({
@@ -28,7 +28,6 @@ export function registerCreateMovieTool(server: McpServer): void {
                         iasn,
                         imdbId,
                         releasedAt: releasedAt ? new Date(releasedAt) : null,
-                        createdBy,
                         status: normalizedStatus
                     }
                 });

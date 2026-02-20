@@ -83,12 +83,27 @@
             "enabled": true
         },
         {
+            "key": "PUBLIC_SUPABASE_URL",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+            "value": "",
+            "enabled": true
+        },
+        {
             "key": "SUPABASE_ISS",
             "value": "",
             "enabled": true
         },
         {
             "key": "SUPABASE_AUD",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "SUPABASE_SECRET_KEY",
             "value": "",
             "enabled": true
         },

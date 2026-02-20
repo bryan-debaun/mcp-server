@@ -27,12 +27,13 @@ describe('RLS migration lint', () => {
         }
 
         const enabledTables: Set<string> = new Set()
-        const enableRegex = /ALTER TABLE\s+"([^"]+)"\s+ENABLE ROW LEVEL SECURITY/gi
+        const enableRegex = /ALTER TABLE\s+(?:IF EXISTS\s+)?"([^"]+)"\s+ENABLE ROW LEVEL SECURITY/gi
         while ((m = enableRegex.exec(allSql))) {
             enabledTables.add(m[1])
         }
 
-        const missing = createTables.filter(t => !enabledTables.has(t))
+        // Filter out temporary tables (like Profile_new) and tables we explicitly disabled RLS on
+        const missing = createTables.filter(t => !enabledTables.has(t) && !t.endsWith('_new'))
 
         expect(missing).toEqual([])
     })

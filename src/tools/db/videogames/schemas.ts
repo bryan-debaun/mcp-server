@@ -9,7 +9,6 @@ export const CreateVideoGameInputSchema = {
         platform: { type: "string", description: "Platform (PlayStation, Xbox, PC)", enum: ['PlayStation', 'Xbox', 'PC'] },
         igdbId: { type: "string", description: "IGDB ID (optional, unique)" },
         releasedAt: { type: "string", description: "Release date (ISO 8601)" },
-        createdBy: { type: "number", description: "User ID of creator (optional)" },
     },
     required: ["title", "platform"],
 } as const;

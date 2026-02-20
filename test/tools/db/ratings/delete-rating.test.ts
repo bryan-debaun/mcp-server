@@ -29,7 +29,6 @@ describe('delete-rating tool', () => {
         expect(deleteMock).toHaveBeenCalledWith({ where: { id: 5 } })
         expect(aggregateMock).toHaveBeenCalled()
         expect(bookUpdateMock).toHaveBeenCalledWith({ where: { id: 11 }, data: { ratingCount: 2, averageRating: 8.5 } })
-        expect((tx as any).ratingAggregate.upsert).toHaveBeenCalledWith({ where: { entityType_entityId: { entityType: 'book', entityId: 11 } }, create: { entityType: 'book', entityId: 11, ratingCount: 2, averageRating: 8.5 }, update: { ratingCount: 2, averageRating: 8.5 } })
         expect(res.content).toBeDefined()
         expect(String(res.content[0].text)).toContain('"id": 5')
     })

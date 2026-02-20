@@ -61,17 +61,55 @@ export class SessionController extends Controller {
             return
         }
 
-        // Identify user: prefer numeric userId, then external_id (UUID-like), then email (sub)
+        // Identify user: prefer userId (can be UUID or int), then email (sub)
         let user: any = null
         try {
             if (payload.userId) {
-                user = await prisma.user.findUnique({ where: { id: Number(payload.userId) } as any, include: { role: true } })
+                user = await prisma.profile.findUnique({ where: { id: String(payload.userId) } })
             }
-            if (!user && payload.sub && /^[0-9a-fA-F-]{36}$/.test(String(payload.sub))) {
-                user = await prisma.user.findUnique({ where: { external_id: String(payload.sub) } as any, include: { role: true } })
-            }
+
             if (!user && payload.sub) {
-                user = await prisma.user.findUnique({ where: { email: String(payload.sub) } as any, include: { role: true } })
+                // Try sub as user id first, then as email
+                if (payload.sub.includes('@')) {
+                    user = await prisma.profile.findUnique({ where: { email: String(payload.sub) } })
+                } else {
+                    user = await prisma.profile.findUnique({ where: { id: String(payload.sub) } })
+                    if (!user) {
+                        user = await prisma.profile.findUnique({ where: { email: String(payload.sub) } })
+                    }
+                }
+            }
+
+            // Lazy-provision local profile if Supabase Auth is configured and we found a Supabase subject
+            const supabaseUrlEnv = process.env.PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_ISS
+            const supabaseKeyEnv = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY
+            if (!user && supabaseUrlEnv && supabaseKeyEnv && payload.sub) {
+                try {
+                    const supabaseUrl = String(supabaseUrlEnv).replace(/\/$/, '')
+                    const supabaseKey = String(supabaseKeyEnv)
+                    let supUser: any = null
+
+                    if (/^[0-9a-fA-F-]{36}$/.test(String(payload.sub))) {
+                        // Treat sub as Supabase user id
+                        const r = await fetch(`${supabaseUrl}/auth/v1/admin/users/${String(payload.sub)}`, { headers: { Authorization: `Bearer ${supabaseKey}`, apikey: supabaseKey } })
+                        if (r.ok) supUser = await r.json().catch(() => null)
+                    } else if (String(payload.sub).includes('@')) {
+                        const r = await fetch(`${supabaseUrl}/auth/v1/admin/users?email=${encodeURIComponent(String(payload.sub))}`, { headers: { Authorization: `Bearer ${supabaseKey}`, apikey: supabaseKey } })
+                        if (r.ok) {
+                            const body = await r.json().catch(() => null)
+                            // Admin API might return an array or an object
+                            supUser = Array.isArray(body) ? body[0] ?? null : body
+                        }
+                    }
+
+                    if (supUser && supUser.id && supUser.email) {
+                        // Create local profile record with Supabase user.id
+                        const created = await prisma.profile.create({ data: { id: supUser.id, email: supUser.email, name: supUser.user_metadata?.name ?? null } })
+                        user = await prisma.profile.findUnique({ where: { id: created.id } })
+                    }
+                } catch (err) {
+                    console.error('Supabase lookup during session provisioning failed', err)
+                }
             }
         } catch (err) {
             console.error('failed to lookup user for session', err)
@@ -79,15 +117,11 @@ export class SessionController extends Controller {
 
         if (!user) { (request as any).res.status(401).json({ error: 'user not found' }); this.setStatus(401); return }
 
-        const roleName = user.role?.name ?? (user.isAdmin ? 'admin' : 'user')
-
         const resp: any = {
             id: user.id,
             email: user.email,
-            role: roleName,
             isAdmin: Boolean(user.isAdmin)
         }
-        if (user.external_id) resp.external_id = user.external_id
 
         this.setStatus(200)
         return resp

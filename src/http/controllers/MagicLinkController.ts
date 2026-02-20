@@ -42,24 +42,7 @@ function rateLimitEmail(email: string): boolean {
     return false
 }
 
-function setSessionCookie(res: any, payload: Record<string, any>) {
-    const secret = process.env.SESSION_JWT_SECRET
-    const maxAge = Number(process.env.SESSION_COOKIE_MAX_AGE_SEC ?? 60 * 60 * 24 * 7) // 7 days
-    if (!secret) {
-        console.warn('SESSION_JWT_SECRET not set; session cookie will not be signed')
-        const token = Buffer.from(JSON.stringify(payload)).toString('base64')
-        res.cookie('session', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge })
-        return
-    }
-    const encoder = new TextEncoder().encode(secret)
-    return import('jose').then(({ SignJWT }) =>
-        new SignJWT(payload).setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime(`${maxAge}s`).sign(encoder as any)
-    ).then((token: string) => {
-        res.cookie('session', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge })
-    }).catch((err: any) => {
-        console.error('failed to sign session token', err)
-    })
-}
+import { setSessionCookie } from './_session-utils.js'
 
 export interface SendMagicLinkRequest { email: string }
 export interface RegisterRequest { email: string; name?: string; password?: string }
@@ -132,56 +115,96 @@ export class MagicLinkController extends Controller {
             const name = body.name
             const password = body.password
 
+            // For single-user system: create user in Supabase first, then create profile with that ID
+            if (!password) {
+                (request as any).res.status(400).json({ error: 'password is required for registration' })
+                this.setStatus(400)
+                return
+            }
+
+            const supabaseKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY
+            if (!supabaseKey) {
+                (request as any).res.status(400).json({ error: 'password registration not supported' })
+                this.setStatus(400)
+                return
+            }
+            const supabaseUrl = process.env.PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_ISS
+            if (!supabaseUrl) {
+                (request as any).res.status(500).json({ error: 'Supabase URL not configured' })
+                this.setStatus(500)
+                return
+            }
+
+            // Create user in Supabase
+            const res = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseKey}`, apikey: supabaseKey },
+                body: JSON.stringify({ email, password, user_metadata: { name }, email_confirm: true })
+            })
+
+            if (!res.ok) {
+                const txt = await res.text()
+                try { console.error('Supabase user creation failed:', txt) } catch (e) { /* ignore */ }
+                (request as any).res.status(502).json({ error: `Supabase provisioning failed: ${txt}` })
+                this.setStatus(502)
+                return
+            }
+
+            const supabaseUser: any = await res.json()
+            const supabaseId = supabaseUser?.id
+            if (!supabaseId) {
+                (request as any).res.status(502).json({ error: 'Supabase did not return user ID' })
+                this.setStatus(502)
+                return
+            }
+
+            // Create profile in local DB
             const { registerUser } = await import('../../services/admin-service.js')
             let user: any
             try {
-                user = await registerUser(email, name, password)
+                user = await registerUser(supabaseId, email, name)
             } catch (err: any) {
-                if (err.message === 'user already exists' || err.message === 'password not supported' || err.message === 'SUPABASE_ISS missing') {
-                    try { (request as any).res.status(400).json({ error: err.message }) } catch (e) { /* noop */ }
+                if (err.message === 'user already exists') {
+                    (request as any).res.status(400).json({ error: 'user already exists' })
+                    this.setStatus(400)
                     return
                 }
-                if (err.message === 'supabase provisioning failed') {
-                    try { (request as any).res.status(502).json({ error: 'supabase provisioning failed' }) } catch (e) { /* noop */ }
-                    return
-                }
+                // rethrow unexpected errors so outer catch will handle
                 throw err
             }
 
-            // If password not provided, send magic link to allow immediate sign-in
-            if (!password) {
+            // Send magic link to allow immediate sign-in after registration
+            try {
+                const { token } = await generateMagicLinkToken(email, user.id)
+
+                // Compute base similar to send()
+                const envBase = process.env.MAGIC_LINK_BASE_URL
+                let requestBase: string | undefined
                 try {
-                    const { token } = await generateMagicLinkToken(email, user.id)
+                    const xfProto = (request as any)?.headers?.['x-forwarded-proto']
+                    const xfHost = (request as any)?.headers?.['x-forwarded-host']
+                    if (envBase) {
+                        requestBase = envBase
+                    } else if (xfProto && (xfHost || (request as any)?.headers?.host)) {
+                        requestBase = `${String(xfProto)}://${String(xfHost ?? (request as any).headers.host)}`
+                    } else if ((request as any)?.protocol && (request as any).get) {
+                        requestBase = `${(request as any).protocol}://${(request as any).get('host')}`
+                    }
+                } catch (e) { /* ignore */ }
 
-                    // Compute base similar to send()
-                    const envBase = process.env.MAGIC_LINK_BASE_URL
-                    let requestBase: string | undefined
-                    try {
-                        const xfProto = (request as any)?.headers?.['x-forwarded-proto']
-                        const xfHost = (request as any)?.headers?.['x-forwarded-host']
-                        if (envBase) {
-                            requestBase = envBase
-                        } else if (xfProto && (xfHost || (request as any)?.headers?.host)) {
-                            requestBase = `${String(xfProto)}://${String(xfHost ?? (request as any).headers.host)}`
-                        } else if ((request as any)?.protocol && (request as any).get) {
-                            requestBase = `${(request as any).protocol}://${(request as any).get('host')}`
-                        }
-                    } catch (e) { /* ignore */ }
-
-                    const base = requestBase ?? process.env.MAGIC_LINK_BASE_URL ?? 'http://localhost:3000'
-                    await sendMagicLinkEmail(email, token, base)
-                } catch (err: any) {
-                    console.error('failed to send magic link after register', err)
-                }
+                const base = requestBase ?? process.env.MAGIC_LINK_BASE_URL ?? 'http://localhost:3000'
+                await sendMagicLinkEmail(email, token, base)
+            } catch (err: any) {
+                console.error('failed to send magic link after register', err)
             }
 
             this.setStatus(201)
             return user
         } catch (err: any) {
-            if (this.getStatus() === 400 || this.getStatus() === 502) throw err
-            console.error('register error', err)
-            this.setStatus(400)
-            throw new Error('Invalid request')
+            console.error('register failed', err)
+            try { (request as any).res.status(500).json({ error: 'Internal server error' }) } catch (e) { /* ignore */ }
+            this.setStatus(500)
+            return
         }
     }
 
@@ -191,28 +214,26 @@ export class MagicLinkController extends Controller {
     @Response('410', 'expired')
     @Response('404', 'invalid')
     public async verifyGet(@Query() token: string, @Request() request?: ExpressRequest): Promise<void> {
-        if (!token) { this.setStatus(400); throw new Error('token required') }
+        const res = (request as any).res
+        if (!token) { res.status(400).json({ error: 'token required' }); return }
         try {
             const info = await verifyMagicLinkToken(token)
-            const res = (request as any).res
             await setSessionCookie(res, { sub: info.email, userId: info.userId })
             magicLinkVerified.inc()
             console.info('magic_link.verified', { email: info.email })
             const redirect = process.env.MAGIC_LINK_SUCCESS_URL ?? (process.env.MAGIC_LINK_FRONTEND_URL ?? '/')
             try {
                 res.redirect(String(redirect))
-                console.error('after redirect headersSent=', res.headersSent, 'statusCode=', res.statusCode)
                 return
             } catch (err) {
                 console.error('redirect failed', err)
-                this.setStatus(500)
-                throw new Error('redirect failed')
+                res.status(500).json({ error: 'redirect failed' })
+                return
             }
         } catch (err: any) {
-            if (err.message === 'expired token') { this.setStatus(410); throw new Error('expired token') }
-            if (err.message === 'replayed token') { magicLinkReplayed.inc(); this.setStatus(410); throw new Error('replayed token') }
-            this.setStatus(404)
-            throw new Error('invalid token')
+            if (err.message === 'expired token') { res.status(410).json({ error: 'expired token' }); return }
+            if (err.message === 'replayed token') { magicLinkReplayed.inc(); res.status(410).json({ error: 'replayed token' }); return }
+            res.status(404).json({ error: 'invalid token' }); return
         }
     }
 
@@ -223,7 +244,8 @@ export class MagicLinkController extends Controller {
     @Response('404', 'invalid')
     public async verifyPost(@Body() body: { token?: string }, @Request() request?: ExpressRequest): Promise<{ status: 'ok' }> {
         const token = String(body?.token || '')
-        if (!token) { this.setStatus(400); throw new Error('token required') }
+        const res = (request as any).res
+        if (!token) { res.status(400).json({ error: 'token required' }); return undefined as any }
         try {
             const info = await verifyMagicLinkToken(token)
             await setSessionCookie((request as any).res, { sub: info.email, userId: info.userId })
@@ -231,12 +253,12 @@ export class MagicLinkController extends Controller {
             console.info('magic_link.verified', { email: info.email })
             return { status: 'ok' }
         } catch (err: any) {
-            if (err.message === 'expired token') { this.setStatus(410); throw new Error('expired token') }
-            if (err.message === 'replayed token') { magicLinkReplayed.inc(); this.setStatus(410); throw new Error('replayed token') }
-            this.setStatus(404)
-            throw new Error('invalid token')
+            if (err.message === 'expired token') { res.status(410).json({ error: 'expired token' }); return undefined as any }
+            if (err.message === 'replayed token') { magicLinkReplayed.inc(); res.status(410).json({ error: 'replayed token' }); return undefined as any }
+            res.status(404).json({ error: 'invalid token' }); return undefined as any
         }
     }
+
 }
 
 // Test helper: clear internal rate limit maps

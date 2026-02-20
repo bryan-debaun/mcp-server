@@ -6,7 +6,6 @@ export const CreateContentCreatorInputSchema = {
         name: { type: "string", description: "Content creator name" },
         description: { type: "string", description: "Description of content creator" },
         website: { type: "string", description: "Website URL" },
-        createdBy: { type: "number", description: "User ID of creator (optional)" },
     },
     required: ["name"],
 } as const;

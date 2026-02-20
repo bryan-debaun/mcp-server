@@ -31,8 +31,10 @@ Getting started
 4. After `apply`, extract outputs and add to Render/GitHub secrets:
 
    - `database_url` -> `DATABASE_URL`
-   - `service_role_key` -> `SUPABASE_SERVICE_ROLE_KEY`
+   - `service_role_key` -> `SUPABASE_SECRET_KEY` (preferred) — legacy `SUPABASE_SERVICE_ROLE_KEY` still accepted
    - `jwks_url` -> `SUPABASE_JWKS_URL`
+   - `project_public_url` -> `PUBLIC_SUPABASE_URL`
+   - `anon_key` -> `PUBLIC_SUPABASE_PUBLISHABLE_KEY` (preferred) — legacy `SUPABASE_ANON_KEY` still accepted
 
 Provider & resources
 

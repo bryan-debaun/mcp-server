@@ -68,6 +68,42 @@ describe('magic-link routes', () => {
         expect(res.headers['set-cookie']).toBeDefined()
     })
 
+    it('GET /api/auth/magic-link/verify returns 404 for invalid token and 410 for expired token', async () => {
+        const app = express()
+        app.use(express.json())
+        RegisterRoutes(app)
+
+        const auth: any = await import('../../src/auth/magic-link.ts')
+        auth.verifyMagicLinkToken.mockRejectedValueOnce(new Error('invalid token'))
+
+        const resInvalid = await request(app).get('/api/auth/magic-link/verify').query({ token: 'bad' })
+        expect(resInvalid.status).toBe(404)
+        expect(resInvalid.body).toEqual({ error: 'invalid token' })
+
+        auth.verifyMagicLinkToken.mockRejectedValueOnce(new Error('expired token'))
+        const resExpired = await request(app).get('/api/auth/magic-link/verify').query({ token: 'expired' })
+        expect(resExpired.status).toBe(410)
+        expect(resExpired.body).toEqual({ error: 'expired token' })
+    })
+
+    it('POST /api/auth/magic-link/verify returns 404 for invalid token and 410 for expired token', async () => {
+        const app = express()
+        app.use(express.json())
+        RegisterRoutes(app)
+
+        const auth: any = await import('../../src/auth/magic-link.ts')
+        auth.verifyMagicLinkToken.mockRejectedValueOnce(new Error('invalid token'))
+
+        const resInvalid = await request(app).post('/api/auth/magic-link/verify').send({ token: 'bad' })
+        expect(resInvalid.status).toBe(404)
+        expect(resInvalid.body).toEqual({ error: 'invalid token' })
+
+        auth.verifyMagicLinkToken.mockRejectedValueOnce(new Error('expired token'))
+        const resExpired = await request(app).post('/api/auth/magic-link/verify').send({ token: 'expired' })
+        expect(resExpired.status).toBe(410)
+        expect(resExpired.body).toEqual({ error: 'expired token' })
+    })
+
     it('GET /api/auth/magic-link/verify remains public when MCP_API_KEY set', async () => {
         const orig = process.env.MCP_API_KEY
         process.env.MCP_API_KEY = 'testkey'
@@ -110,38 +146,44 @@ describe('magic-link routes', () => {
         else process.env.MCP_API_KEY = orig
     })
 
-    it('POST /api/auth/register without password creates user and sends magic link', async () => {
+    it('POST /api/auth/register without password fails with 400', async () => {
         const app = express()
         app.use(express.json())
         RegisterRoutes(app)
 
+        const res = await request(app).post('/api/auth/magic-link/register').send({ email: 'reg@example.com', name: 'Reg' })
+        expect(res.status).toBe(400)
+        expect(res.body).toMatchObject({ error: expect.stringContaining('password') })
+    })
+
+    it('POST /api/auth/register with password creates user in Supabase and local DB', async () => {
+        const app = express()
+        app.use(express.json())
+        RegisterRoutes(app)
+
+        // Set required env vars
+        process.env.SUPABASE_SECRET_KEY = 'test-secret-key'
+        process.env.PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
+
+        // Mock Supabase API
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ id: 'supabase-uuid-123', email: 'reg@example.com' })
+        })
+
         const svc: any = await import('../../src/services/admin-service.js')
-        vi.spyOn(svc as any, 'registerUser').mockResolvedValue({ id: 9, email: 'reg@example.com' })
+        vi.spyOn(svc as any, 'registerUser').mockResolvedValue({ id: 'supabase-uuid-123', email: 'reg@example.com' })
 
         const auth: any = await import('../../src/auth/magic-link.ts')
         auth.generateMagicLinkToken.mockResolvedValue({ token: 'tkn', jti: 'j1' })
         const email: any = await import('../../src/email.ts')
         email.sendMagicLinkEmail.mockResolvedValue(undefined)
 
-        const res = await request(app).post('/api/auth/magic-link/register').send({ email: 'reg@example.com', name: 'Reg' })
+        const res = await request(app).post('/api/auth/magic-link/register').send({ email: 'reg@example.com', name: 'Reg', password: 'test123' })
         expect(res.status).toBe(201)
-        expect(svc.registerUser).toHaveBeenCalledWith('reg@example.com', 'Reg', undefined)
-        expect(auth.generateMagicLinkToken).toHaveBeenCalledWith('reg@example.com', 9)
+        expect(svc.registerUser).toHaveBeenCalledWith('supabase-uuid-123', 'reg@example.com', 'Reg')
+        expect(auth.generateMagicLinkToken).toHaveBeenCalledWith('reg@example.com', 'supabase-uuid-123')
         expect(email.sendMagicLinkEmail).toHaveBeenCalledWith('reg@example.com', 'tkn', expect.any(String))
-    })
-
-    it('POST /api/auth/register with password unsupported returns JSON 400', async () => {
-        const app = express()
-        app.use(express.json())
-        RegisterRoutes(app)
-
-        const svc: any = await import('../../src/services/admin-service.js')
-        vi.spyOn(svc as any, 'registerUser').mockRejectedValue(new Error('password not supported'))
-
-        const res = await request(app).post('/api/auth/magic-link/register').send({ email: 'x@example.com', password: 'secret' })
-        expect(res.status).toBe(400)
-        expect(res.headers['content-type']).toMatch(/json/)
-        expect(res.body).toEqual({ error: 'password not supported' })
     })
 
     it('POST /api/auth/magic-link/register returns JSON on validation failure', async () => {
@@ -167,10 +209,20 @@ describe('magic-link routes', () => {
         app.use(express.json())
         RegisterRoutes(app)
 
+        // Set required env vars
+        process.env.SUPABASE_SECRET_KEY = 'test-secret-key'
+        process.env.PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
+
+        // Mock Supabase API
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ id: 'supabase-uuid-456', email: 'exists@example.com' })
+        })
+
         const svc: any = await import('../../src/services/admin-service.js')
         vi.spyOn(svc as any, 'registerUser').mockRejectedValue(new Error('user already exists'))
 
-        const res = await request(app).post('/api/auth/magic-link/register').send({ email: 'exists@example.com' })
+        const res = await request(app).post('/api/auth/magic-link/register').send({ email: 'exists@example.com', password: 'test123' })
         expect(res.status).toBe(400)
         expect(res.headers['content-type']).toMatch(/json/)
         expect(res.body).toEqual({ error: 'user already exists' })
@@ -181,12 +233,19 @@ describe('magic-link routes', () => {
         app.use(express.json())
         RegisterRoutes(app)
 
-        const svc: any = await import('../../src/services/admin-service.js')
-        vi.spyOn(svc as any, 'registerUser').mockRejectedValue(new Error('supabase provisioning failed'))
+        // Set required env vars
+        process.env.SUPABASE_SECRET_KEY = 'test-secret-key'
+        process.env.PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
 
-        const res = await request(app).post('/api/auth/magic-link/register').send({ email: 's@example.com' })
+        // Mock Supabase API failure
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: false,
+            text: async () => 'Supabase error'
+        })
+
+        const res = await request(app).post('/api/auth/magic-link/register').send({ email: 's@example.com', password: 'test123' })
         expect(res.status).toBe(502)
         expect(res.headers['content-type']).toMatch(/json/)
-        expect(res.body).toEqual({ error: 'supabase provisioning failed' })
+        expect(res.body).toMatchObject({ error: expect.stringContaining('Supabase') })
     })
 })

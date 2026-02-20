@@ -9,7 +9,6 @@ export const CreateMovieInputSchema = {
         iasn: { type: "string", description: "IASN (optional, must be unique)" },
         imdbId: { type: "string", description: "IMDB ID (optional, must be unique)" },
         releasedAt: { type: "string", description: "Release date (ISO 8601 format)" },
-        createdBy: { type: "number", description: "User ID of creator (optional)" },
     },
     required: ["title"],
 } as const;

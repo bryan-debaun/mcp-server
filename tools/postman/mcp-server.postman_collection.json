@@ -3,7 +3,7 @@
         "_postman_id": "b7f2d5a0-0000-4a1c-9f7d-xxxxxxxxxxxx",
         "name": "MCP Server - HTTP Façade",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-        "description": "Collection for MCP Server smoke checks and façade endpoints. Use the `base_url` variable to point at preview or production URLs."
+        "description": "Collection for MCP Server smoke checks and façade endpoints. Use the `base_url` variable to point at preview or production URLs.\n\n**Note:** As of 2025-02-19, the following endpoints have been removed for single-user simplification:\n- `/api/invites/*` (Invite Accept POST/GET)\n- `/api/admin/users` POST (Create Invite)\n- `/api/admin/users/:id` PATCH/DELETE (User management)\n- `/api/admin/access-requests` (Access request endpoints)\n\nThese requests will return 404 and should be removed from this collection."
     },
     "variable": [
         {
@@ -736,6 +736,93 @@
                     }
                 }
             ]
+        },
+        {
+            "name": "Auth - Password: Reset Request",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\"email\":\"{{register_email}}\"}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/auth/password/reset-request",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "auth",
+                        "password",
+                        "reset-request"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200 or 400', function () { pm.expect(pm.response.status).to.be.oneOf([200,400]); });"
+                        ]
+                    }
+                }
+            ],
+        },
+        {
+            "name": "Auth - Password: Login",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\"email\":\"{{register_email}}\",\"password\":\"{{register_password}}\"}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/auth/password/login",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "auth",
+                        "password",
+                        "login"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status is 200 or 401', function () { pm.expect(pm.response.status).to.be.oneOf([200,401]); });",
+                            "if (pm.response.code === 200) { var sc = pm.response.headers.get('set-cookie'); if (sc) { var m = sc.match(/session=([^;]+)/); if (m) pm.collectionVariables.set('session_cookie', m[1]); } }"
+                        ]
+                    }
+                }
+            ],
         },
         {
             "name": "Admin - List Users",

@@ -18,7 +18,7 @@ export function registerCreateBookTool(server: McpServer): void {
         config,
         async (args: any): Promise<CallToolResult> => {
             try {
-                const { title, description, isbn, publishedAt, authorIds, createdBy, status } = args;
+                const { title, description, isbn, publishedAt, authorIds, status } = args;
                 const normalizedStatus = normalizeStatusInput(status);
 
                 const book = await prisma.book.create({
@@ -27,7 +27,6 @@ export function registerCreateBookTool(server: McpServer): void {
                         description,
                         isbn,
                         publishedAt: publishedAt ? new Date(publishedAt) : null,
-                        createdBy,
                         status: normalizedStatus,
                         authors: authorIds ? {
                             create: authorIds.map((authorId: number) => ({
@@ -40,8 +39,7 @@ export function registerCreateBookTool(server: McpServer): void {
                             include: {
                                 author: true
                             }
-                        },
-                        creator: true
+                        }
                     }
                 });
 

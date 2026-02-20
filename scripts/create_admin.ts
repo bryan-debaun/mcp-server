@@ -22,13 +22,13 @@ async function main() {
     const prisma = new PrismaClient({ adapter })
 
     try {
-        const existing = await prisma.user.findUnique({ where: { email } })
+        const existing = await prisma.profile.findUnique({ where: { email } })
         if (existing) {
-            await prisma.user.update({ where: { id: existing.id }, data: { isAdmin: true } })
+            await prisma.profile.update({ where: { id: existing.id }, data: { isAdmin: true } })
             console.log(`Marked existing user ${email} as admin (id=${existing.id}).`)
             console.log('If this user does not have a Supabase Auth account, create one in the Supabase dashboard and set external_id on the users row if desired.')
         } else {
-            const created = await prisma.user.create({ data: { email, isAdmin: true } })
+            const created = await prisma.profile.create({ data: { email, isAdmin: true } })
             console.warn(`Created minimal users row for ${email} (id=${created.id}).`)
             console.warn('Please create a Supabase Auth user for this email and sync external_id into users.external_id if needed.')
         }
