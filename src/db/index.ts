@@ -1,4 +1,11 @@
-import 'dotenv/config'
+// Load dotenv only in development - production environments provide variables directly
+if (process.env.NODE_ENV !== 'production') {
+    try {
+        await import('dotenv/config')
+    } catch {
+        // dotenv not available, environment variables provided by hosting platform
+    }
+}
 
 // Export a `prisma` object that is initialized synchronously when possible.
 // If `DATABASE_URL` is set and `@prisma/client` is available (as in CI after
