@@ -49,14 +49,17 @@ model Book {
   description String?
   isbn        String?      @unique
   publishedAt DateTime?
+  rating      Int? // 1-10 scale rating
+  review      String? // Optional review text
+  ratedAt     DateTime? // When rated
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   authors     BookAuthor[]
-  rating      Rating?
 
   @@index([title])
   @@index([isbn])
   @@index([status])
+  @@index([rating])
 }
 
 model BookAuthor {
@@ -83,12 +86,15 @@ model Movie {
   iasn        String?    @unique
   imdbId      String?    @unique @map("imdb_id")
   releasedAt  DateTime?
+  rating      Int? // 1-10 scale rating
+  review      String? // Optional review text
+  ratedAt     DateTime? // When rated
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  rating      Rating?
 
   @@index([title])
   @@index([iasn])
+  @@index([rating])
 }
 
 model VideoGame {
@@ -99,12 +105,15 @@ model VideoGame {
   platform    Platform
   igdbId      String?    @unique @map("igdb_id")
   releasedAt  DateTime?
+  rating      Int? // 1-10 scale rating
+  review      String? // Optional review text
+  ratedAt     DateTime? // When rated
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  rating      Rating?
 
   @@index([title])
   @@index([platform])
+  @@index([rating])
 }
 
 model ContentCreator {
@@ -116,24 +125,4 @@ model ContentCreator {
   updatedAt   DateTime @updatedAt
 
   @@index([name])
-}
-
-// Single rating per entity (only you rate content)
-model Rating {
-  id          Int        @id @default(autoincrement())
-  entityType  String     @map("entity_type")
-  entityId    Int        @map("entity_id")
-  bookId      Int?       @unique @map("bookId")
-  book        Book?      @relation(fields: [bookId], references: [id])
-  movieId     Int?       @unique
-  movie       Movie?     @relation(fields: [movieId], references: [id])
-  videoGameId Int?       @unique @map("video_game_id")
-  videoGame   VideoGame? @relation(fields: [videoGameId], references: [id])
-  rating      Int
-  review      String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-
-  @@unique([entityType, entityId])
-  @@index([entityType, entityId])
 }

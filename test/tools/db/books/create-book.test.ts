@@ -1,7 +1,20 @@
 import { describe, it, expect, vi } from 'vitest'
 
-// Mock prisma book.create
-vi.mock('../../../../src/db/index', () => ({ prisma: { book: { create: vi.fn(async (args: any) => ({ id: 1, ...args.data })) } } }))
+// Mock prisma book.create - include authors relation
+vi.mock('../../../../src/db/index', () => ({
+    prisma: {
+        book: {
+            create: vi.fn(async (args: any) => ({
+                id: 1,
+                ...args.data,
+                authors: args.data?.authors?.create ? args.data.authors.create.map((a: any, i: number) => ({
+                    authorId: a.authorId,
+                    author: { id: a.authorId, name: `Author ${i + 1}` }
+                })) : []
+            }))
+        }
+    }
+}))
 
 import { registerCreateBookTool } from '../../../../src/tools/db/books/create-book.js'
 

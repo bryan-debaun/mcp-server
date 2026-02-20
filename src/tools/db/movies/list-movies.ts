@@ -22,7 +22,7 @@ export function registerListMoviesTool(server: McpServer): void {
                 const where: any = {};
                 if (status) where.status = status;
                 if (search) where.OR = [{ title: { contains: search, mode: 'insensitive' } }, { description: { contains: search, mode: 'insensitive' } }];
-                if (minRating !== undefined) where.averageRating = { gte: minRating };
+                if (minRating !== undefined) where.rating = { gte: minRating };
 
                 const movies = await prisma.movie.findMany({
                     where,

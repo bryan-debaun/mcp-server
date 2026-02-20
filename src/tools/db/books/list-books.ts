@@ -46,6 +46,11 @@ export function registerListBooksTool(server: McpServer): void {
                     }
                 }
 
+                // Filter by minimum rating (embedded column)
+                if (minRating !== undefined) {
+                    where.rating = { gte: minRating };
+                }
+
                 const books = await prisma.book.findMany({
                     where,
                     take: limit,
@@ -55,14 +60,6 @@ export function registerListBooksTool(server: McpServer): void {
                             include: {
                                 author: true
                             }
-                        },
-                        ratings: true,
-                        creator: {
-                            select: {
-                                id: true,
-                                name: true,
-                                email: true
-                            }
                         }
                     },
                     orderBy: {
@@ -70,31 +67,12 @@ export function registerListBooksTool(server: McpServer): void {
                     }
                 });
 
-                // Use stored aggregates when present; fall back to computing from ratings for older rows
-                let results = books.map((book: any) => {
-                    const avgRating = (book.averageRating !== null && book.averageRating !== undefined)
-                        ? Number(book.averageRating)
-                        : (book.ratings.length > 0
-                            ? book.ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / book.ratings.length
-                            : null);
-
-                    const ratingCount = (book.ratingCount !== undefined && book.ratingCount !== null)
-                        ? book.ratingCount
-                        : book.ratings.length;
-
-                    return {
-                        ...book,
-                        averageRating: avgRating,
-                        ratingCount,
-                        statusLabel: statusLabel(book.status)
-                    };
-                });
-
-                if (minRating !== undefined) {
-                    results = results.filter((book: any) =>
-                        book.averageRating !== null && book.averageRating >= minRating
-                    );
-                }
+                // Map results with embedded rating fields
+                const results = books.map((book: any) => ({
+                    ...book,
+                    authors: book.authors.map((ba: any) => ba.author),
+                    statusLabel: statusLabel(book.status)
+                }));
 
                 return createSuccessResult({
                     books: results,

@@ -18,7 +18,12 @@ export function registerUpdateBookTool(server: McpServer): void {
         config,
         async (args: any): Promise<CallToolResult> => {
             try {
-                const { id, title, description, isbn, publishedAt, authorIds, status } = args;
+                const { id, title, description, isbn, publishedAt, authorIds, status, rating, review } = args;
+
+                // Validate rating if provided
+                if (rating !== undefined && (rating < 1 || rating > 10)) {
+                    return createErrorResult("Rating must be between 1 and 10");
+                }
 
                 // Build update data
                 const updateData: any = {};
@@ -33,6 +38,13 @@ export function registerUpdateBookTool(server: McpServer): void {
                     if (normalizedStatus !== undefined) {
                         updateData.status = normalizedStatus;
                     }
+                }
+                if (rating !== undefined) {
+                    updateData.rating = rating;
+                    updateData.ratedAt = new Date();
+                }
+                if (review !== undefined) {
+                    updateData.review = review;
                 }
 
                 // Handle author associations if provided
@@ -54,12 +66,15 @@ export function registerUpdateBookTool(server: McpServer): void {
                             include: {
                                 author: true
                             }
-                        },
-                        creator: true
+                        }
                     }
                 });
 
-                return createSuccessResult({ ...book, statusLabel: statusLabel(book.status) });
+                return createSuccessResult({
+                    ...book,
+                    authors: book.authors.map((ba: any) => ba.author),
+                    statusLabel: statusLabel(book.status)
+                });
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
                 return createErrorResult(message);

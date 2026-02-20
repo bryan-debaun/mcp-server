@@ -60,7 +60,6 @@ describe('tsoa books controller', () => {
         expect(spec.paths).toHaveProperty('/api/books/{id}');
         expect(spec.paths).toHaveProperty('/api/authors');
         expect(spec.paths).toHaveProperty('/api/authors/{id}');
-        expect(spec.paths).toHaveProperty('/api/ratings');
 
         // ItemStatus enum should be present and referenced by Book
         expect(spec).toHaveProperty('components');
@@ -93,15 +92,5 @@ describe('tsoa books controller', () => {
         const response = await fetch(`${baseUrl}/api/authors/1`, { headers: authHeaders });
         // Gracefully handles non-existent IDs
         expect([200, 404]).toContain(response.status);
-    });
-
-    it('should return ratings via tsoa controller GET /api/ratings', async () => {
-        const response = await fetch(`${baseUrl}/api/ratings`, { headers: authHeaders });
-        expect(response.status).toBe(200);
-
-        const data = await response.json();
-        expect(data).toHaveProperty('ratings');
-        expect(data).toHaveProperty('total');
-        expect(Array.isArray(data.ratings)).toBe(true);
     });
 });

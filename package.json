@@ -10,6 +10,7 @@
         "build:seed": "tsc prisma/seed.ts --outDir dist --module ES2022 --target ES2022 --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports --resolveJsonModule --skipLibCheck",
         "dev": "tsc --watch",
         "start": "node dist/index.js",
+        "start:http": "cross-env MCP_TRANSPORT=http node dist/index.js",
         "mcp-proxy": "tsx scripts/mcp-proxy.ts",
         "check-spotify": "tsx scripts/check-spotify.ts",
         "sql:parse": "tsx scripts/find-sql-error.ts prisma/migrations/20260202110000_enable_rls/migration.sql --dry-run",

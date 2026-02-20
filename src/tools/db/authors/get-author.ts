@@ -24,18 +24,7 @@ export function registerGetAuthorTool(server: McpServer): void {
                     include: {
                         books: {
                             include: {
-                                book: {
-                                    include: {
-                                        ratings: true
-                                    }
-                                }
-                            }
-                        },
-                        creator: {
-                            select: {
-                                id: true,
-                                name: true,
-                                email: true
+                                book: true
                             }
                         }
                     }
@@ -45,33 +34,8 @@ export function registerGetAuthorTool(server: McpServer): void {
                     return createErrorResult("Author not found");
                 }
 
-                // Enhance books with persisted average ratings when present
-                const authorWithRatings = {
-                    ...author,
-                    books: author.books.map((ba: any) => {
-                        const book = ba.book;
-                        const avgRating = (book.averageRating !== null && book.averageRating !== undefined)
-                            ? Number(book.averageRating)
-                            : (book.ratings.length > 0
-                                ? book.ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / book.ratings.length
-                                : null);
-
-                        const ratingCount = (book.ratingCount !== undefined && book.ratingCount !== null)
-                            ? book.ratingCount
-                            : book.ratings.length;
-
-                        return {
-                            ...ba,
-                            book: {
-                                ...book,
-                                averageRating: avgRating,
-                                ratingCount
-                            }
-                        };
-                    })
-                };
-
-                return createSuccessResult(authorWithRatings);
+                // Return author with embedded book ratings
+                return createSuccessResult(author);
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
                 return createErrorResult(message);

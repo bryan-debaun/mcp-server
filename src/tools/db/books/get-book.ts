@@ -27,24 +27,6 @@ export function registerGetBookTool(server: McpServer): void {
                             include: {
                                 author: true
                             }
-                        },
-                        ratings: {
-                            include: {
-                                user: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        email: true
-                                    }
-                                }
-                            }
-                        },
-                        creator: {
-                            select: {
-                                id: true,
-                                name: true,
-                                email: true
-                            }
                         }
                     }
                 });
@@ -53,15 +35,10 @@ export function registerGetBookTool(server: McpServer): void {
                     return createErrorResult("Book not found");
                 }
 
-                // Calculate average rating
-                const avgRating = book.ratings.length > 0
-                    ? book.ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / book.ratings.length
-                    : null;
-
+                // Return book with embedded rating fields and formatted authors
                 return createSuccessResult({
                     ...book,
-                    averageRating: avgRating,
-                    ratingCount: book.ratings.length,
+                    authors: book.authors.map((ba: any) => ba.author),
                     statusLabel: statusLabel(book.status)
                 });
             } catch (error) {

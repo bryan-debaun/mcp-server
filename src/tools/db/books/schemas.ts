@@ -8,6 +8,8 @@ export const CreateBookInputSchema = {
         description: { type: "string", description: "Book description" },
         isbn: { type: "string", description: "ISBN (optional, must be unique)" },
         publishedAt: { type: "string", description: "Publication date (ISO 8601 format)" },
+        rating: { type: "number", description: "Your rating (1-10 scale, optional)" },
+        review: { type: "string", description: "Your review text (optional)" },
         authorIds: {
             type: "array",
             items: { type: "number" },
@@ -24,6 +26,8 @@ export const UpdateBookInputSchema = {
         title: { type: "string", description: "Book title" },
         status: { type: "string", description: "Book status (e.g., Not started, In progress, Completed)", enum: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'] },
         description: { type: "string", description: "Book description" },
+        rating: { type: "number", description: "Your rating (1-10 scale, optional)" },
+        review: { type: "string", description: "Your review text (optional)" },
         isbn: { type: "string", description: "ISBN (must be unique)" },
         publishedAt: { type: "string", description: "Publication date (ISO 8601 format)" },
         authorIds: {

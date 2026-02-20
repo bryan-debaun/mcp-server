@@ -37,13 +37,6 @@ export function registerListAuthorsTool(server: McpServer): void {
                             include: {
                                 book: true
                             }
-                        },
-                        creator: {
-                            select: {
-                                id: true,
-                                name: true,
-                                email: true
-                            }
                         }
                     },
                     orderBy: {
