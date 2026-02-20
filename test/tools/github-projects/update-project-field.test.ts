@@ -26,8 +26,8 @@ describe("update-project-field tool", () => {
         expect(mockServer.registerTool).toHaveBeenCalledWith(
             "update-project-field",
             expect.objectContaining({
-                title: expect.any(String),
-                description: expect.stringContaining("Update")
+                title: "Update Project Field",
+                description: "Update a custom field in a GitHub Project V2 (rename, add/remove options)"
             }),
             expect.any(Function)
         );
@@ -44,19 +44,20 @@ describe("update-project-field tool", () => {
 
         vi.mocked(graphql.updateProjectFieldName).mockResolvedValue(undefined);
 
-        const result = await tool.handler({
+        const result = await registeredHandler({
             owner: "bryan-debaun",
             projectNumber: 2,
             fieldName: "Status",
             newName: "Review Status"
         });
 
-        expect(graphql.updateProjectFieldName).toHaveBeenCalledWith("PVTF_field1", "Review Status");
+        expect(graphql.updateProjectFieldName).toHaveBeenCalledWith("PVT_test123", "PVTF_field1", "Review Status");
         expect(graphql.clearProjectCache).toHaveBeenCalledWith("bryan-debaun", 2);
         expect(result.content[0].text).toContain("Review Status");
     });
 
-    it("should add options to SINGLE_SELECT field", async () => {        vi.mocked(graphql.getProjectFields).mockResolvedValue({
+    it("should add options to SINGLE_SELECT field", async () => {
+        vi.mocked(graphql.getProjectFields).mockResolvedValue({
             projectId: "PVT_test123",
             fields: [
                 {
@@ -86,7 +87,8 @@ describe("update-project-field tool", () => {
         expect(result.content[0].text).toContain("added");
     });
 
-    it("should remove options from SINGLE_SELECT field", async () => {        vi.mocked(graphql.getProjectFields).mockResolvedValue({
+    it("should remove options from SINGLE_SELECT field", async () => {
+        vi.mocked(graphql.getProjectFields).mockResolvedValue({
             projectId: "PVT_test123",
             fields: [
                 {
@@ -110,14 +112,14 @@ describe("update-project-field tool", () => {
         });
 
         expect(graphql.removeFieldOptions).toHaveBeenCalledWith(
-            "PVTF_test123",
-            "PVTF_field1",
+            "PVT_test123",
             ["opt2"]
         );
         expect(result.content[0].text).toContain("removed");
     });
 
-    it("should fail when trying to add options to non-SINGLE_SELECT field", async () => {        vi.mocked(graphql.getProjectFields).mockResolvedValue({
+    it("should fail when trying to add options to non-SINGLE_SELECT field", async () => {
+        vi.mocked(graphql.getProjectFields).mockResolvedValue({
             projectId: "PVT_test123",
             fields: [
                 { id: "PVTF_field1", name: "Status", dataType: "TEXT" }
@@ -132,10 +134,12 @@ describe("update-project-field tool", () => {
         });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain("Only SINGLE_SELECT fields can have options");
+        expect(result.content[0].text).toContain("Cannot add options to field");
+        expect(result.content[0].text).toContain("Only SINGLE_SELECT fields support options");
     });
 
-    it("should handle field not found", async () => {        vi.mocked(graphql.getProjectFields).mockResolvedValue({
+    it("should handle field not found", async () => {
+        vi.mocked(graphql.getProjectFields).mockResolvedValue({
             projectId: "PVT_test123",
             fields: [
                 { id: "PVTF_field1", name: "Status", dataType: "TEXT" }

@@ -26,28 +26,31 @@ describe("create-project-field tool", () => {
         expect(mockServer.registerTool).toHaveBeenCalledWith(
             "create-project-field",
             expect.objectContaining({
-                title: expect.any(String),
-                description: expect.stringContaining("custom field")
+                title: "Create Project Field",
+                description: "Create a new custom field in a GitHub Project V2"
             }),
             expect.any(Function)
         );
     });
 
     it("should create TEXT field", async () => {
-        vi.mocked(graphql.createProjectField).mockResolvedValue("PVTF_new123");
+        vi.mocked(graphql.getProjectFields).mockResolvedValue({
+            projectId: "PVT_test123",
+            fields: []
+        });
+        vi.mocked(graphql.createProjectField).mockResolvedValue({ fieldId: "PVTF_new123" });
 
         const result = await registeredHandler({
             owner: "bryan-debaun",
             projectNumber: 2,
-            fieldName: "Review Status",
-            fieldType: "TEXT"
+            name: "Review Status",
+            dataType: "TEXT"
         });
 
         expect(graphql.createProjectField).toHaveBeenCalledWith(
-            "bryan-debaun",
-            2,
-            "TEXT",
+            "PVT_test123",
             "Review Status",
+            "TEXT",
             undefined
         );
         expect(graphql.clearProjectCache).toHaveBeenCalledWith("bryan-debaun", 2);
@@ -56,21 +59,24 @@ describe("create-project-field tool", () => {
     });
 
     it("should create SINGLE_SELECT field with options", async () => {
-        vi.mocked(graphql.createProjectField).mockResolvedValue("PVTF_select123");
+        vi.mocked(graphql.getProjectFields).mockResolvedValue({
+            projectId: "PVT_test123",
+            fields: []
+        });
+        vi.mocked(graphql.createProjectField).mockResolvedValue({ fieldId: "PVTF_select123" });
 
         const result = await registeredHandler({
             owner: "bryan-debaun",
             projectNumber: 2,
-            fieldName: "Priority",
-            fieldType: "SINGLE_SELECT",
+            name: "Priority",
+            dataType: "SINGLE_SELECT",
             options: ["High", "Medium", "Low"]
         });
 
         expect(graphql.createProjectField).toHaveBeenCalledWith(
-            "bryan-debaun",
-            2,
-            "SINGLE_SELECT",
+            "PVT_test123",
             "Priority",
+            "SINGLE_SELECT",
             ["High", "Medium", "Low"]
         );
         expect(result.content[0].text).toContain("Priority");
@@ -78,18 +84,27 @@ describe("create-project-field tool", () => {
     });
 
     it("should fail if SINGLE_SELECT has no options", async () => {
+        vi.mocked(graphql.getProjectFields).mockResolvedValue({
+            projectId: "PVT_test123",
+            fields: []
+        });
+
         const result = await registeredHandler({
             owner: "bryan-debaun",
             projectNumber: 2,
-            fieldName: "Status",
-            fieldType: "SINGLE_SELECT"
+            name: "Status",
+            dataType: "SINGLE_SELECT"
         });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain("SINGLE_SELECT fields require options");
+        expect(result.content[0].text).toContain("SINGLE_SELECT fields require at least one option");
     });
 
     it("should handle GraphQL errors", async () => {
+        vi.mocked(graphql.getProjectFields).mockResolvedValue({
+            projectId: "PVT_test123",
+            fields: []
+        });
         vi.mocked(graphql.createProjectField).mockRejectedValue(
             new Error("Insufficient permissions")
         );
@@ -97,11 +112,12 @@ describe("create-project-field tool", () => {
         const result = await registeredHandler({
             owner: "bryan-debaun",
             projectNumber: 2,
-            fieldName: "Effort",
-            fieldType: "NUMBER"
+            name: "Effort",
+            dataType: "NUMBER"
         });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain("Insufficient permissions");
+        expect(result.content[0].text).toContain("Permission denied");
+        expect(result.content[0].text).toContain("create project fields");
     });
 });

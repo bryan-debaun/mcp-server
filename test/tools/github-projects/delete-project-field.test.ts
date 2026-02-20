@@ -26,8 +26,8 @@ describe("delete-project-field tool", () => {
         expect(mockServer.registerTool).toHaveBeenCalledWith(
             "delete-project-field",
             expect.objectContaining({
-                title: expect.any(String),
-                description: expect.stringContaining("Delete")
+                title: "Delete Project Field",
+                description: "Delete a custom field from a GitHub Project V2"
             }),
             expect.any(Function)
         );
@@ -50,7 +50,7 @@ describe("delete-project-field tool", () => {
             fieldName: "Status"
         });
 
-        expect(graphql.deleteProjectField).toHaveBeenCalledWith("PVTF_field1");
+        expect(graphql.deleteProjectField).toHaveBeenCalledWith("PVT_test123", "PVTF_field1");
         expect(graphql.clearProjectCache).toHaveBeenCalledWith("bryan-debaun", 2);
         expect(result.content[0].text).toContain("Status");
         expect(result.content[0].text).toContain("deleted");
@@ -94,6 +94,7 @@ describe("delete-project-field tool", () => {
         });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain("Insufficient permissions");
+        expect(result.content[0].text).toContain("Permission denied");
+        expect(result.content[0].text).toContain("delete project fields");
     });
 });

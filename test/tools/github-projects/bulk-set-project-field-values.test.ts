@@ -26,8 +26,8 @@ describe("bulk-set-project-field-values tool", () => {
         expect(mockServer.registerTool).toHaveBeenCalledWith(
             "bulk-set-project-field-values",
             expect.objectContaining({
-                title: expect.any(String),
-                description: expect.stringContaining("bulk")
+                title: "Bulk Set Project Field Values",
+                description: "Set multiple custom field values for multiple GitHub Project V2 items in one operation"
             }),
             expect.any(Function)
         );
@@ -38,9 +38,11 @@ describe("bulk-set-project-field-values tool", () => {
             projectId: "PVT_test123",
             fields: [
                 { id: "PVTF_field1", name: "Status", dataType: "TEXT" },
-                { id: "PVTF_field2", name: "Priority", dataType: "SINGLE_SELECT", options: [
-                    { id: "opt1", name: "High" }
-                ]}
+                {
+                    id: "PVTF_field2", name: "Priority", dataType: "SINGLE_SELECT", options: [
+                        { id: "opt1", name: "High" }
+                    ]
+                }
             ]
         });
 
@@ -50,30 +52,29 @@ describe("bulk-set-project-field-values tool", () => {
 
         const result = await registeredHandler({
             owner: "bryan-debaun",
+            repo: "mcp-server",
             projectNumber: 2,
             updates: [
                 {
-                    repo: "mcp-server",
                     issueNumber: 73,
-                    fieldValues: {
+                    fields: {
                         "Status": "In Progress",
                         "Priority": "High"
                     }
                 },
                 {
-                    repo: "website",
                     issueNumber: 42,
-                    fieldValues: {
+                    fields: {
                         "Status": "Done"
                     }
                 }
             ]
         });
 
-        expect(result.content[0].text).toContain("2 succeeded");
+        expect(result.content[0].text).toContain("2 successful");
         expect(result.content[0].text).toContain("0 failed");
-        expect(result.content[0].text).toContain("mcp-server#73");
-        expect(result.content[0].text).toContain("website#42");
+        expect(result.content[0].text).toContain('"issueNumber": 73');
+        expect(result.content[0].text).toContain('"issueNumber": 42');
     });
 
     it("should handle mixed success and failure", async () => {
@@ -93,25 +94,24 @@ describe("bulk-set-project-field-values tool", () => {
 
         const result = await registeredHandler({
             owner: "bryan-debaun",
+            repo: "mcp-server",
             projectNumber: 2,
             updates: [
                 {
-                    repo: "mcp-server",
                     issueNumber: 73,
-                    fieldValues: { "Status": "Done" }
+                    fields: { "Status": "Done" }
                 },
                 {
-                    repo: "website",
                     issueNumber: 999,
-                    fieldValues: { "Status": "Done" }
+                    fields: { "Status": "Done" }
                 }
             ]
         });
 
-        expect(result.content[0].text).toContain("1 succeeded");
+        expect(result.content[0].text).toContain("1 successful");
         expect(result.content[0].text).toContain("1 failed");
-        expect(result.content[0].text).toContain("✓ mcp-server#73");
-        expect(result.content[0].text).toContain("✗ website#999");
+        expect(result.content[0].text).toContain('"issueNumber": 73');
+        expect(result.content[0].text).toContain('"issueNumber": 999');
         expect(result.content[0].text).toContain("Issue not found");
     });
 
@@ -125,17 +125,17 @@ describe("bulk-set-project-field-values tool", () => {
 
         const result = await registeredHandler({
             owner: "bryan-debaun",
+            repo: "mcp-server",
             projectNumber: 2,
             updates: [
                 {
-                    repo: "mcp-server",
                     issueNumber: 73,
-                    fieldValues: { "NonExistent": "Value" }
+                    fields: { "NonExistent": "Value" }
                 }
             ]
         });
 
-        expect(result.content[0].text).toContain("0 succeeded");
+        expect(result.content[0].text).toContain("0 successful");
         expect(result.content[0].text).toContain("1 failed");
         expect(result.content[0].text).toContain("not found");
     });
@@ -162,12 +162,12 @@ describe("bulk-set-project-field-values tool", () => {
 
         await registeredHandler({
             owner: "bryan-debaun",
+            repo: "mcp-server",
             projectNumber: 2,
             updates: [
                 {
-                    repo: "mcp-server",
                     issueNumber: 73,
-                    fieldValues: { "Priority": "High" }
+                    fields: { "Priority": "High" }
                 }
             ]
         });
@@ -177,7 +177,8 @@ describe("bulk-set-project-field-values tool", () => {
             "PVT_test123",
             "PVTI_item123",
             "PVTF_field1",
-            "opt1"
+            "opt1",
+            "SINGLE_SELECT"
         );
     });
 });
