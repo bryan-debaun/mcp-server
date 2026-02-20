@@ -91,6 +91,9 @@ export async function runSeed(prismaClient?: any) {
             description: 'First book in The Stormlight Archive series',
             isbn: '9780765326355',
             publishedAt: new Date('2010-08-31'),
+            rating: 10,
+            review: 'Epic fantasy masterpiece. The worldbuilding is incredible.',
+            ratedAt: new Date(),
         },
     })
 
@@ -103,6 +106,9 @@ export async function runSeed(prismaClient?: any) {
             description: 'First book in The Kingkiller Chronicle series',
             isbn: '9780756404079',
             publishedAt: new Date('2007-03-27'),
+            rating: 9,
+            review: 'Beautiful prose and compelling story.',
+            ratedAt: new Date(),
         },
     })
 
@@ -143,31 +149,6 @@ export async function runSeed(prismaClient?: any) {
         create: {
             bookId: book3.id,
             authorId: author1.id,
-        },
-    })
-
-    // Create sample ratings (one per entity since this is a personal website)
-    const rating1 = await db.rating.upsert({
-        where: { entityType_entityId: { entityType: 'book', entityId: book1.id } },
-        update: {},
-        create: {
-            entityType: 'book',
-            entityId: book1.id,
-            bookId: book1.id,
-            rating: 10,
-            review: 'Epic fantasy masterpiece. The worldbuilding is incredible.',
-        },
-    })
-
-    const rating2 = await db.rating.upsert({
-        where: { entityType_entityId: { entityType: 'book', entityId: book2.id } },
-        update: {},
-        create: {
-            entityType: 'book',
-            entityId: book2.id,
-            bookId: book2.id,
-            rating: 9,
-            review: 'Beautiful prose and compelling story.',
         },
     })
 
@@ -282,7 +263,6 @@ export async function runSeed(prismaClient?: any) {
         profiles: { bryanAdmin, admin },
         authors: { author1, author2 },
         books: { book1, book2, book3 },
-        ratings: { rating1, rating2 },
         movies: { movie1, movie2, movie3 },
         games: { game1, game2, game3 },
         contentCreators: { cc1, cc2, cc3 }
