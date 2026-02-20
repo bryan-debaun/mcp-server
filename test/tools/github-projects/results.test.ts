@@ -37,7 +37,10 @@ describe("github-projects results", () => {
             const result = createErrorResult("Field not found");
 
             expect(result.content).toHaveLength(1);
-            expect(result.content[0].text).toContain("Error: Field not found");
+            expect(result.content[0].type).toBe("text");
+            if (result.content[0].type === "text") {
+                expect(result.content[0].text).toContain("Error: Field not found");
+            }
             expect(result.isError).toBe(true);
         });
 
@@ -47,9 +50,12 @@ describe("github-projects results", () => {
                 providedType: "INVALID"
             });
 
-            expect(result.content[0].text).toContain("Error: Invalid field type");
-            expect(result.content[0].text).toContain("Context:");
-            expect(result.content[0].text).toContain("fieldName");
+            expect(result.content[0].type).toBe("text");
+            if (result.content[0].type === "text") {
+                expect(result.content[0].text).toContain("Error: Invalid field type");
+                expect(result.content[0].text).toContain("Context:");
+                expect(result.content[0].text).toContain("fieldName");
+            }
             expect(result.isError).toBe(true);
         });
     });
@@ -58,10 +64,13 @@ describe("github-projects results", () => {
         it("should create permission error with suggestions", () => {
             const result = createPermissionError("access project fields");
 
-            expect(result.content[0].text).toContain("Permission denied");
-            expect(result.content[0].text).toContain("access project fields");
-            expect(result.content[0].text).toContain("project' scope");
-            expect(result.content[0].text).toContain("gh auth refresh");
+            expect(result.content[0].type).toBe("text");
+            if (result.content[0].type === "text") {
+                expect(result.content[0].text).toContain("Permission denied");
+                expect(result.content[0].text).toContain("access project fields");
+                expect(result.content[0].text).toContain("project' scope");
+                expect(result.content[0].text).toContain("gh auth refresh");
+            }
             expect(result.isError).toBe(true);
         });
     });
@@ -74,17 +83,23 @@ describe("github-projects results", () => {
                 "Effort"
             ]);
 
-            expect(result.content[0].text).toContain("Field 'InvalidField' not found");
-            expect(result.content[0].text).toContain("Priority");
-            expect(result.content[0].text).toContain("Status");
-            expect(result.content[0].text).toContain("Effort");
+            expect(result.content[0].type).toBe("text");
+            if (result.content[0].type === "text") {
+                expect(result.content[0].text).toContain("Field 'InvalidField' not found");
+                expect(result.content[0].text).toContain("Priority");
+                expect(result.content[0].text).toContain("Status");
+                expect(result.content[0].text).toContain("Effort");
+            }
             expect(result.isError).toBe(true);
         });
 
         it("should suggest creating new field", () => {
             const result = createFieldNotFoundError("NewField", ["Existing"]);
 
-            expect(result.content[0].text).toContain("create-project-field");
+            expect(result.content[0].type).toBe("text");
+            if (result.content[0].type === "text") {
+                expect(result.content[0].text).toContain("create-project-field");
+            }
         });
     });
 
@@ -96,11 +111,14 @@ describe("github-projects results", () => {
                 ["High", "Medium", "Low"]
             );
 
-            expect(result.content[0].text).toContain("Option 'Critical' not found");
-            expect(result.content[0].text).toContain("field 'Priority'");
-            expect(result.content[0].text).toContain("High");
-            expect(result.content[0].text).toContain("Medium");
-            expect(result.content[0].text).toContain("Low");
+            expect(result.content[0].type).toBe("text");
+            if (result.content[0].type === "text") {
+                expect(result.content[0].text).toContain("Option 'Critical' not found");
+                expect(result.content[0].text).toContain("field 'Priority'");
+                expect(result.content[0].text).toContain("High");
+                expect(result.content[0].text).toContain("Medium");
+                expect(result.content[0].text).toContain("Low");
+            }
             expect(result.isError).toBe(true);
         });
     });
