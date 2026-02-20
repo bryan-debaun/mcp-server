@@ -3,7 +3,7 @@ import type { Request as ExpressRequest } from 'express';
 import type { ItemStatus } from '../../tools/db/books/status';
 
 /**
- * Book representation - EMBEDDED RATINGS TEST
+ * Book representation - force TSOA refresh
  */
 export interface Book {
     id: number;

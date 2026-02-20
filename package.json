@@ -25,11 +25,7 @@
         "prisma:dev": "prisma db push && prisma generate",
         "prisma:seed": "node dist/seed.js",
         "prisma:seed:dev": "tsx prisma/seed.ts",
-        "prisma:generate": "prisma generate",
-        "ops:smoke": "tsx scripts/ops/smoke-check-aggregates.ts",
-        "ops:smoke:force": "CONFIRM=REALLY_I_AGREE tsx scripts/ops/smoke-check-aggregates.ts --force",
-        "ops:sql-backfill": "tsx scripts/ops/sql-backfill-aggregates.ts",
-        "ops:sql-backfill:force": "CONFIRM=REALLY_I_AGREE tsx scripts/ops/sql-backfill-aggregates.ts --force"
+        "prisma:generate": "prisma generate"
     },
     "keywords": [
         "mcp",
