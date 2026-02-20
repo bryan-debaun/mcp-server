@@ -1,5 +1,14 @@
 #!/usr/bin/env node
 
+// Load environment variables first (before any imports that might use them)
+if (process.env.NODE_ENV !== 'production') {
+    try {
+        await import('dotenv/config');
+    } catch {
+        // dotenv not available, environment variables provided by hosting platform
+    }
+}
+
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer } from "./server.js";
 import { registerTools } from "./tools/index.js";

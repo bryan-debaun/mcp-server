@@ -28,13 +28,6 @@ export function registerUpdateAuthorTool(server: McpServer): void {
                     where: { id },
                     data: updateData,
                     include: {
-                        creator: {
-                            select: {
-                                id: true,
-                                name: true,
-                                email: true
-                            }
-                        },
                         books: {
                             include: {
                                 book: true

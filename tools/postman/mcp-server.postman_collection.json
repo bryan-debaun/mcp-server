@@ -3,7 +3,7 @@
         "_postman_id": "b7f2d5a0-0000-4a1c-9f7d-xxxxxxxxxxxx",
         "name": "MCP Server - HTTP Façade",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-        "description": "Collection for MCP Server smoke checks and façade endpoints. Use the `base_url` variable to point at preview or production URLs.\n\n**Note:** As of 2025-02-19, the following endpoints have been removed for single-user simplification:\n- `/api/invites/*` (Invite Accept POST/GET)\n- `/api/admin/users` POST (Create Invite)\n- `/api/admin/users/:id` PATCH/DELETE (User management)\n- `/api/admin/access-requests` (Access request endpoints)\n\nThese requests will return 404 and should be removed from this collection."
+        "description": "Collection for MCP Server smoke checks and façade endpoints. Use the `base_url` variable to point at preview or production URLs.\n\n**Note:** As of 2025-02-19, the following endpoints have been removed for single-user simplification:\n- `/api/invites/*` (Invite Accept POST/GET)\n- `/api/admin/users` POST (Create Invite)\n- `/api/admin/users/:id` PATCH/DELETE (User management)\n- `/api/admin/access-requests` (Access request endpoints)\n\n**Note:** As of 2025-02-20, ratings are now embedded in content entities (Book, Movie, VideoGame):\n- `/api/ratings/*` endpoints removed (separate Rating table no longer exists)\n- Books, Movies, and VideoGames now have optional `rating`, `review`, and `ratedAt` fields\n- Set ratings when creating/updating content using these embedded fields"
     },
     "variable": [
         {
@@ -778,7 +778,7 @@
                         ]
                     }
                 }
-            ],
+            ]
         },
         {
             "name": "Auth - Password: Login",
@@ -822,7 +822,7 @@
                         ]
                     }
                 }
-            ],
+            ]
         },
         {
             "name": "Admin - List Users",
@@ -1025,7 +1025,7 @@
                             "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
                             "pm.test('Has books array', function () { var json = pm.response.json(); pm.expect(json).to.have.property('books'); });",
                             "pm.test('Books is array', function () { var json = pm.response.json(); pm.expect(Array.isArray(json.books)).to.be.true; });",
-                            "pm.test('Books items include averageRating and ratingCount', function () { var json = pm.response.json(); if (Array.isArray(json.books) && json.books.length>0) { pm.expect(json.books[0]).to.have.property('averageRating'); pm.expect(json.books[0]).to.have.property('ratingCount'); } });"
+                            "pm.test('Books have optional rating fields', function () { var json = pm.response.json(); if (Array.isArray(json.books) && json.books.length>0) { pm.expect(json.books[0]).to.have.property('rating'); pm.expect(json.books[0]).to.have.property('review'); pm.expect(json.books[0]).to.have.property('ratedAt'); } });"
                         ]
                     }
                 }
@@ -1056,7 +1056,7 @@
                             "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
                             "pm.test('Has title', function () { var json = pm.response.json(); pm.expect(json).to.have.property('title'); });",
                             "pm.test('Has authors', function () { var json = pm.response.json(); pm.expect(json).to.have.property('authors'); });",
-                            "pm.test('Has averageRating and ratingCount', function () { var json = pm.response.json(); pm.expect(json).to.have.property('averageRating'); pm.expect(json).to.have.property('ratingCount'); });"
+                            "pm.test('Has optional rating fields', function () { var json = pm.response.json(); pm.expect(json).to.have.property('rating'); pm.expect(json).to.have.property('review'); pm.expect(json).to.have.property('ratedAt'); });"
                         ]
                     }
                 }
@@ -1082,7 +1082,7 @@
                 ],
                 "body": {
                     "mode": "raw",
-                    "raw": "{\n  \"title\": \"Test Book\",\n  \"description\": \"A test book for API testing\",\n  \"isbn\": \"9781234567890\",\n  \"publishedAt\": \"2024-01-01\",\n  \"authorIds\": [1]\n}",
+                    "raw": "{\n  \"title\": \"Test Book\",\n  \"description\": \"A test book for API testing\",\n  \"isbn\": \"9781234567890\",\n  \"publishedAt\": \"2024-01-01\",\n  \"authorIds\": [1],\n  \"rating\": 8,\n  \"review\": \"Great read!\"\n}",
                     "options": {
                         "raw": {
                             "language": "json"
@@ -1107,7 +1107,7 @@
                         "exec": [
                             "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
                             "pm.test('Has id', function () { var json = pm.response.json(); pm.expect(json).to.have.property('id'); });",
-                            "pm.test('Created book has rating fields with defaults', function () { var json = pm.response.json(); pm.expect(json).to.have.property('ratingCount'); pm.expect(json.ratingCount).to.equal(0); pm.expect(json).to.have.property('averageRating'); pm.expect(json.averageRating).to.equal(null); });"
+                            "pm.test('Has optional rating fields', function () { var json = pm.response.json(); pm.expect(json).to.have.property('rating'); pm.expect(json).to.have.property('review'); pm.expect(json).to.have.property('ratedAt'); });"
                         ]
                     }
                 }
@@ -1133,7 +1133,7 @@
                 ],
                 "body": {
                     "mode": "raw",
-                    "raw": "{\n  \"title\": \"Updated Test Book\",\n  \"description\": \"Updated description\"\n}",
+                    "raw": "{\n  \"title\": \"Updated Test Book\",\n  \"description\": \"Updated description\",\n  \"rating\": 9,\n  \"review\": \"Even better after re-reading!\"\n}",
                     "options": {
                         "raw": {
                             "language": "json"
@@ -2022,164 +2022,6 @@
                     "script": {
                         "exec": [
                             "pm.test('Status is 200 or 404', function () { pm.expect(pm.response.status).to.be.oneOf([200,404]); });"
-                        ]
-                    }
-                }
-            ]
-        },
-        {
-            "name": "Ratings - List",
-            "request": {
-                "method": "GET",
-                "header": [],
-                "url": {
-                    "raw": "{{base_url}}/api/ratings?limit=10",
-                    "host": [
-                        "{{base_url}}"
-                    ],
-                    "path": [
-                        "api",
-                        "ratings"
-                    ],
-                    "query": [
-                        {
-                            "key": "limit",
-                            "value": "10"
-                        },
-                        {
-                            "key": "bookId",
-                            "value": "",
-                            "disabled": true
-                        },
-                        {
-                            "key": "userId",
-                            "value": "",
-                            "disabled": true
-                        }
-                    ]
-                }
-            },
-            "event": [
-                {
-                    "listen": "test",
-                    "script": {
-                        "exec": [
-                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
-                            "pm.test('Has ratings array', function () { var json = pm.response.json(); pm.expect(json).to.have.property('ratings'); });"
-                        ]
-                    }
-                }
-            ]
-        },
-        {
-            "name": "Ratings - Create/Update (Authenticated)",
-            "request": {
-                "method": "POST",
-                "header": [
-                    {
-                        "key": "Authorization",
-                        "value": "Bearer {{admin_jwt}}"
-                    },
-                    {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                    }
-                ],
-                "body": {
-                    "mode": "raw",
-                    "raw": "{\n  \"bookId\": 1,\n  \"rating\": 8,\n  \"review\": \"Great book! Highly recommend.\"\n}",
-                    "options": {
-                        "raw": {
-                            "language": "json"
-                        }
-                    }
-                },
-                "url": {
-                    "raw": "{{base_url}}/api/ratings",
-                    "host": [
-                        "{{base_url}}"
-                    ],
-                    "path": [
-                        "api",
-                        "ratings"
-                    ]
-                }
-            },
-            "event": [
-                {
-                    "listen": "test",
-                    "script": {
-                        "exec": [
-                            "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
-                            "pm.test('Has rating', function () { var json = pm.response.json(); pm.expect(json).to.have.property('rating'); });"
-                        ]
-                    }
-                }
-            ]
-        },
-        {
-            "name": "Ratings - My Ratings (Authenticated)",
-            "request": {
-                "method": "GET",
-                "header": [
-                    {
-                        "key": "Authorization",
-                        "value": "Bearer {{admin_jwt}}"
-                    }
-                ],
-                "url": {
-                    "raw": "{{base_url}}/api/users/me/ratings",
-                    "host": [
-                        "{{base_url}}"
-                    ],
-                    "path": [
-                        "api",
-                        "users",
-                        "me",
-                        "ratings"
-                    ]
-                }
-            },
-            "event": [
-                {
-                    "listen": "test",
-                    "script": {
-                        "exec": [
-                            "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
-                            "pm.test('Has ratings array', function () { var json = pm.response.json(); pm.expect(json).to.have.property('ratings'); });"
-                        ]
-                    }
-                }
-            ]
-        },
-        {
-            "name": "Ratings - Delete (Authenticated)",
-            "request": {
-                "method": "DELETE",
-                "header": [
-                    {
-                        "key": "Authorization",
-                        "value": "Bearer {{admin_jwt}}"
-                    }
-                ],
-                "url": {
-                    "raw": "{{base_url}}/api/ratings/1",
-                    "host": [
-                        "{{base_url}}"
-                    ],
-                    "path": [
-                        "api",
-                        "ratings",
-                        "1"
-                    ]
-                }
-            },
-            "event": [
-                {
-                    "listen": "test",
-                    "script": {
-                        "exec": [
-                            "pm.test('Status is 200 or 403 or 404', function () { pm.expect(pm.response.status).to.be.oneOf([200,403,404]); });"
                         ]
                     }
                 }

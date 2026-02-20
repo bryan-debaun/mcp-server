@@ -10,7 +10,6 @@ import { registerMetricsRoute, httpRequestsTotal, httpRequestDurationSeconds } f
 
 import { registerBooksRoute } from './books-route.js';
 import { registerAuthorsRoute } from './authors-route.js';
-import { registerRatingsRoute } from './ratings-route.js';
 import { initPrisma } from '../db/index.js';
 import { RegisterRoutes } from './tsoa-routes.js';
 import { registerSwaggerRoute } from './swagger-route.js';
@@ -53,7 +52,6 @@ export async function createHttpApp() {
     // Book catalog routes
     registerBooksRoute(app)
     registerAuthorsRoute(app)
-    registerRatingsRoute(app)
     // Spotify read-only endpoints (require MCP API key when MCP_API_KEY set)
     try {
         const mod = await import('./spotify-route.js');
@@ -154,7 +152,6 @@ export async function registerDbDependentRoutes(app: any) {
     // Book catalog routes
     registerBooksRoute(app)
     registerAuthorsRoute(app)
-    registerRatingsRoute(app)
 
     // Spotify read-only endpoints (require MCP API key when MCP_API_KEY set)
     try {

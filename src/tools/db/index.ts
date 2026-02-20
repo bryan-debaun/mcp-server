@@ -44,13 +44,6 @@ import {
     registerDeleteContentCreatorTool
 } from "./content-creators/index.js";
 
-// Rating tools
-import {
-    registerCreateOrUpdateRatingTool,
-    registerDeleteRatingTool,
-    registerListRatingsTool
-} from "./ratings/index.js";
-
 export function registerDbTools(server: McpServer): void {
     // User tools
     registerListUsersTool(server);
@@ -90,9 +83,4 @@ export function registerDbTools(server: McpServer): void {
     registerListContentCreatorsTool(server);
     registerUpdateContentCreatorTool(server);
     registerDeleteContentCreatorTool(server);
-
-    // Rating tools
-    registerCreateOrUpdateRatingTool(server);
-    registerDeleteRatingTool(server);
-    registerListRatingsTool(server);
 }

@@ -10,6 +10,11 @@ export interface Movie {
     releasedAt?: string;
     createdAt: string;
     updatedAt: string;
+
+    // Embedded rating fields
+    rating?: number | null;
+    review?: string | null;
+    ratedAt?: string | null;
 }
 
 export interface ListMoviesResponse {

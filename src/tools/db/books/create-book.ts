@@ -18,8 +18,13 @@ export function registerCreateBookTool(server: McpServer): void {
         config,
         async (args: any): Promise<CallToolResult> => {
             try {
-                const { title, description, isbn, publishedAt, authorIds, status } = args;
+                const { title, description, isbn, publishedAt, authorIds, status, rating, review } = args;
                 const normalizedStatus = normalizeStatusInput(status);
+
+                // Validate rating if provided
+                if (rating !== undefined && (rating < 1 || rating > 10)) {
+                    return createErrorResult("Rating must be between 1 and 10");
+                }
 
                 const book = await prisma.book.create({
                     data: {
@@ -28,6 +33,9 @@ export function registerCreateBookTool(server: McpServer): void {
                         isbn,
                         publishedAt: publishedAt ? new Date(publishedAt) : null,
                         status: normalizedStatus,
+                        rating: rating !== undefined ? rating : null,
+                        review: review || null,
+                        ratedAt: rating !== undefined ? new Date() : null,
                         authors: authorIds ? {
                             create: authorIds.map((authorId: number) => ({
                                 authorId
@@ -43,7 +51,11 @@ export function registerCreateBookTool(server: McpServer): void {
                     }
                 });
 
-                return createSuccessResult({ ...book, statusLabel: statusLabel(book.status) });
+                return createSuccessResult({
+                    ...book,
+                    authors: book.authors.map((ba: any) => ba.author),
+                    statusLabel: statusLabel(book.status)
+                });
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
                 return createErrorResult(message);

@@ -10,10 +10,11 @@
         "build:seed": "tsc prisma/seed.ts --outDir dist --module ES2022 --target ES2022 --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports --resolveJsonModule --skipLibCheck",
         "dev": "tsc --watch",
         "start": "node dist/index.js",
+        "start:http": "cross-env MCP_TRANSPORT=http node dist/index.js",
         "mcp-proxy": "tsx scripts/mcp-proxy.ts",
         "check-spotify": "tsx scripts/check-spotify.ts",
-        "sql:parse": "tsx scripts/find-sql-error.ts prisma/migrations/20260202110000_enable_rls/migration.sql --dry-run",
-        "sql:validate": "tsx scripts/find-sql-error.ts prisma/migrations/20260202110000_enable_rls/migration.sql --apply",
+        "sql:parse": "tsx scripts/find-sql-error.ts prisma/migrations/20260220133827_embed_ratings_in_entities/migration.sql --dry-run",
+        "sql:validate": "tsx scripts/find-sql-error.ts prisma/migrations/20260220133827_embed_ratings_in_entities/migration.sql --apply",
         "sql:exec": "tsx scripts/exec-sql-pg.ts",
         "test": "vitest run",
         "test:watch": "vitest",
@@ -24,14 +25,7 @@
         "prisma:dev": "prisma db push && prisma generate",
         "prisma:seed": "node dist/seed.js",
         "prisma:seed:dev": "tsx prisma/seed.ts",
-        "prisma:generate": "prisma generate",
-        "backfill:books": "tsx scripts/ops/backfill-book-aggregates.ts",
-        "backfill:books:dry-run": "tsx scripts/ops/backfill-book-aggregates.ts --dry-run",
-        "backfill:books:force": "tsx scripts/ops/backfill-book-aggregates.ts --force --confirm-token=REALLY_I_AGREE",
-        "ops:smoke": "tsx scripts/ops/smoke-check-aggregates.ts",
-        "ops:smoke:force": "CONFIRM=REALLY_I_AGREE tsx scripts/ops/smoke-check-aggregates.ts --force",
-        "ops:sql-backfill": "tsx scripts/ops/sql-backfill-aggregates.ts",
-        "ops:sql-backfill:force": "CONFIRM=REALLY_I_AGREE tsx scripts/ops/sql-backfill-aggregates.ts --force"
+        "prisma:generate": "prisma generate"
     },
     "keywords": [
         "mcp",
@@ -59,7 +53,8 @@
         "swagger-ui-express": "^5.0.1",
         "tsoa": "^7.0.0-alpha.0",
         "ws": "^8.19.0",
-        "zod": "^3.23.0"
+        "zod": "^3.23.0",
+        "dotenv": "^17.3.1"
     },
     "devDependencies": {
         "@types/cors": "^2.8.19",
@@ -73,7 +68,6 @@
         "@types/ws": "^8.18.1",
         "@typescript-eslint/eslint-plugin": "^6.12.0",
         "@typescript-eslint/parser": "^6.12.0",
-        "dotenv": "^17.3.1",
         "eslint": "^8.48.0",
         "prisma": "^7.3.0",
         "supertest": "^6.3.3",
