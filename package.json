@@ -47,6 +47,7 @@
     },
     "dependencies": {
         "@modelcontextprotocol/sdk": "^1.0.0",
+        "@octokit/graphql": "^9.0.3",
         "@prisma/adapter-pg": "^7.3.0",
         "@prisma/client": "^7.3.0",
         "@tsoa/runtime": "^7.0.0-alpha.0",

@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerGitHubIssuesTools } from "./github-issues/index.js";
+import { registerGitHubProjectsTools } from "./github-projects/index.js";
 import { registerDbTools } from "./db/index.js";
 
 /**
@@ -15,10 +16,12 @@ export function registerTools(server: McpServer): void {
     // GitHub Issues tools
     registerGitHubIssuesTools(server);
 
+    // GitHub Projects V2 tools
+    registerGitHubProjectsTools(server);
+
     // Database tools
     registerDbTools(server);
 
     // Future tool categories can be added here:
     // registerGitTools(server);
-    // registerProjectTools(server);
 }
