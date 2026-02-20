@@ -75,39 +75,10 @@ export async function getProjectFields(
     // Query GitHub for project fields
     const client = createGraphqlClient();
 
-    // Try user project first, then organization
-    const query = `
+    // First try as user account
+    const userQuery = `
         query($owner: String!, $projectNumber: Int!) {
             user(login: $owner) {
-                projectV2(number: $projectNumber) {
-                    id
-                    fields(first: 50) {
-                        nodes {
-                            __typename
-                            ... on ProjectV2Field {
-                                id
-                                name
-                                dataType
-                            }
-                            ... on ProjectV2SingleSelectField {
-                                id
-                                name
-                                dataType
-                                options {
-                                    id
-                                    name
-                                }
-                            }
-                            ... on ProjectV2IterationField {
-                                id
-                                name
-                                dataType
-                            }
-                        }
-                    }
-                }
-            }
-            organization(login: $owner) {
                 projectV2(number: $projectNumber) {
                     id
                     fields(first: 50) {
@@ -139,10 +110,54 @@ export async function getProjectFields(
         }
     `;
 
-    const response = await client<ProjectQueryResponse>(query, {
-        owner,
-        projectNumber
-    });
+    // Try user project first
+    let response: ProjectQueryResponse;
+    try {
+        response = await client<ProjectQueryResponse>(userQuery, {
+            owner,
+            projectNumber
+        });
+    } catch (error) {
+        // If user query fails, try as organization
+        const orgQuery = `
+            query($owner: String!, $projectNumber: Int!) {
+                organization(login: $owner) {
+                    projectV2(number: $projectNumber) {
+                        id
+                        fields(first: 50) {
+                            nodes {
+                                __typename
+                                ... on ProjectV2Field {
+                                    id
+                                    name
+                                    dataType
+                                }
+                                ... on ProjectV2SingleSelectField {
+                                    id
+                                    name
+                                    dataType
+                                    options {
+                                        id
+                                        name
+                                    }
+                                }
+                                ... on ProjectV2IterationField {
+                                    id
+                                    name
+                                    dataType
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        `;
+
+        response = await client<ProjectQueryResponse>(orgQuery, {
+            owner,
+            projectNumber
+        });
+    }
 
     const projectData = response.user?.projectV2 || response.organization?.projectV2;
 
@@ -343,7 +358,8 @@ export async function createProjectField(
 
         const optionInputs = options.map((opt) => ({
             name: opt,
-            color: "GRAY"  // Default color, can be customized later
+            color: "GRAY",  // Default color, can be customized later
+            description: ""  // Required by GitHub API, can be empty
         }));
 
         const response = await client<any>(mutation, {
@@ -391,20 +407,16 @@ export async function deleteProjectField(
     const client = createGraphqlClient();
 
     const mutation = `
-        mutation($projectId: ID!, $fieldId: ID!) {
+        mutation($fieldId: ID!) {
             deleteProjectV2Field(input: {
-                projectId: $projectId
                 fieldId: $fieldId
             }) {
-                projectV2Field {
-                    id
-                }
+                clientMutationId
             }
         }
     `;
 
     await client<any>(mutation, {
-        projectId,
         fieldId
     });
 }
@@ -420,9 +432,8 @@ export async function updateProjectFieldName(
     const client = createGraphqlClient();
 
     const mutation = `
-        mutation($projectId: ID!, $fieldId: ID!, $name: String!) {
+        mutation($fieldId: ID!, $name: String!) {
             updateProjectV2Field(input: {
-                projectId: $projectId
                 fieldId: $fieldId
                 name: $name
             }) {
@@ -436,7 +447,6 @@ export async function updateProjectFieldName(
     `;
 
     await client<any>(mutation, {
-        projectId,
         fieldId,
         name: newName
     });

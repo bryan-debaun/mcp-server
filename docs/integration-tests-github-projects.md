@@ -36,7 +36,7 @@ export GITHUB_TOKEN="ghp_..."
 # Optional - defaults to bryan-debaun/mcp-server Project #2
 export GITHUB_TEST_OWNER="bryan-debaun"
 export GITHUB_TEST_REPO="mcp-server"
-export GITHUB_TEST_PROJECT_NUMBER="2"
+export GITHUB_TEST_PROJECT_NUMBER="3"
 export GITHUB_TEST_ISSUE_NUMBER="73"
 
 # Run tests
