@@ -33,7 +33,7 @@ const TEST_ISSUE_NUMBER = parseInt(process.env.GITHUB_TEST_ISSUE_NUMBER || "73",
  */
 describe("GitHub Projects V2 Integration", () => {
     if (!RUN_INTEGRATION) {
-        it.skip("skipped - requires RUN_GITHUB_PROJECTS_INTEGRATION=true", () => {});
+        it.skip("skipped - requires RUN_GITHUB_PROJECTS_INTEGRATION=true", () => { });
         return;
     }
 

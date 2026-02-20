@@ -5,6 +5,7 @@ Integration tests for the GitHub Projects V2 MCP tools that interact with real G
 ## Prerequisites
 
 1. **GitHub Token**: Valid GitHub token with `project` scope
+
    ```bash
    gh auth refresh -s project
    ```
@@ -54,32 +55,38 @@ npm test -- github-projects.test.ts
 The integration tests cover all 6 GitHub Projects V2 tools:
 
 ### 1. **get-project-fields**
+
 - ✓ Retrieves real project fields from GitHub
 - ✓ Validates field structure (id, name, dataType)
 - ✓ Stores projectId for subsequent tests
 
 ### 2. **create-project-field**
+
 - ✓ Creates TEXT field
 - ✓ Creates SINGLE_SELECT field with options
 - ✓ Validates field IDs (PVTF_*)
 
 ### 3. **update-project-field**
+
 - ✓ Renames existing field
 - ✓ Verifies rename via cache refresh
 - ✓ Adds options to SINGLE_SELECT field
 - ✓ Removes options from SINGLE_SELECT field
 
 ### 4. **set-project-field-value**
+
 - ✓ Gets issue node ID
 - ✓ Adds issue to project
 - ✓ Sets field value on project item
 - ✓ Tests TEXT field value updates
 
 ### 5. **delete-project-field**
+
 - ✓ Deletes test field
 - ✓ Verifies deletion via cache refresh
 
 ### 6. **Field Caching**
+
 - ✓ Validates caching behavior (faster second call)
 - ✓ Tests cache clearing functionality
 
@@ -129,6 +136,7 @@ Test Files  1 passed (1)
 ### Error: "GITHUB_TOKEN environment variable required"
 
 **Solution**: Set your GitHub token:
+
 ```bash
 export GITHUB_TOKEN=$(gh auth token)
 ```
@@ -136,6 +144,7 @@ export GITHUB_TOKEN=$(gh auth token)
 ### Error: "Could not resolve to a Project"
 
 **Solution**: Verify the project exists and your token has access:
+
 ```bash
 gh project list --owner bryan-debaun
 ```
@@ -143,6 +152,7 @@ gh project list --owner bryan-debaun
 ### Error: "Insufficient permissions"
 
 **Solution**: Refresh token with project scope:
+
 ```bash
 gh auth refresh -s project
 ```

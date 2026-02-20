@@ -48,6 +48,7 @@ Manage GitHub Projects V2 custom fields and values. Supports TEXT, NUMBER, DATE,
 | `bulk-set-project-field-values` | Set multiple fields on multiple issues (bulk operation) | `owner`, `repo`, `projectNumber`, `updates[]` |
 
 **Supported Field Types**:
+
 - `TEXT` - Free-form text values
 - `NUMBER` - Numeric values (e.g., story points, effort estimates)
 - `DATE` - ISO 8601 date strings (e.g., "2024-12-31")
@@ -55,12 +56,14 @@ Manage GitHub Projects V2 custom fields and values. Supports TEXT, NUMBER, DATE,
 - `ITERATION` - Iteration/sprint references
 
 **Features**:
+
 - ✅ Field metadata caching (reduces API calls)
 - ✅ Dynamic SINGLE_SELECT option resolution (no hardcoding)
 - ✅ Bulk operations with detailed success/failure reporting
 - ✅ Actionable error messages for permission issues
 
 **Example Usage**:
+
 ```
 User: In Project #2, set the "Status" field to "In Progress" and "Priority" to "High" for issues #73 and #42
 Copilot: [Uses bulk-set-project-field-values to update both issues]
