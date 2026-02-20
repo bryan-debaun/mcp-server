@@ -3,7 +3,7 @@ import type { Request as ExpressRequest } from 'express';
 import type { ItemStatus } from '../../tools/db/books/status';
 
 /**
- * Book representation
+ * Book representation - EMBEDDED RATINGS TEST
  */
 export interface Book {
     id: number;
@@ -15,9 +15,10 @@ export interface Book {
     createdAt: string;
     updatedAt: string;
 
-    // Aggregates
-    averageRating?: number | null;
-    ratingCount?: number;
+    // Embedded rating fields
+    rating?: number | null;
+    review?: string | null;
+    ratedAt?: string | null;
 }
 
 /**
