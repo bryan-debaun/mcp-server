@@ -5,6 +5,7 @@ An extensible Model Context Protocol (MCP) server for VS Code Copilot with GitHu
 ## Features
 
 - **GitHub Issues Tools**: List, view, create, update, and close GitHub issues directly through VS Code Copilot chat
+- **GitHub Projects V2 Tools**: Manage custom fields and values in GitHub Projects V2 (field CRUD, bulk value updates, dynamic option resolution)
 - **Book Catalog REST API**: Manage books, authors, and ratings with full CRUD operations
 - **OpenAPI 3.0 Specification**: Auto-generated API documentation with Swagger UI at `/docs`
 - **Extensible Architecture**: Easily add new tool categories without major refactoring
@@ -23,6 +24,50 @@ An extensible Model Context Protocol (MCP) server for VS Code Copilot with GitHu
 | `create-issue` | Create a new issue | `repo`, `title`, `body?`, `labels?` |
 | `update-issue` | Update an issue or add a comment | `repo`, `issueNumber`, `title?`, `body?`, `labels?`, `comment?` |
 | `close-issue` | Close an issue with optional comment | `repo`, `issueNumber`, `comment?` |
+
+### GitHub Projects V2
+
+Manage GitHub Projects V2 custom fields and values. Supports TEXT, NUMBER, DATE, SINGLE_SELECT, and ITERATION field types.
+
+**Prerequisites**: GitHub token with `project` scope. Run `gh auth refresh -s project` to add the scope.
+
+#### Field Management
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `get-project-fields` | List all custom fields in a project with types and options | `owner`, `projectNumber` |
+| `create-project-field` | Create a new custom field | `owner`, `projectNumber`, `name`, `dataType`, `options?` |
+| `update-project-field` | Update field name or SINGLE_SELECT options | `owner`, `projectNumber`, `fieldName`, `newName?`, `addOptions?`, `removeOptions?` |
+| `delete-project-field` | Delete a custom field from the project | `owner`, `projectNumber`, `fieldName` |
+
+#### Value Operations
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `set-project-field-value` | Set a single field value on an issue | `owner`, `repo`, `projectNumber`, `issueNumber`, `fieldName`, `value` |
+| `bulk-set-project-field-values` | Set multiple fields on multiple issues (bulk operation) | `owner`, `repo`, `projectNumber`, `updates[]` |
+
+**Supported Field Types**:
+
+- `TEXT` - Free-form text values
+- `NUMBER` - Numeric values (e.g., story points, effort estimates)
+- `DATE` - ISO 8601 date strings (e.g., "2024-12-31")
+- `SINGLE_SELECT` - Choose from predefined options (auto-resolved from field metadata)
+- `ITERATION` - Iteration/sprint references
+
+**Features**:
+
+- ✅ Field metadata caching (reduces API calls)
+- ✅ Dynamic SINGLE_SELECT option resolution (no hardcoding)
+- ✅ Bulk operations with detailed success/failure reporting
+- ✅ Actionable error messages for permission issues
+
+**Example Usage**:
+
+```
+User: In Project #2, set the "Status" field to "In Progress" and "Priority" to "High" for issues #73 and #42
+Copilot: [Uses bulk-set-project-field-values to update both issues]
+```
 
 ### Database - Books
 
@@ -106,8 +151,11 @@ Use this spec to generate client SDKs for any language using tools like [OpenAPI
   # Install gh CLI (if not already installed)
   winget install --id GitHub.cli
   
-  # Authenticate
+  # Authenticate with GitHub
   gh auth login
+  
+  # For GitHub Projects V2 tools, add project scope
+  gh auth refresh -s project
   ```
 
 ## Environment Variables
