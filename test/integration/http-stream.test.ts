@@ -126,7 +126,7 @@ describe('HTTP Stream transport integration', () => {
 
     it('responds to initialize with serverInfo and tool capabilities', async () => {
         config.security.mcpApiKey = undefined
-        ;({ server } = await startServer())
+            ; ({ server } = await startServer())
         const baseUrl = `http://127.0.0.1:${(server.address() as any).port}`
 
         const initMsg = {
@@ -153,7 +153,7 @@ describe('HTTP Stream transport integration', () => {
 
     it('lists tools after initialize and includes a known tool', async () => {
         config.security.mcpApiKey = undefined
-        ;({ server } = await startServer())
+            ; ({ server } = await startServer())
         const baseUrl = `http://127.0.0.1:${(server.address() as any).port}`
 
         const initMsg = {
@@ -183,7 +183,7 @@ describe('HTTP Stream transport integration', () => {
 
     it('returns 401 when MCP_API_KEY is set and auth header is missing', async () => {
         config.security.mcpApiKey = 'test-secret'
-        ;({ server } = await startServer())
+            ; ({ server } = await startServer())
         const baseUrl = `http://127.0.0.1:${(server.address() as any).port}`
 
         await expect(
@@ -193,7 +193,7 @@ describe('HTTP Stream transport integration', () => {
 
     it('accepts a request when correct Bearer token is provided', async () => {
         config.security.mcpApiKey = 'test-secret'
-        ;({ server } = await startServer())
+            ; ({ server } = await startServer())
         const baseUrl = `http://127.0.0.1:${(server.address() as any).port}`
 
         const initMsg = {

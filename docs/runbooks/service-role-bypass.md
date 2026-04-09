@@ -78,9 +78,11 @@ Response steps
 **Scenario A — unexpected bypass (counter incremented, no known automation)**
 
 1. Pull recent metrics and note the exact count and timestamp window:
+
    ```bash
    curl -s https://<your-domain>/metrics | grep service_role_bypass
    ```
+
 2. Search Render logs for `service-role-bypass` entries. Note the `ip` and `path` fields.
 3. Cross-reference the IP against `ADMIN_IP_ALLOWLIST`. If the IP is not one you added,
    the allowlist was misconfigured or a credential was leaked.
