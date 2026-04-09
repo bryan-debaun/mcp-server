@@ -71,10 +71,12 @@ async function main(): Promise<void> {
 
     // Note: transport-specific startup messages are logged in each branch above.
 
-    // Warn if admin debug is enabled in what looks like production
+    // Admin debug endpoint startup messaging
     if (config.security.adminDebugEnabled) {
         if (config.isProduction) {
-            console.warn('ADMIN_DEBUG_ENABLED is set in production - this exposes diagnostic endpoints. Consider disabling this in production.')
+            // Hard block: the endpoint is suppressed in production regardless of the flag.
+            // Error-level so operators notice this in production logs.
+            console.error('ADMIN_DEBUG_ENABLED is set but IGNORED in production — debug endpoints are never registered in production. Unset this flag to silence this message.')
         } else {
             console.error('ADMIN_DEBUG_ENABLED is enabled for this process; debug endpoints will be registered (preview/staging only)')
         }
