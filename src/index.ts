@@ -1,14 +1,7 @@
 #!/usr/bin/env node
 
-// Load environment variables first (before any imports that might use them)
-if (process.env.NODE_ENV !== 'production') {
-    try {
-        await import('dotenv/config');
-    } catch {
-        // dotenv not available, environment variables provided by hosting platform
-    }
-}
-
+// config.ts loads dotenv at module init — import it before anything else.
+import { config } from "./config.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer } from "./server.js";
 import { registerTools } from "./tools/index.js";
@@ -26,11 +19,10 @@ async function main(): Promise<void> {
     // Diagnostic: log key environment variables and stdio status so we can detect how the extension launched us
     try {
         const diag = {
-            PORT: process.env.PORT,
-            MCP_TRANSPORT: process.env.MCP_TRANSPORT,
-            NODE_ENV: process.env.NODE_ENV,
+            PORT: config.server.port,
+            MCP_TRANSPORT: config.server.mcpTransport,
+            NODE_ENV: config.nodeEnv,
             stdinIsTTY: typeof process.stdin.isTTY !== 'undefined' ? process.stdin.isTTY : null,
-            // Whether stdin is in flowing mode (a crude check; true for many interactive/stdio use-cases)
             stdinReadable: Boolean(process.stdin && (process.stdin.readable || process.stdin.readableFlowing)),
         };
         console.error('startup diagnostic:', JSON.stringify(diag));
@@ -44,10 +36,10 @@ async function main(): Promise<void> {
     // 2. If unset, prefer stdio when stdin appears attached (common for LocalProcess) even if PORT is set
     // 3. Otherwise, if PORT is set, run HTTP server
     try {
-        const explicitEnv = process.env.MCP_TRANSPORT;
-        const port = process.env.PORT ? Number(process.env.PORT) : undefined;
+        const explicitEnv = config.server.mcpTransport;
+        const port = config.server.port;
         const stdinAttached = Boolean(process.stdin && (process.stdin.isTTY || process.stdin.readable || (process.stdin as any).readableFlowing));
-        const env = process.env.NODE_ENV || 'development';
+        const env = config.nodeEnv;
 
         // Determine transport via a testable helper
         const { decideTransport } = await import('./transport-selection.js');
@@ -80,10 +72,8 @@ async function main(): Promise<void> {
     // Note: transport-specific startup messages are logged in each branch above.
 
     // Warn if admin debug is enabled in what looks like production
-    const adminDebug = (process.env.ADMIN_DEBUG_ENABLED || '').toLowerCase()
-    const env = process.env.NODE_ENV || 'development'
-    if (adminDebug === '1' || adminDebug === 'true') {
-        if (env === 'production') {
+    if (config.security.adminDebugEnabled) {
+        if (config.isProduction) {
             console.warn('ADMIN_DEBUG_ENABLED is set in production - this exposes diagnostic endpoints. Consider disabling this in production.')
         } else {
             console.error('ADMIN_DEBUG_ENABLED is enabled for this process; debug endpoints will be registered (preview/staging only)')
@@ -91,20 +81,17 @@ async function main(): Promise<void> {
     }
 
     // SendGrid configuration warning (non-blocking)
-    const sendgridKey = process.env.SENDGRID_API_KEY
-    const senderEmail = process.env.SENDER_EMAIL ?? process.env.FROM_EMAIL
-
-    if (env === 'production') {
-        if (!sendgridKey || !senderEmail) {
+    if (config.isProduction) {
+        if (!config.email.sendgridApiKey || !config.email.senderEmail) {
             console.warn('SendGrid not fully configured for production. Missing SENDGRID_API_KEY or SENDER_EMAIL; transactional emails will not be sent. See docs/runbooks/sendgrid.md for setup.')
         } else {
             console.error('SendGrid appears configured for production (SENDER_EMAIL present).')
         }
     } else {
-        if (!sendgridKey || !senderEmail) {
+        if (!config.email.sendgridApiKey || !config.email.senderEmail) {
             console.error('SendGrid not configured for local/testing — this is expected in development. Set SENDGRID_API_KEY/SENDER_EMAIL to test email sending.')
         } else {
-            console.error('SendGrid configured in non-production environment (SENDER_EMAIL=%s).', senderEmail)
+            console.error('SendGrid configured in non-production environment (SENDER_EMAIL=%s).', config.email.senderEmail)
         }
     }
 }

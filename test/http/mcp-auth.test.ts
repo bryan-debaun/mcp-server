@@ -3,6 +3,7 @@ import request from 'supertest'
 import express from 'express'
 import { registerDbDependentRoutes } from '../../src/http/server.js'
 import { mcpAuthFailuresTotal } from '../../src/http/metrics-route.js'
+import { config } from '../../src/config.js'
 
 function getCounterValue(counter: any) {
     try {
@@ -20,16 +21,15 @@ function getCounterValue(counter: any) {
 }
 
 describe('MCP auth middleware', () => {
-    const origMcp = process.env.MCP_API_KEY
+    const origMcpApiKey = config.security.mcpApiKey
 
     beforeEach(() => {
-        // Ensure clean state
-        delete process.env.MCP_API_KEY
+        // Ensure clean state — config is the source of truth now
+        config.security.mcpApiKey = undefined
     })
 
     afterEach(() => {
-        if (typeof origMcp === 'undefined') delete process.env.MCP_API_KEY
-        else process.env.MCP_API_KEY = origMcp
+        config.security.mcpApiKey = origMcpApiKey
     })
 
     it('does not enforce auth when MCP_API_KEY unset', async () => {
@@ -41,7 +41,7 @@ describe('MCP auth middleware', () => {
     })
 
     it('returns 401 for GET /api/books when MCP_API_KEY set and no Authorization', async () => {
-        process.env.MCP_API_KEY = 'testkey'
+        config.security.mcpApiKey = 'testkey'
         const app = express()
         app.use(express.json())
         await registerDbDependentRoutes(app)
@@ -52,7 +52,7 @@ describe('MCP auth middleware', () => {
     })
 
     it('accepts Authorization: Bearer <key>', async () => {
-        process.env.MCP_API_KEY = 'testkey'
+        config.security.mcpApiKey = 'testkey'
         const app = express()
         app.use(express.json())
         await registerDbDependentRoutes(app)
@@ -62,7 +62,7 @@ describe('MCP auth middleware', () => {
     })
 
     it('accepts x-mcp-api-key with deprecation warning', async () => {
-        process.env.MCP_API_KEY = 'testkey'
+        config.security.mcpApiKey = 'testkey'
         const app = express()
         app.use(express.json())
 
@@ -80,7 +80,7 @@ describe('MCP auth middleware', () => {
     })
 
     it('increments metric on auth failure', async () => {
-        process.env.MCP_API_KEY = 'testkey'
+        config.security.mcpApiKey = 'testkey'
         const app = express()
         app.use(express.json())
 

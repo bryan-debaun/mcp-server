@@ -2,14 +2,15 @@ import { describe, it, expect } from 'vitest'
 import request from 'supertest'
 import express from 'express'
 import { registerMcpHttp } from '../../src/http/mcp-http.js'
+import { config } from '../../src/config.js'
 
 describe('MCP HTTP endpoints', () => {
-    const origMcp = process.env.MCP_API_KEY
-    beforeEach(() => { /* ensure clean state per-test */ })
-    afterEach(() => { if (typeof origMcp === 'undefined') delete process.env.MCP_API_KEY; else process.env.MCP_API_KEY = origMcp })
+    const origMcpApiKey = config.security.mcpApiKey
+    beforeEach(() => { config.security.mcpApiKey = undefined })
+    afterEach(() => { config.security.mcpApiKey = origMcpApiKey })
 
     it('should reject POST /mcp without auth when MCP_API_KEY set', async () => {
-        process.env.MCP_API_KEY = 'testkey'
+        config.security.mcpApiKey = 'testkey'
         const app = express()
         app.use(express.json())
         registerMcpHttp(app)
@@ -20,7 +21,7 @@ describe('MCP HTTP endpoints', () => {
     })
 
     it('should accept GET /mcp for SSE with correct auth', async () => {
-        process.env.MCP_API_KEY = 'testkey'
+        config.security.mcpApiKey = 'testkey'
         const app = express()
         app.use(express.json())
         registerMcpHttp(app)
@@ -61,7 +62,7 @@ describe('MCP HTTP endpoints', () => {
     })
 
     it('should require auth for POST /mcp/events and validate conn id', async () => {
-        process.env.MCP_API_KEY = 'testkey'
+        config.security.mcpApiKey = 'testkey'
         const app = express()
         app.use(express.json())
         registerMcpHttp(app)

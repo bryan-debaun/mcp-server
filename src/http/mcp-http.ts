@@ -1,5 +1,6 @@
 import { Application, Request, Response } from "express";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { config } from "../config.js";
 
 // Simple newline-delimited JSON HTTP stream transport
 export class HttpStreamTransport {
@@ -182,7 +183,7 @@ export function registerMcpHttp(app: Application): void {
     app.post(base, async (req: Request, res: Response) => {
         try {
             console.error(`mcp-http: POST /mcp called authPresent=${!!req.headers.authorization}`);
-            const mcpKey = process.env.MCP_API_KEY;
+            const mcpKey = config.security.mcpApiKey;
             if (mcpKey) {
                 const auth = (req.headers.authorization || '').toString();
                 if (auth !== `Bearer ${mcpKey}`) {
@@ -221,7 +222,7 @@ export function registerMcpHttp(app: Application): void {
     app.get(base, async (req: Request, res: Response) => {
         try {
             console.error(`mcp-http: GET /mcp called authPresent=${!!req.headers.authorization}`);
-            const mcpKey = process.env.MCP_API_KEY;
+            const mcpKey = config.security.mcpApiKey;
             if (mcpKey) {
                 const auth = (req.headers.authorization || '').toString();
                 if (auth !== `Bearer ${mcpKey}`) {
@@ -273,7 +274,7 @@ export function registerMcpHttp(app: Application): void {
     app.post(`${base}/events`, async (req: Request, res: Response) => {
         try {
             console.error('mcp-http: POST /mcp/events called', { connIdHeader: req.headers['x-mcp-conn-id'] });
-            const mcpKey = process.env.MCP_API_KEY;
+            const mcpKey = config.security.mcpApiKey;
             if (mcpKey) {
                 const auth = (req.headers.authorization || '').toString();
                 if (auth !== `Bearer ${mcpKey}`) {

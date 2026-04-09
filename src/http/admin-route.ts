@@ -4,6 +4,7 @@ import { requireAdmin } from '../auth/requireAdmin.js'
 import { sendInviteEmail } from "../email.js"
 import { prisma } from '../db/index.js'
 import { adminDebugRequestsTotal } from './metrics-route.js'
+import { config } from '../config.js'
 
 export function registerAdminRoute(app: Application) {
     const base = '/api/admin'
@@ -39,7 +40,7 @@ export function registerAdminRoute(app: Application) {
 
         // Safety: don't expose the invite token in production responses by default
         const resp: any = { id: invite.id, email: invite.email }
-        if (process.env.SHOW_INVITE_TOKEN === '1') {
+        if (config.security.showInviteToken) {
             resp.token = invite.token
         }
 
@@ -87,11 +88,11 @@ export function registerAdminRoute(app: Application) {
 
     // Debug endpoint to help diagnose gateway/auth issues on preview hosts.
     // Protected with the same admin checks (jwtMiddleware + requireAdmin).
-    if (process.env.ADMIN_DEBUG_ENABLED === '1') {
+    if (config.security.adminDebugEnabled) {
         app.get(`${base}/_debug/headers`, jwtMiddleware, requireAdmin, async (req: Request, res: Response) => {
             const ip = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim()
             const internalKeyPresent = !!req.headers['x-internal-key']
-            const jwksUrl = process.env.SUPABASE_JWKS_URL
+            const jwksUrl = config.auth.supabaseJwksUrl
             let jwksStatus: any = null
             if (jwksUrl) {
                 try {

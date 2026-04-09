@@ -1,8 +1,9 @@
 import type { Request, Response, NextFunction } from 'express';
 import { mcpAuthFailuresTotal } from '../metrics-route.js';
+import { config } from '../../config.js';
 
 export function mcpAuthMiddleware(req: Request, res: Response, next: NextFunction) {
-    const mcpKey = process.env.MCP_API_KEY;
+    const mcpKey = config.security.mcpApiKey;
     // No-op when key not set
     if (!mcpKey) return next();
 

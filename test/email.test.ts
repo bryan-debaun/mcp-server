@@ -1,9 +1,22 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { sendInviteEmail, sendMagicLinkEmail } from '../src/email.js'
+import { config } from '../src/config.js'
+
+const origSendgridKey = config.email.sendgridApiKey
+const origSenderEmail = config.email.senderEmail
+const origSenderName = config.email.senderName
+const origSupportEmail = config.email.supportEmail
 
 beforeEach(() => {
-    delete process.env.SENDGRID_API_KEY
-    delete process.env.SENDER_EMAIL
+    config.email.sendgridApiKey = undefined
+    config.email.senderEmail = undefined
+})
+
+afterEach(() => {
+    config.email.sendgridApiKey = origSendgridKey
+    config.email.senderEmail = origSenderEmail
+    config.email.senderName = origSenderName
+    config.email.supportEmail = origSupportEmail
 })
 
 describe('sendInviteEmail', () => {
@@ -18,10 +31,10 @@ describe('sendInviteEmail', () => {
 
 describe('sendMagicLinkEmail', () => {
     it('sends HTML and text payload when SENDGRID_API_KEY is set', async () => {
-        process.env.SENDGRID_API_KEY = 'SG.test'
-        process.env.SENDER_EMAIL = 'no-reply@bryandebaun.dev'
-        process.env.SENDER_NAME = 'BryanDeBaunDev'
-        process.env.SUPPORT_EMAIL = 'support@bryandebaun.dev'
+        config.email.sendgridApiKey = 'SG.test'
+        config.email.senderEmail = 'no-reply@bryandebaun.dev'
+        config.email.senderName = 'BryanDeBaunDev'
+        config.email.supportEmail = 'support@bryandebaun.dev'
 
         const fakeRes = { ok: true, status: 202, text: async () => '' }
         const fetchSpy = vi.spyOn(globalThis, 'fetch' as any).mockResolvedValue(fakeRes as any)

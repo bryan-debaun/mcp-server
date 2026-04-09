@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest'
 import { jwtMiddleware, verifySupabaseJwt } from '../../src/auth/jwt'
 import { requireAdmin } from '../../src/auth/requireAdmin'
 import express from 'express'
 import request from 'supertest'
 import { generateKeyPair, exportJWK, SignJWT } from 'jose'
+import { config } from '../../src/config.js'
 
 let publicJwk: any
 let privateKey: CryptoKey
@@ -11,7 +12,26 @@ const jwksUrl = 'https://example.local/.well-known/jwks.json'
 const issuer = 'https://nanodcvcpklffksxofbm.supabase.co'
 const audience = 'authenticated'
 
+let origJwksUrl: string | undefined
+let origIss: string | undefined
+let origAud: string | undefined
+let origSessionSecret: string | undefined
+let origSvcKey: string | undefined
+let origAnonKey: string | undefined
+let origAdminIpAllowlist: string[]
+let origInternalAdminKey: string | undefined
+
 beforeAll(async () => {
+    // Save originals
+    origJwksUrl = config.auth.supabaseJwksUrl
+    origIss = config.auth.supabaseIss
+    origAud = config.auth.supabaseAud
+    origSessionSecret = config.auth.sessionJwtSecret
+    origSvcKey = config.auth.supabaseServiceRoleKey
+    origAnonKey = config.auth.supabaseAnonKey
+    origAdminIpAllowlist = config.security.adminIpAllowlist
+    origInternalAdminKey = config.security.internalAdminKey
+
     // generate keys for test
     const { publicKey, privateKey: pk } = await generateKeyPair('RS256')
     privateKey = pk
@@ -30,14 +50,31 @@ beforeAll(async () => {
         return { ok: false, status: 404 }
     })
 
-    // set env vars used by middleware
-    process.env.SUPABASE_JWKS_URL = jwksUrl
-    process.env.SUPABASE_ISS = issuer
-    process.env.SUPABASE_AUD = audience
+    // Set config values used by middleware (replaces process.env.* reads)
+    config.auth.supabaseJwksUrl = jwksUrl
+    config.auth.supabaseIss = issuer
+    config.auth.supabaseAud = audience
 })
 
 afterAll(() => {
+    config.auth.supabaseJwksUrl = origJwksUrl
+    config.auth.supabaseIss = origIss
+    config.auth.supabaseAud = origAud
+    config.auth.sessionJwtSecret = origSessionSecret
+    config.auth.supabaseServiceRoleKey = origSvcKey
+    config.auth.supabaseAnonKey = origAnonKey
+    config.security.adminIpAllowlist = origAdminIpAllowlist
+    config.security.internalAdminKey = origInternalAdminKey
     vi.unstubAllGlobals()
+})
+
+afterEach(() => {
+    // Restore per-test mutations between tests
+    config.auth.sessionJwtSecret = origSessionSecret
+    config.auth.supabaseServiceRoleKey = origSvcKey
+    config.auth.supabaseAnonKey = origAnonKey
+    config.security.adminIpAllowlist = origAdminIpAllowlist
+    config.security.internalAdminKey = origInternalAdminKey
 })
 
 describe('JWT middleware', () => {
@@ -73,13 +110,13 @@ describe('JWT middleware', () => {
     })
 
     it('verifies a valid session cookie and attaches user', async () => {
-        process.env.SESSION_JWT_SECRET = 'session-secret'
+        config.auth.sessionJwtSecret = 'session-secret'
         const sessionToken = await new SignJWT({ userId: 42 })
             .setProtectedHeader({ alg: 'HS256' })
             .setSubject('cookie-user')
             .setIssuedAt()
             .setExpirationTime('2h')
-            .sign(new TextEncoder().encode(process.env.SESSION_JWT_SECRET) as any)
+            .sign(new TextEncoder().encode(config.auth.sessionJwtSecret) as any)
 
         const app = express()
         app.use(jwtMiddleware)
@@ -88,8 +125,6 @@ describe('JWT middleware', () => {
         const res = await request(app).get('/whoami').set('Cookie', `session=${sessionToken}`)
         expect(res.status).toBe(200)
         expect(res.body.user.sub).toBe('cookie-user')
-
-        delete process.env.SESSION_JWT_SECRET
     })
 
     it('rejects invalid session cookie', async () => {
@@ -113,13 +148,13 @@ describe('JWT middleware', () => {
             .sign(privateKey as any)
 
         // set session cookie with different sub
-        process.env.SESSION_JWT_SECRET = 'session-secret'
+        config.auth.sessionJwtSecret = 'session-secret'
         const sessionToken = await new SignJWT({ userId: 99 })
             .setProtectedHeader({ alg: 'HS256' })
             .setSubject('cookie-user')
             .setIssuedAt()
             .setExpirationTime('2h')
-            .sign(new TextEncoder().encode(process.env.SESSION_JWT_SECRET) as any)
+            .sign(new TextEncoder().encode(config.auth.sessionJwtSecret) as any)
 
         const app = express()
         app.use(jwtMiddleware)
@@ -132,8 +167,6 @@ describe('JWT middleware', () => {
 
         expect(res.status).toBe(200)
         expect(res.body.user.sub).toBe('user-header')
-
-        delete process.env.SESSION_JWT_SECRET
     })
 
     it('verifySupabaseJwt fails for expired token', async () => {
@@ -165,11 +198,10 @@ describe('JWT middleware', () => {
             return { ok: false, status: 404 }
         })
 
-        const prevJwksEnv = process.env.SUPABASE_JWKS_URL
-        process.env.SUPABASE_JWKS_URL = 'https://primary.local/jwks'
-        process.env.SUPABASE_ISS = issuer
-        process.env.SUPABASE_AUD = audience
-        process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'publishable-key'
+        const prevConfigJwksUrl = config.auth.supabaseJwksUrl
+        const prevConfigAnonKey = config.auth.supabaseAnonKey
+        config.auth.supabaseJwksUrl = 'https://primary.local/jwks'
+        config.auth.supabaseAnonKey = 'publishable-key'
 
         const sig = await new SignJWT({ role: 'authenticated' })
             .setProtectedHeader({ alg: 'RS256', kid: publicJwk.kid })
@@ -197,9 +229,8 @@ describe('JWT middleware', () => {
             return { ok: false, status: 404, statusText: 'Not Found', text: async () => 'notfound' }
         })
 
-        process.env.SUPABASE_JWKS_URL = 'https://primary.local/jwks'
-        process.env.SUPABASE_ISS = issuer
-        process.env.SUPABASE_AUD = audience
+        const prevConfigJwksUrl2 = config.auth.supabaseJwksUrl
+        config.auth.supabaseJwksUrl = 'https://primary.local/jwks'
 
         const token = await new SignJWT({ role: 'authenticated' })
             .setProtectedHeader({ alg: 'RS256', kid: publicJwk.kid })
@@ -218,8 +249,7 @@ describe('JWT middleware', () => {
     it('rejects service role key when not allowed by header or IP allowlist', async () => {
         const app = express()
         const serviceKey = 'super-secret-service-key'
-        process.env.SUPABASE_SERVICE_ROLE_KEY = serviceKey
-        process.env.SUPABASE_SECRET_KEY = serviceKey
+        config.auth.supabaseServiceRoleKey = serviceKey
         app.get('/whoami', jwtMiddleware, (req, res) => res.json({ user: (req as any).user }))
 
         // requireAdmin is applied; without proper header/IP it should be forbidden
@@ -227,21 +257,18 @@ describe('JWT middleware', () => {
 
         const res = await request(app).get('/admin').set('Authorization', `Bearer ${serviceKey}`)
         expect(res.status).toBe(403)
-        delete process.env.SUPABASE_SERVICE_ROLE_KEY
-        delete process.env.SUPABASE_SECRET_KEY
     })
 
     it('allows service key when ip is allowlisted and header present and writes audit log + metric', async () => {
         const app = express()
         const serviceKey = 'super-secret-service-key'
-        process.env.SUPABASE_SERVICE_ROLE_KEY = serviceKey
-        process.env.SUPABASE_SECRET_KEY = serviceKey
+        config.auth.supabaseServiceRoleKey = serviceKey
 
         // Mock prisma.auditLog.create and metric
         const p = await import('../../src/db/index.js') as any
         p.prisma.auditLog = { create: vi.fn().mockResolvedValue({ id: 1 }) }
 
-        process.env.ADMIN_IP_ALLOWLIST = '::ffff:127.0.0.1'
+        config.security.adminIpAllowlist = ['::ffff:127.0.0.1']
         const m = await import('../../src/http/metrics-route.js') as any
         const incSpy = vi.spyOn(m.serviceRoleBypassTotal, 'inc').mockImplementation(() => { })
 
@@ -251,29 +278,24 @@ describe('JWT middleware', () => {
         expect(res.status).toBe(403)
 
         // Now set internal key as well
-        process.env.INTERNAL_ADMIN_KEY = 'my-internal-key'
+        config.security.internalAdminKey = 'my-internal-key'
         const res2 = await request(app).get('/admin').set('Authorization', `Bearer ${serviceKey}`).set('x-internal-key', 'my-internal-key')
         expect(res2.status).toBe(200)
         expect(p.prisma.auditLog.create).toHaveBeenCalled()
         expect(incSpy).toHaveBeenCalled()
-
-        delete process.env.SUPABASE_SERVICE_ROLE_KEY
-        delete process.env.SUPABASE_SECRET_KEY
-        delete process.env.ADMIN_IP_ALLOWLIST
-        delete process.env.INTERNAL_ADMIN_KEY
     })
 
     it('maps a Supabase JWT sub (external_id) to local user and grants admin when local user is admin', async () => {
         const supabaseSub = '00b72aac-2286-48e5-955a-c8012cceb9c5'
 
         // Use a session cookie to exercise the mapping logic without JWKS/network dependence
-        process.env.SESSION_JWT_SECRET = 'session-secret'
+        config.auth.sessionJwtSecret = 'session-secret'
         const sessionToken = await new SignJWT({})
             .setProtectedHeader({ alg: 'HS256' })
             .setSubject(supabaseSub)
             .setIssuedAt()
             .setExpirationTime('2h')
-            .sign(new TextEncoder().encode(process.env.SESSION_JWT_SECRET) as any)
+            .sign(new TextEncoder().encode(config.auth.sessionJwtSecret) as any)
 
         // stub prisma user lookup by external_id
         const p = await import('../../src/db/index.js') as any
@@ -293,21 +315,19 @@ describe('JWT middleware', () => {
         const res = await request(app).get('/admin').set('Cookie', `session=${sessionToken}`)
         expect(res.status).toBe(200)
         expect(p.prisma.profile.findUnique).toHaveBeenCalled()
-
-        delete process.env.SESSION_JWT_SECRET
     })
 
     it('maps a Supabase JWT sub that is an email to local user and attaches role', async () => {
         const emailSub = 'brn.dbn@gmail.com'
 
         // Use a session cookie to exercise the mapping logic without JWKS/network dependence
-        process.env.SESSION_JWT_SECRET = 'session-secret'
+        config.auth.sessionJwtSecret = 'session-secret'
         const sessionToken = await new SignJWT({})
             .setProtectedHeader({ alg: 'HS256' })
             .setSubject(emailSub)
             .setIssuedAt()
             .setExpirationTime('2h')
-            .sign(new TextEncoder().encode(process.env.SESSION_JWT_SECRET) as any)
+            .sign(new TextEncoder().encode(config.auth.sessionJwtSecret) as any)
 
         // stub prisma user lookup by email
         const p = await import('../../src/db/index.js') as any
@@ -328,7 +348,5 @@ describe('JWT middleware', () => {
         expect(res.status).toBe(200)
         expect(res.body.user.role).toBe('user')
         expect(p.prisma.profile.findUnique).toHaveBeenCalled()
-
-        delete process.env.SESSION_JWT_SECRET
     })
 })

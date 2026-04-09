@@ -1,4 +1,5 @@
 import { setPlayback } from '../../http/playback-store.js';
+import { config } from '../../config.js';
 
 const TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
 const API_BASE = 'https://api.spotify.com/v1';
@@ -10,9 +11,9 @@ let pollHandle: NodeJS.Timeout | null = null;
 function nowMs() { return Date.now(); }
 
 async function refreshAccessToken(): Promise<string> {
-    const clientId = process.env.SPOTIFY_CLIENT_ID;
-    const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-    const refreshToken = process.env.SPOTIFY_REFRESH_TOKEN;
+    const clientId = config.spotify.clientId;
+    const clientSecret = config.spotify.clientSecret;
+    const refreshToken = config.spotify.refreshToken;
 
     if (!clientId || !clientSecret || !refreshToken) throw new Error('Spotify credentials not configured');
 
@@ -104,8 +105,7 @@ export async function getPlaylists(limit = 20, offset = 0): Promise<any> {
 }
 
 export async function startSpotifyAdapter() {
-    const enabled = !!(process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET && process.env.SPOTIFY_REFRESH_TOKEN);
-    if (!enabled) return;
+    if (!config.spotify.enabled) return;
 
     // Prime a token so errors are visible on startup
     try {
@@ -114,7 +114,7 @@ export async function startSpotifyAdapter() {
         console.error('spotify-adapter: failed to refresh token on startup', err);
     }
 
-    const intervalMs = Number(process.env.SPOTIFY_POLL_INTERVAL_MS || 15000);
+    const intervalMs = config.spotify.pollIntervalMs;
     if (pollHandle) clearInterval(pollHandle);
     // Immediately fetch once, then poll
     await fetchCurrentlyPlaying();

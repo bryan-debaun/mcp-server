@@ -1,4 +1,5 @@
 import { jwtVerify } from 'jose'
+import { config } from '../config.js'
 
 export interface SessionPayload {
     sub?: string
@@ -8,7 +9,7 @@ export interface SessionPayload {
 }
 
 export async function verifySessionToken(token: string): Promise<SessionPayload> {
-    const secret = process.env.SESSION_JWT_SECRET
+    const secret = config.auth.sessionJwtSecret
     if (!token) throw new Error('missing token')
 
     if (!secret) {

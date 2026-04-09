@@ -1,11 +1,4 @@
-// Load dotenv only in development - production environments provide variables directly
-if (process.env.NODE_ENV !== 'production') {
-    try {
-        await import('dotenv/config')
-    } catch {
-        // dotenv not available, environment variables provided by hosting platform
-    }
-}
+import { config } from '../config.js'
 
 // Export a `prisma` object that is initialized synchronously when possible.
 // If `DATABASE_URL` is set and `@prisma/client` is available (as in CI after
@@ -18,7 +11,7 @@ let prismaReadyPromise: Promise<void> | null = null
 export async function initPrisma() {
     if (prismaReadyPromise) return prismaReadyPromise
 
-    const dbUrl = process.env.DATABASE_URL
+    const dbUrl = config.database.url
     if (!dbUrl) {
         // No DB configured; provide stub methods used in tests and safe no-op model stubs to avoid
         // runtime TypeErrors when server is running without a database (e.g., preview environments).

@@ -7,6 +7,7 @@ import type {
     AddProjectItemResponse,
     UpdateFieldValueResponse
 } from "./types.js";
+import { config } from "../../config.js";
 
 /**
  * In-memory cache for project metadata
@@ -25,8 +26,8 @@ const CACHE_TTL = 5 * 60 * 1000;
  */
 function getGitHubToken(): string {
     // First try environment variable (for CI/staging)
-    if (process.env.GITHUB_TOKEN) {
-        return process.env.GITHUB_TOKEN;
+    if (config.github.token) {
+        return config.github.token;
     }
 
     // Fall back to gh CLI auth (for local development)
