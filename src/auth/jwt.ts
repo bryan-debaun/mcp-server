@@ -21,7 +21,7 @@ export async function verifySupabaseJwt(token: string): Promise<JWTPayload> {
         const res = await fetch(_jwksUrl, { method: 'GET' })
         if (!res.ok) {
             // Try fallback using publishable key (PUBLIC_SUPABASE_PUBLISHABLE_KEY) or legacy SUPABASE_ANON_KEY
-                const publishable = config.auth.supabaseAnonKey
+            const publishable = config.auth.supabaseAnonKey
             if (publishable) {
                 const fallback = `${_issuer.replace(/\/$/, '')}/auth/v1/keys?apikey=${publishable}`
                 const res2 = await fetch(fallback, { method: 'GET' })

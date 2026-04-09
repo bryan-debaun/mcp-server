@@ -218,7 +218,7 @@ describe('JWT middleware', () => {
         }
 
         // cleanup - restore previous fetch and config
-        ;(global as any).fetch = prevFetch
+        ; (global as any).fetch = prevFetch
         config.auth.supabaseJwksUrl = prevConfigJwksUrl
         config.auth.supabaseAnonKey = prevConfigAnonKey
     })
@@ -242,7 +242,7 @@ describe('JWT middleware', () => {
             .sign(privateKey as any)
 
         await expect(verifySupabaseJwt(token)).rejects.toThrow(/JWKS fetch failed/)
-        ;(global as any).fetch = prevFetch
+            ; (global as any).fetch = prevFetch
         config.auth.supabaseJwksUrl = prevConfigJwksUrl2
     })
 

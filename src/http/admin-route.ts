@@ -88,7 +88,9 @@ export function registerAdminRoute(app: Application) {
 
     // Debug endpoint to help diagnose gateway/auth issues on preview hosts.
     // Protected with the same admin checks (jwtMiddleware + requireAdmin).
-    if (config.security.adminDebugEnabled) {
+    // Hard production block: never register this endpoint in production, even if the flag is set.
+    // See: https://github.com/bryan-debaun/mcp-server/issues/18
+    if (config.security.adminDebugEnabled && !config.isProduction) {
         app.get(`${base}/_debug/headers`, jwtMiddleware, requireAdmin, async (req: Request, res: Response) => {
             const ip = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim()
             const internalKeyPresent = !!req.headers['x-internal-key']
