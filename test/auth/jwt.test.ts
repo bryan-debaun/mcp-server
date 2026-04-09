@@ -185,10 +185,10 @@ describe('JWT middleware', () => {
             throw new Error(`unexpected payload from verifySupabaseJwt: ${JSON.stringify(payload)}`)
         }
 
-        // cleanup - restore previous fetch and env
-        (global as any).fetch = prevFetch
-        delete process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY
-        process.env.SUPABASE_JWKS_URL = prevJwksEnv
+        // cleanup - restore previous fetch and config
+        ; (global as any).fetch = prevFetch
+        config.auth.supabaseJwksUrl = prevConfigJwksUrl
+        config.auth.supabaseAnonKey = prevConfigAnonKey
     })
 
     it('throws helpful error when JWKS primary and fallback fail', async () => {
@@ -212,6 +212,7 @@ describe('JWT middleware', () => {
 
         await expect(verifySupabaseJwt(token)).rejects.toThrow(/JWKS fetch failed/)
             ; (global as any).fetch = prevFetch
+        config.auth.supabaseJwksUrl = prevConfigJwksUrl2
     })
 
     it('rejects service role key when not allowed by header or IP allowlist', async () => {
