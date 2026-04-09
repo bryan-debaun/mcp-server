@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import express from 'express'
 import request from 'supertest'
+import { config } from '../../src/config.js'
 
 vi.mock('../../src/auth/magic-link.ts', () => ({
     generateMagicLinkToken: vi.fn(),
@@ -13,10 +14,21 @@ vi.mock('../../src/email.ts', () => ({
 import { RegisterRoutes } from '../../src/http/tsoa-routes.js'
 
 describe('magic-link routes', () => {
+    const origMcpKey = config.security.mcpApiKey
+    const origSvcKey = config.auth.supabaseServiceRoleKey
+    const origIss = config.auth.supabaseIss
+
     beforeEach(async () => {
         // Reset mocks and rate limits
         const mod: any = await import('../../src/http/controllers/MagicLinkController.ts')
         mod._testResetRateLimits()
+    })
+
+    afterEach(() => {
+        config.security.mcpApiKey = origMcpKey
+        config.auth.supabaseServiceRoleKey = origSvcKey
+        config.auth.supabaseIss = origIss
+        vi.restoreAllMocks()
     })
 
     it('POST /api/auth/magic-link returns 202 and sends email', async () => {
@@ -105,8 +117,8 @@ describe('magic-link routes', () => {
     })
 
     it('GET /api/auth/magic-link/verify remains public when MCP_API_KEY set', async () => {
-        const orig = process.env.MCP_API_KEY
-        process.env.MCP_API_KEY = 'testkey'
+        const origKey = config.security.mcpApiKey
+        config.security.mcpApiKey = 'testkey'
 
         const { mcpAuthMiddleware } = await import('../../src/http/middleware/mcp-auth.js')
         const app = express()
@@ -121,13 +133,12 @@ describe('magic-link routes', () => {
         expect([302, 301, 307, 308]).toContain(res.status)
         expect(res.headers['set-cookie']).toBeDefined()
 
-        if (typeof orig === 'undefined') delete process.env.MCP_API_KEY
-        else process.env.MCP_API_KEY = orig
+        config.security.mcpApiKey = origKey
     })
 
     it('POST /api/auth/magic-link/verify remains public when MCP_API_KEY set', async () => {
-        const orig = process.env.MCP_API_KEY
-        process.env.MCP_API_KEY = 'testkey'
+        const origKey2 = config.security.mcpApiKey
+        config.security.mcpApiKey = 'testkey'
 
         const { mcpAuthMiddleware } = await import('../../src/http/middleware/mcp-auth.js')
         const app = express()
@@ -142,8 +153,7 @@ describe('magic-link routes', () => {
         expect(res.status).toBe(200)
         expect(res.body).toEqual({ status: 'ok' })
 
-        if (typeof orig === 'undefined') delete process.env.MCP_API_KEY
-        else process.env.MCP_API_KEY = orig
+        config.security.mcpApiKey = origKey2
     })
 
     it('POST /api/auth/register without password fails with 400', async () => {
@@ -161,9 +171,9 @@ describe('magic-link routes', () => {
         app.use(express.json())
         RegisterRoutes(app)
 
-        // Set required env vars
-        process.env.SUPABASE_SECRET_KEY = 'test-secret-key'
-        process.env.PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
+        // Set required config values
+        config.auth.supabaseServiceRoleKey = 'test-secret-key'
+        config.auth.supabaseIss = 'https://test.supabase.co'
 
         // Mock Supabase API
         global.fetch = vi.fn().mockResolvedValue({
@@ -209,9 +219,9 @@ describe('magic-link routes', () => {
         app.use(express.json())
         RegisterRoutes(app)
 
-        // Set required env vars
-        process.env.SUPABASE_SECRET_KEY = 'test-secret-key'
-        process.env.PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
+        // Set required config values
+        config.auth.supabaseServiceRoleKey = 'test-secret-key'
+        config.auth.supabaseIss = 'https://test.supabase.co'
 
         // Mock Supabase API
         global.fetch = vi.fn().mockResolvedValue({
@@ -233,9 +243,9 @@ describe('magic-link routes', () => {
         app.use(express.json())
         RegisterRoutes(app)
 
-        // Set required env vars
-        process.env.SUPABASE_SECRET_KEY = 'test-secret-key'
-        process.env.PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
+        // Set required config values
+        config.auth.supabaseServiceRoleKey = 'test-secret-key'
+        config.auth.supabaseIss = 'https://test.supabase.co'
 
         // Mock Supabase API failure
         global.fetch = vi.fn().mockResolvedValue({

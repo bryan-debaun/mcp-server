@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { getPlayback } from './playback-store.js';
+import { config } from '../config.js';
 
 // Adapter methods are imported dynamically in registerDbDependentRoutes so tests
 // that don't enable Spotify won't fail to import this module.
@@ -44,7 +45,7 @@ export function registerSpotifyRoute(app: any) {
     // credentials and refresh token are present.
     (async () => {
         // Only attempt auto-start when the Spotify configuration looks complete.
-        if (!(process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET && process.env.SPOTIFY_REFRESH_TOKEN)) {
+        if (!config.spotify.enabled) {
             console.error('spotify-adapter: auto-start skipped (missing SPOTIFY env)');
             return;
         }

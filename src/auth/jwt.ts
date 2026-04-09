@@ -2,18 +2,16 @@ import { Request, Response, NextFunction } from 'express'
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose'
 import { verifySessionToken } from './session.js'
 import { prisma } from '../db/index.js'
+import { config } from '../config.js'
 
-const jwksUrl = process.env.SUPABASE_JWKS_URL
-
-if (!jwksUrl) {
+if (!config.auth.supabaseJwksUrl) {
     console.warn('SUPABASE_JWKS_URL not set; JWT middleware will not validate tokens')
 }
 
-
 export async function verifySupabaseJwt(token: string): Promise<JWTPayload> {
-    let _jwksUrl = process.env.SUPABASE_JWKS_URL ?? (process.env.PUBLIC_SUPABASE_URL ? `${String(process.env.PUBLIC_SUPABASE_URL).replace(/\/$/, '')}/.well-known/jwks.json` : undefined)
-    const _issuer = process.env.SUPABASE_ISS ?? process.env.PUBLIC_SUPABASE_URL
-    const _audience = process.env.SUPABASE_AUD
+    let _jwksUrl = config.auth.supabaseJwksUrl
+    const _issuer = config.auth.supabaseIss
+    const _audience = config.auth.supabaseAud
 
     if (!_jwksUrl) throw new Error('JWKS URL not configured')
     if (!_issuer || !_audience) throw new Error('SUPABASE_ISS and SUPABASE_AUD must be set')
@@ -23,7 +21,7 @@ export async function verifySupabaseJwt(token: string): Promise<JWTPayload> {
         const res = await fetch(_jwksUrl, { method: 'GET' })
         if (!res.ok) {
             // Try fallback using publishable key (PUBLIC_SUPABASE_PUBLISHABLE_KEY) or legacy SUPABASE_ANON_KEY
-            const publishable = process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY
+                const publishable = config.auth.supabaseAnonKey
             if (publishable) {
                 const fallback = `${_issuer.replace(/\/$/, '')}/auth/v1/keys?apikey=${publishable}`
                 const res2 = await fetch(fallback, { method: 'GET' })
@@ -86,7 +84,7 @@ function parseCookies(header?: string) {
 export async function jwtMiddleware(req: Request, res: Response, next: NextFunction) {
     try {
         const auth = req.headers.authorization
-        const serviceRoleKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY
+        const serviceRoleKey = config.auth.supabaseServiceRoleKey
 
         if (auth) {
             // If Authorization header exists it must be a Bearer token

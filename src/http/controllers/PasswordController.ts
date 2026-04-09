@@ -2,6 +2,7 @@ import { Controller, Route, Tags, Post, Body, Request, Response } from 'tsoa'
 import type { Request as ExpressRequest } from 'express'
 import { Counter } from 'prom-client'
 import { setSessionCookie } from './_session-utils.js'
+import { config } from '../../config.js'
 
 const passwordResetSent = new Counter({ name: 'password_reset_sent_total', help: 'Total password reset requests' })
 const passwordLoginAttempts = new Counter({ name: 'password_login_attempts_total', help: 'Total password login attempts' })
@@ -22,8 +23,8 @@ export class PasswordController extends Controller {
         // Note: per-IP rate limiting is handled elsewhere (MagicLinkController).
         // Left here as a placeholder for future enhancement.
 
-        const supabaseUrl = process.env.PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_ISS
-        const supabaseKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY
+        const supabaseUrl = config.auth.supabaseIss
+        const supabaseKey = config.auth.supabaseServiceRoleKey ?? config.auth.supabaseAnonKey
         if (!supabaseUrl || !supabaseKey) { res.status(400).json({ error: 'password not supported' }); return undefined as any }
 
         try {
@@ -58,8 +59,8 @@ export class PasswordController extends Controller {
         const password = String(body?.password || '')
         if (!email || !password) { res.status(400).json({ error: 'email and password required' }); return undefined as any }
 
-        const supabaseUrl = process.env.PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_ISS
-        const supabaseKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY
+        const supabaseUrl = config.auth.supabaseIss
+        const supabaseKey = config.auth.supabaseServiceRoleKey ?? config.auth.supabaseAnonKey
         if (!supabaseUrl || !supabaseKey) { res.status(400).json({ error: 'password not supported' }); return undefined as any }
 
         passwordLoginAttempts.inc()

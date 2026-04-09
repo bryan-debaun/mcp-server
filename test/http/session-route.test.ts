@@ -3,12 +3,13 @@ import { startHttpServer } from '../../src/http/server.js'
 import { prisma } from '../../src/db/index.js'
 import { SignJWT } from 'jose'
 import { testConnection } from '../../src/db/index.js'
+import { config } from '../../src/config.js'
 
 let server: any
 
 
 function signToken(payload: any, opts?: { expiresIn?: string }) {
-    const secret = process.env.SESSION_JWT_SECRET || 'test-secret'
+    const secret = config.auth.sessionJwtSecret || 'test-secret'
     const encoder = new TextEncoder().encode(secret)
     const jwt = new SignJWT(payload).setProtectedHeader({ alg: 'HS256' }).setIssuedAt()
     if (opts?.expiresIn) jwt.setExpirationTime(opts.expiresIn)
@@ -55,9 +56,13 @@ if (!shouldRunDbTests) {
     })
 } else {
     describe('GET /api/auth/session', () => {
-        const origMcp = process.env.MCP_API_KEY
-        beforeEach(() => { delete process.env.MCP_API_KEY })
-        afterEach(() => { if (typeof origMcp === 'undefined') delete process.env.MCP_API_KEY; else process.env.MCP_API_KEY = origMcp })
+        const origMcpApiKey = config.security.mcpApiKey
+        const origSessionSecret = config.auth.sessionJwtSecret
+        beforeEach(() => { config.security.mcpApiKey = undefined })
+        afterEach(() => {
+            config.security.mcpApiKey = origMcpApiKey
+            config.auth.sessionJwtSecret = origSessionSecret
+        })
 
         beforeAll(async () => {
             // Start server and attempt to use the real DB. If testConnection fails
@@ -115,7 +120,8 @@ if (!shouldRunDbTests) {
             // create user
             const user = await prisma.profile.create({ data: { id: `u1-${Date.now()}`, email: `u1+${Date.now()}@example.com` } })
 
-            process.env.SESSION_JWT_SECRET = process.env.SESSION_JWT_SECRET ?? 'test-secret'
+            config.auth.sessionJwtSecret = config.auth.sessionJwtSecret ?? 'test-secret'
+            process.env.SESSION_JWT_SECRET = config.auth.sessionJwtSecret
             const token = await signToken({ sub: user.email, userId: user.id }, { expiresIn: '7d' })
 
             const res = await request(server).get('/api/auth/session').set('Cookie', `session=${token}`)
@@ -124,6 +130,7 @@ if (!shouldRunDbTests) {
         })
 
         it('returns user info for dev unsigned token (base64)', async () => {
+            config.auth.sessionJwtSecret = undefined
             delete process.env.SESSION_JWT_SECRET
             const user = await prisma.profile.create({ data: { id: `u2-${Date.now()}`, email: `u2+${Date.now()}@example.com` } })
             const token = Buffer.from(JSON.stringify({ sub: user.email, userId: user.id })).toString('base64')
@@ -133,16 +140,18 @@ if (!shouldRunDbTests) {
         })
 
         it('returns 401 for invalid token', async () => {
+            config.auth.sessionJwtSecret = 'another-secret'
             process.env.SESSION_JWT_SECRET = 'another-secret'
             const res = await request(server).get('/api/auth/session').set('Cookie', `session=not-a-token`)
             expect(res.status).toBe(401)
         })
 
         it('returns 401 for expired token', async () => {
-            process.env.SESSION_JWT_SECRET = process.env.SESSION_JWT_SECRET ?? 'test-secret'
+            config.auth.sessionJwtSecret = config.auth.sessionJwtSecret ?? 'test-secret'
+            process.env.SESSION_JWT_SECRET = config.auth.sessionJwtSecret
             const user = await prisma.profile.create({ data: { id: `u3-${Date.now()}`, email: `u3+${Date.now()}@example.com` } })
             // sign an already-expired token
-            const secret = process.env.SESSION_JWT_SECRET
+            const secret = config.auth.sessionJwtSecret
             const encoder = new TextEncoder().encode(secret)
             const token = await new SignJWT({ sub: user.email, userId: user.id }).setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime(Math.floor(Date.now() / 1000) - 10).sign(encoder as any)
             const res = await request(server).get('/api/auth/session').set('Cookie', `session=${token}`)
@@ -152,6 +161,7 @@ if (!shouldRunDbTests) {
         it('rate limits per IP', async () => {
             // Set a low limit for test
             process.env.SESSION_RATE_LIMIT_PER_IP = '2'
+            config.auth.sessionJwtSecret = undefined
             delete process.env.SESSION_JWT_SECRET
             const user = await prisma.profile.create({ data: { id: `rls-${Date.now()}`, email: `rls+${Date.now()}@example.com` } })
             const token = Buffer.from(JSON.stringify({ sub: user.email, userId: user.id })).toString('base64')
