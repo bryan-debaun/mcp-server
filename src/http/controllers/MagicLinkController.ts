@@ -3,6 +3,7 @@ import type { Request as ExpressRequest } from 'express'
 import { generateMagicLinkToken, verifyMagicLinkToken } from '../../auth/magic-link.js'
 import { sendMagicLinkEmail } from '../../email.js'
 import { Counter } from 'prom-client'
+import { config } from '../../config.js'
 
 const magicLinkSent = new Counter({ name: 'magic_link_sent_total', help: 'Total magic link emails sent' })
 const magicLinkFailed = new Counter({ name: 'magic_link_failed_total', help: 'Total magic link send failures' })
@@ -12,7 +13,7 @@ const magicLinkReplayed = new Counter({ name: 'magic_link_replayed_total', help:
 // Rate limiting maps
 const ipRateMap: Map<string, { count: number; reset: number }> = new Map()
 const emailRateMap: Map<string, { count: number; reset: number }> = new Map()
-const EMAIL_LIMIT = Number(process.env.MAGIC_LINK_PER_EMAIL_LIMIT ?? 5)
+const EMAIL_LIMIT = config.auth.magicLinkPerEmailLimit
 const WINDOW_MS = 60 * 60 * 1000 // 1 hour
 
 function rateLimitIp(req: ExpressRequest): boolean {
@@ -68,7 +69,7 @@ export class MagicLinkController extends Controller {
 
                 // Compute environment-aware base for magic link URL
                 // Priority: explicit env override -> X-Forwarded headers -> request host/protocol -> fallback
-                const envBase = process.env.MAGIC_LINK_BASE_URL
+                const envBase = config.auth.magicLinkBaseUrl
                 let requestBase: string | undefined
                 try {
                     const xfProto = (request as any)?.headers?.['x-forwarded-proto']
@@ -82,7 +83,7 @@ export class MagicLinkController extends Controller {
                     }
                 } catch (e) { /* ignore */ }
 
-                const base = requestBase ?? process.env.MAGIC_LINK_BASE_URL ?? 'http://localhost:3000'
+                const base = requestBase ?? config.auth.magicLinkBaseUrl ?? 'http://localhost:3000'
 
                 await sendMagicLinkEmail(email, token, base)
                 magicLinkSent.inc()
@@ -122,13 +123,13 @@ export class MagicLinkController extends Controller {
                 return
             }
 
-            const supabaseKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY
+            const supabaseKey = config.auth.supabaseServiceRoleKey
             if (!supabaseKey) {
                 (request as any).res.status(400).json({ error: 'password registration not supported' })
                 this.setStatus(400)
                 return
             }
-            const supabaseUrl = process.env.PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_ISS
+            const supabaseUrl = config.auth.supabaseIss
             if (!supabaseUrl) {
                 (request as any).res.status(500).json({ error: 'Supabase URL not configured' })
                 this.setStatus(500)
@@ -178,7 +179,7 @@ export class MagicLinkController extends Controller {
                 const { token } = await generateMagicLinkToken(email, user.id)
 
                 // Compute base similar to send()
-                const envBase = process.env.MAGIC_LINK_BASE_URL
+                const envBase = config.auth.magicLinkBaseUrl
                 let requestBase: string | undefined
                 try {
                     const xfProto = (request as any)?.headers?.['x-forwarded-proto']
@@ -192,7 +193,7 @@ export class MagicLinkController extends Controller {
                     }
                 } catch (e) { /* ignore */ }
 
-                const base = requestBase ?? process.env.MAGIC_LINK_BASE_URL ?? 'http://localhost:3000'
+                const base = requestBase ?? config.auth.magicLinkBaseUrl ?? 'http://localhost:3000'
                 await sendMagicLinkEmail(email, token, base)
             } catch (err: any) {
                 console.error('failed to send magic link after register', err)
@@ -221,7 +222,7 @@ export class MagicLinkController extends Controller {
             await setSessionCookie(res, { sub: info.email, userId: info.userId })
             magicLinkVerified.inc()
             console.info('magic_link.verified', { email: info.email })
-            const redirect = process.env.MAGIC_LINK_SUCCESS_URL ?? (process.env.MAGIC_LINK_FRONTEND_URL ?? '/')
+            const redirect = config.auth.magicLinkSuccessUrl ?? (config.auth.magicLinkFrontendUrl ?? '/')
             try {
                 res.redirect(String(redirect))
                 return

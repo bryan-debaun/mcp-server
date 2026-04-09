@@ -13,6 +13,7 @@ import { registerAuthorsRoute } from './authors-route.js';
 import { initPrisma } from '../db/index.js';
 import { RegisterRoutes } from './tsoa-routes.js';
 import { registerSwaggerRoute } from './swagger-route.js';
+import { config } from '../config.js';
 
 export async function createHttpApp() {
     // Backwards-compatible: keep existing behavior when callers expect Prisma initialized
@@ -70,7 +71,7 @@ export async function createHttpApp() {
     app.use((err: any, _req: express.Request, res: express.Response, _next: any) => {
         try { console.error('unhandled error', err) } catch (e) { /* noop */ }
         const status = (res.statusCode && res.statusCode >= 400) ? res.statusCode : (err?.status || 500)
-        const message = (process.env.NODE_ENV === 'production') ? 'internal error' : (err?.message ?? 'internal error')
+        const message = config.isProduction ? 'internal error' : (err?.message ?? 'internal error')
         res.status(status).json({ error: message })
     })
 
@@ -172,7 +173,7 @@ export async function registerDbDependentRoutes(app: any) {
     app.use((err: any, _req: express.Request, res: express.Response, _next: any) => {
         try { console.error('unhandled error', err) } catch (e) { /* noop */ }
         const status = (res.statusCode && res.statusCode >= 400) ? res.statusCode : (err?.status || 500)
-        const message = (process.env.NODE_ENV === 'production') ? 'internal error' : (err?.message ?? 'internal error')
+        const message = config.isProduction ? 'internal error' : (err?.message ?? 'internal error')
         res.status(status).json({ error: message })
     })
 
@@ -207,12 +208,12 @@ export async function startHttpServer(port: number, host?: string, opts?: { earl
     const app = createBasicApp();
 
     return new Promise((resolve) => {
-        const bindHost = host ?? process.env.HOST ?? '0.0.0.0';
+        const bindHost = host ?? config.server.host;
         const server = app.listen(port, bindHost, async () => {
             console.error(`HTTP server listening on ${bindHost}:${port}`);
 
             // Attach WebSocket server for MCP remote transport when enabled via MCP_API_KEY
-            const mcpKey = process.env.MCP_API_KEY
+            const mcpKey = config.security.mcpApiKey
             if (mcpKey) {
                 const wss = new WebSocketServer({ server, path: '/mcp/ws' })
                 wss.on('connection', (ws, req) => {
@@ -239,7 +240,7 @@ export async function startHttpServer(port: number, host?: string, opts?: { earl
                 console.error('MCP WebSocket endpoint enabled at /mcp/ws')
             }
 
-            const early = opts?.earlyStart === true || process.env.EARLY_START === 'true'
+            const early = opts?.earlyStart === true || config.server.earlyStart
 
             // Initialize Prisma and register DB-dependent routes.
             // If `early` is true, do this in the background and resolve immediately.

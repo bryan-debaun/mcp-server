@@ -1,6 +1,7 @@
 import { Controller, Post, Route, Tags, Body, SuccessResponse, Response } from 'tsoa'
 import fs from 'fs'
 import path from 'path'
+import { config } from '../../config.js'
 
 interface SeedRequest {
     code?: string
@@ -44,9 +45,9 @@ export class SpotifyAdminController extends Controller {
 
             // If an authorization code was provided, exchange it for tokens
             if (body.code) {
-                const clientId = process.env.SPOTIFY_CLIENT_ID
-                const clientSecret = process.env.SPOTIFY_CLIENT_SECRET
-                const redirectUri = process.env.SPOTIFY_REDIRECT_URI
+                const clientId = config.spotify.clientId
+                const clientSecret = config.spotify.clientSecret
+                const redirectUri = config.spotify.redirectUri
                 if (!clientId || !clientSecret || !redirectUri) {
                     this.setStatus(400)
                     const err: any = new Error('SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET / SPOTIFY_REDIRECT_URI must be configured to exchange code')
@@ -83,11 +84,12 @@ export class SpotifyAdminController extends Controller {
             }
 
             // Set in-process so adapter picks it up immediately
+            // Runtime write: seeds the token in-process after OAuth callback; config.spotify.refreshToken reflects startup value only
             process.env.SPOTIFY_REFRESH_TOKEN = refreshToken
 
             // Persist to .env.local in development for convenience (do NOT persist in test/prod)
             let persisted = false
-            if ((process.env.NODE_ENV || 'development') === 'development') {
+            if (!config.isProduction) {
                 try {
                     const envPath = path.resolve(process.cwd(), '.env.local')
                     let content = ''

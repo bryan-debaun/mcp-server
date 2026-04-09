@@ -3,16 +3,17 @@ import express from 'express'
 import request from 'supertest'
 
 import { RegisterRoutes } from '../../src/http/tsoa-routes.js'
+import { config } from '../../src/config.js'
 
 describe('password routes', () => {
-    const origUrl = process.env.PUBLIC_SUPABASE_URL
-    const origKey = process.env.SUPABASE_SECRET_KEY
+    const origIss = config.auth.supabaseIss
+    const origSvcKey = config.auth.supabaseServiceRoleKey
+    const origAnonKey = config.auth.supabaseAnonKey
 
     afterEach(() => {
-        if (typeof origUrl === 'undefined') delete process.env.PUBLIC_SUPABASE_URL
-        else process.env.PUBLIC_SUPABASE_URL = origUrl
-        if (typeof origKey === 'undefined') delete process.env.SUPABASE_SECRET_KEY
-        else process.env.SUPABASE_SECRET_KEY = origKey
+        config.auth.supabaseIss = origIss
+        config.auth.supabaseServiceRoleKey = origSvcKey
+        config.auth.supabaseAnonKey = origAnonKey
         vi.restoreAllMocks()
     })
 
@@ -35,8 +36,8 @@ describe('password routes', () => {
     })
 
     it('POST /api/auth/password/reset-request calls Supabase recover and returns 200', async () => {
-        process.env.PUBLIC_SUPABASE_URL = 'https://supabase.example'
-        process.env.SUPABASE_SECRET_KEY = 'srk'
+        config.auth.supabaseIss = 'https://supabase.example'
+        config.auth.supabaseServiceRoleKey = 'srk'
 
         vi.stubGlobal('fetch', async (url: string, _opts?: any) => {
             expect(url).toMatch(/supabase.example\/auth\/v1\/recover$/)
@@ -74,8 +75,8 @@ describe('password routes', () => {
     })
 
     it('POST /api/auth/password/login returns 401 on invalid credentials', async () => {
-        process.env.PUBLIC_SUPABASE_URL = 'https://supabase.example'
-        process.env.SUPABASE_SECRET_KEY = 'srk'
+        config.auth.supabaseIss = 'https://supabase.example'
+        config.auth.supabaseServiceRoleKey = 'srk'
 
         vi.stubGlobal('fetch', async (url: string, _opts?: any) => {
             expect(url).toMatch(/supabase.example\/auth\/v1\/token\?grant_type=password$/)
@@ -92,8 +93,8 @@ describe('password routes', () => {
     })
 
     it('POST /api/auth/password/login sets session cookie on success', async () => {
-        process.env.PUBLIC_SUPABASE_URL = 'https://supabase.example'
-        process.env.SUPABASE_SECRET_KEY = 'srk'
+        config.auth.supabaseIss = 'https://supabase.example'
+        config.auth.supabaseServiceRoleKey = 'srk'
 
         vi.stubGlobal('fetch', async (url: string, _opts?: any) => {
             expect(url).toMatch(/supabase.example\/auth\/v1\/token\?grant_type=password$/)
@@ -111,12 +112,9 @@ describe('password routes', () => {
     })
 
     it('POST /api/auth/password/login returns 400 when SUPABASE not configured', async () => {
-        delete process.env.PUBLIC_SUPABASE_URL
-        delete process.env.SUPABASE_SECRET_KEY
-        delete process.env.SUPABASE_ISS
-        delete process.env.SUPABASE_ANON_KEY
-        delete process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY
-        delete process.env.SUPABASE_SERVICE_ROLE_KEY
+        config.auth.supabaseIss = undefined
+        config.auth.supabaseServiceRoleKey = undefined
+        config.auth.supabaseAnonKey = undefined
 
         const app = express()
         app.use(express.json())

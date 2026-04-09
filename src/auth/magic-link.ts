@@ -1,7 +1,8 @@
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose'
+import { config } from '../config.js'
 
 const EXP_MINUTES = 15
-const SECRET = process.env.MAGIC_LINK_JWT_SECRET
+const SECRET = config.auth.magicLinkJwtSecret
 
 if (!SECRET) {
     console.warn('MAGIC_LINK_JWT_SECRET not set; magic-link token signing will fail')
@@ -18,7 +19,7 @@ export async function generateMagicLinkToken(email: string, userId?: number) {
 
     // Fail fast when no DB configured — magic-link persistence requires a DB
     // Allow tests that inject a global `__TEST_PRISMA_MOCK__` to proceed
-    if (!process.env.DATABASE_URL && !(globalThis as any).__TEST_PRISMA_MOCK__) {
+    if (!config.database.url && !(globalThis as any).__TEST_PRISMA_MOCK__) {
         throw new Error('DATABASE_URL not configured')
     }
 
@@ -36,7 +37,7 @@ export async function generateMagicLinkToken(email: string, userId?: number) {
 
     // If Prisma model isn't available (e.g., running unit tests where the real DB module
     // was loaded before the mock), create a small in-memory fallback while running tests
-    if (!prisma?.authMagicLink && process.env.NODE_ENV === 'test') {
+    if (!prisma?.authMagicLink && config.isTest) {
         const store = new Map<string, any>()
         prisma = {
             authMagicLink: {
@@ -82,7 +83,7 @@ export async function verifyMagicLinkToken(token: string) {
 
         // Require a configured database for token verification (single-use check)
         // Allow tests that inject a global `__TEST_PRISMA_MOCK__` to proceed
-        if (!process.env.DATABASE_URL && !(globalThis as any).__TEST_PRISMA_MOCK__) {
+        if (!config.database.url && !(globalThis as any).__TEST_PRISMA_MOCK__) {
             throw new Error('DATABASE_URL not configured')
         }
 
@@ -92,7 +93,7 @@ export async function verifyMagicLinkToken(token: string) {
             const mod: any = await import('../db/index.js')
             prisma = mod?.prisma ?? mod?.default?.prisma
         }
-        if (!prisma?.authMagicLink && process.env.NODE_ENV === 'test') {
+        if (!prisma?.authMagicLink && config.isTest) {
             const store = new Map<string, any>()
             prisma = {
                 authMagicLink: {

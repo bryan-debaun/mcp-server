@@ -8,26 +8,27 @@ vi.mock('../../src/adapters/spotify/spotify-adapter', () => ({
 }))
 
 import { registerDbDependentRoutes } from '../../src/http/server.js'
+import { config } from '../../src/config.js'
 
 describe('Spotify adapter auto-start', () => {
-    const origClientId = process.env.SPOTIFY_CLIENT_ID
-    const origClientSecret = process.env.SPOTIFY_CLIENT_SECRET
-    const origRefresh = process.env.SPOTIFY_REFRESH_TOKEN
+    const origEnabled = config.spotify.enabled
+    const origClientId = config.spotify.clientId
+    const origClientSecret = config.spotify.clientSecret
+    const origRefresh = config.spotify.refreshToken
 
     beforeEach(() => {
         vi.resetAllMocks()
-        delete process.env.SPOTIFY_CLIENT_ID
-        delete process.env.SPOTIFY_CLIENT_SECRET
-        delete process.env.SPOTIFY_REFRESH_TOKEN
+        config.spotify.enabled = false
+        config.spotify.clientId = undefined
+        config.spotify.clientSecret = undefined
+        config.spotify.refreshToken = undefined
     })
 
     afterEach(() => {
-        if (typeof origClientId === 'undefined') delete process.env.SPOTIFY_CLIENT_ID
-        else process.env.SPOTIFY_CLIENT_ID = origClientId
-        if (typeof origClientSecret === 'undefined') delete process.env.SPOTIFY_CLIENT_SECRET
-        else process.env.SPOTIFY_CLIENT_SECRET = origClientSecret
-        if (typeof origRefresh === 'undefined') delete process.env.SPOTIFY_REFRESH_TOKEN
-        else process.env.SPOTIFY_REFRESH_TOKEN = origRefresh
+        config.spotify.enabled = origEnabled
+        config.spotify.clientId = origClientId
+        config.spotify.clientSecret = origClientSecret
+        config.spotify.refreshToken = origRefresh
     })
 
     it('does not attempt to auto-start when SPOTIFY env missing', async () => {
@@ -38,9 +39,10 @@ describe('Spotify adapter auto-start', () => {
     })
 
     it('requests adapter auto-start when SPOTIFY envs are present', async () => {
-        process.env.SPOTIFY_CLIENT_ID = 'x'
-        process.env.SPOTIFY_CLIENT_SECRET = 'y'
-        process.env.SPOTIFY_REFRESH_TOKEN = 'z'
+        config.spotify.enabled = true
+        config.spotify.clientId = 'x'
+        config.spotify.clientSecret = 'y'
+        config.spotify.refreshToken = 'z'
 
         const app = express()
         app.use(express.json())

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import { prisma } from '../db/index.js'
 import { serviceRoleBypassTotal } from '../http/metrics-route.js'
+import { config } from '../config.js'
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     const user = (req as any).user
@@ -8,8 +9,8 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     // If the request was authenticated using the service role (jwtMiddleware marks it with user.service=true),
     // perform hardened checks: require BOTH internal header key and IP to be allowlisted (Option A).
     if (user && user.service) {
-        const internalKey = process.env.INTERNAL_ADMIN_KEY
-        const allowlist = (process.env.ADMIN_IP_ALLOWLIST || '').split(',').map(s => s.trim()).filter(Boolean)
+        const internalKey = config.security.internalAdminKey
+        const allowlist = config.security.adminIpAllowlist
         const clientIp = ((req.headers['x-forwarded-for'] || req.ip) as string).toString().split(',')[0].trim()
 
         const headerOk = internalKey ? req.headers['x-internal-key'] === internalKey : false

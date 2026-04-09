@@ -1,11 +1,13 @@
+import { config } from './config.js'
+
 export async function sendInviteEmail(email: string, token: string) {
-    const inviteBase = process.env.INVITE_BASE_URL ?? 'http://localhost:3000'
+    const inviteBase = config.email.inviteBaseUrl
     const inviteUrl = `${inviteBase}/accept?token=${token}`
 
-    const sendgridKey = process.env.SENDGRID_API_KEY
+    const sendgridKey = config.email.sendgridApiKey
     if (sendgridKey) {
-        const fromEmail = process.env.FROM_EMAIL ?? 'noreply@example.com'
-        const fromName = process.env.SENDER_NAME ?? 'MCP Server'
+        const fromEmail = config.email.senderEmail ?? 'noreply@example.com'
+        const fromName = config.email.senderName
         const payload = {
             personalizations: [{ to: [{ email }], subject: 'You are invited' }],
             from: { email: fromEmail, name: fromName },
@@ -33,12 +35,12 @@ export async function sendInviteEmail(email: string, token: string) {
 }
 
 export async function sendMagicLinkEmail(email: string, token: string, baseOverride?: string) {
-    const base = baseOverride ?? process.env.MAGIC_LINK_BASE_URL ?? 'http://localhost:3000'
+    const base = baseOverride ?? config.auth.magicLinkBaseUrl
     const url = `${base}/auth/magic-link/verify?token=${encodeURIComponent(token)}`
 
-    const sendgridKey = process.env.SENDGRID_API_KEY
-    const from = process.env.SENDER_EMAIL ?? process.env.FROM_EMAIL ?? 'no-reply@example.com'
-    const supportEmail = process.env.SUPPORT_EMAIL ?? 'support@bryandebaun.dev'
+    const sendgridKey = config.email.sendgridApiKey
+    const from = config.email.senderEmail ?? 'no-reply@example.com'
+    const supportEmail = config.email.supportEmail
 
     // Preheader visible in inbox preview; include as hidden text in HTML
     const preheader = 'Use this link to sign in to MCP Server — expires in 15 minutes.'
@@ -62,11 +64,10 @@ export async function sendMagicLinkEmail(email: string, token: string, baseOverr
 
         const text = `Sign in to MCP Server\n\nUse this link to sign in (expires in 15 minutes): ${url}\n\nIf you did not request this email, you can ignore it or contact ${supportEmail}.`
 
-        // Respect env override to disable click tracking if needed (useful for tests or preview)
-        const clickTrackingEnabled = (process.env.SENDGRID_CLICK_TRACKING ?? 'true') !== 'false'
+        const clickTrackingEnabled = config.email.clickTrackingEnabled
 
         const fromEmail = from
-        const fromName = process.env.SENDER_NAME ?? 'bryandebaun.dev'
+        const fromName = config.email.senderName
         const payload: any = {
             personalizations: [{ to: [{ email }], subject: 'Sign in to MCP Server' }],
             from: { email: fromEmail, name: fromName },
