@@ -24,3 +24,11 @@ Next manual steps (if a new row was created):
 
 - This script intentionally does not create or modify Supabase Auth users automatically to avoid leaking passwords or creating unwanted accounts in production.
 - Prefer manual creation in Supabase Auth and then use this script to mark the corresponding DB row `isAdmin = true`.
+
+## Security alerts
+
+**Service role bypass** (`service_role_bypass_total`)
+
+If you see unexpected increments in the `service_role_bypass_total` Prometheus counter
+(visible at `GET /metrics`), follow the response steps in
+[docs/runbooks/service-role-bypass.md](runbooks/service-role-bypass.md).
