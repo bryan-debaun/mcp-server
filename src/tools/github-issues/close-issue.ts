@@ -1,16 +1,13 @@
-import fs from "fs";
-import os from "os";
-import path from "path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { CloseIssueInputSchema } from "./schemas.js";
-import { runGhCommand } from "./gh-cli.js";
+import { createOctokitClient, parseRepo } from "./octokit.js";
 import { createSuccessResult, createErrorResult } from "./results.js";
 
 const name = "close-issue";
-const config = {
+const toolConfig = {
     title: "Close Issue",
-    description: "Close a GitHub issue with an optional comment (supports Markdown/file)",
+    description: "Close a GitHub issue with an optional comment (supports Markdown)",
     inputSchema: CloseIssueInputSchema
 };
 
@@ -20,10 +17,8 @@ const config = {
 export function registerCloseIssueTool(server: McpServer): void {
     (server as any).registerTool(
         name,
-        config,
+        toolConfig,
         async (args: any): Promise<CallToolResult> => {
-            let tempFile: string | undefined;
-
             try {
                 const { repo, issueNumber, comment } = args as {
                     repo: string;
@@ -31,52 +26,35 @@ export function registerCloseIssueTool(server: McpServer): void {
                     comment?: string;
                 };
 
+                const { owner, repo: repoName } = parseRepo(repo);
+                const octokit = createOctokitClient();
+
                 // Add comment first if provided
                 if (comment) {
-                    if (comment.includes("\n")) {
-                        tempFile = path.join(os.tmpdir(), `mcp-issue-comment-${Date.now()}.md`);
-                        fs.writeFileSync(tempFile, comment, "utf8");
-                        const commentArgs = [
-                            "issue", "comment",
-                            String(issueNumber),
-                            "--repo", repo,
-                            "--body-file", tempFile
-                        ];
-
-                        await runGhCommand(commentArgs);
-                    } else {
-                        const commentArgs = [
-                            "issue", "comment",
-                            String(issueNumber),
-                            "--repo", repo,
-                            "--body", `"${comment.replace(/"/g, '\\"')}"`
-                        ];
-
-                        await runGhCommand(commentArgs);
-                    }
+                    await octokit.rest.issues.createComment({
+                        owner,
+                        repo: repoName,
+                        issue_number: issueNumber,
+                        body: comment,
+                    });
                 }
 
                 // Close the issue
-                const closeArgs = [
-                    "issue", "close",
-                    String(issueNumber),
-                    "--repo", repo
-                ];
-
-                await runGhCommand(closeArgs);
+                await octokit.rest.issues.update({
+                    owner,
+                    repo: repoName,
+                    issue_number: issueNumber,
+                    state: "closed",
+                });
 
                 return createSuccessResult({
                     message: `Issue #${issueNumber} closed successfully`,
                     repository: repo,
-                    commentAdded: !!comment
+                    commentAdded: !!comment,
                 });
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
                 return createErrorResult(message);
-            } finally {
-                if (tempFile) {
-                    try { fs.unlinkSync(tempFile); } catch { /* ignore */ }
-                }
             }
         }
     );

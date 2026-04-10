@@ -1,16 +1,14 @@
 import fs from "fs";
-import os from "os";
-import path from "path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { CreateIssueInputSchema } from "./schemas.js";
-import { runGhCommand } from "./gh-cli.js";
+import { createOctokitClient, parseRepo } from "./octokit.js";
 import { createSuccessResult, createErrorResult } from "./results.js";
 import { jsonToMarkdown } from "./json-to-markdown.js";
 import { ensureLabelsExist } from "./label-helper.js";
 
 const name = "create-issue";
-const config = {
+const toolConfig = {
     title: "Create Issue",
     description: "Create a new GitHub issue with title, body (Markdown allowed), file, or JSON payload",
     inputSchema: CreateIssueInputSchema
@@ -22,71 +20,66 @@ const config = {
 export function registerCreateIssueTool(server: McpServer): void {
     (server as any).registerTool(
         name,
-        config,
+        toolConfig,
         async (args: any): Promise<CallToolResult> => {
-            let tempFile: string | undefined;
-
             try {
-                const { repo, title, body, bodyFile, bodyJson, labels } = args as {
+                const { repo, title, body, bodyFile, bodyJson, labels, assignees, milestone } = args as {
                     repo: string;
                     title: string;
                     body?: string;
                     bodyFile?: string;
                     bodyJson?: any;
                     labels?: string;
+                    assignees?: string;
+                    milestone?: number;
                 };
 
-                const ghArgs = [
-                    "issue", "create",
-                    "--repo", repo,
-                    "--title", `"${title.replace(/"/g, '\\"')}"`
-                ];
+                const { owner, repo: repoName } = parseRepo(repo);
+                const octokit = createOctokitClient();
 
-                // Ensure labels exist before attempting to assign them
-                if (labels) {
-                    const requested = labels.split(",").map(s => s.trim()).filter(Boolean);
-                    await ensureLabelsExist(repo, requested);
-                }
-
-                // Determine how to provide the body to gh: prefer file when multi-line, when
-                // `bodyFile` is provided, or when caller passed `bodyJson`.
+                // Resolve body content
+                let resolvedBody: string | undefined;
                 if (bodyFile) {
-                    ghArgs.push("--body-file", bodyFile);
+                    resolvedBody = fs.readFileSync(bodyFile, "utf8");
                 } else if (bodyJson !== undefined) {
-                    const md = jsonToMarkdown(bodyJson);
-                    tempFile = path.join(os.tmpdir(), `mcp-issue-body-${Date.now()}.md`);
-                    fs.writeFileSync(tempFile, md, "utf8");
-                    ghArgs.push("--body-file", tempFile);
-                } else if (body && body.includes("\n")) {
-                    tempFile = path.join(os.tmpdir(), `mcp-issue-body-${Date.now()}.md`);
-                    fs.writeFileSync(tempFile, body, "utf8");
-                    ghArgs.push("--body-file", tempFile);
-                } else if (body) {
-                    ghArgs.push("--body", `"${body.replace(/"/g, '\\"')}"`);
+                    resolvedBody = jsonToMarkdown(bodyJson);
+                } else {
+                    resolvedBody = body;
                 }
 
+                // Ensure labels exist before assigning
                 if (labels) {
-                    ghArgs.push("--label", labels);
+                    const requested = labels.split(",").map((s) => s.trim()).filter(Boolean);
+                    await ensureLabelsExist(octokit, owner, repoName, requested);
                 }
 
-                const output = await runGhCommand(ghArgs);
+                const labelList = labels
+                    ? labels.split(",").map((s) => s.trim()).filter(Boolean)
+                    : undefined;
+                const assigneeList = assignees
+                    ? assignees.split(",").map((s) => s.trim()).filter(Boolean)
+                    : undefined;
 
-                // gh issue create returns the URL of the created issue
-                const issueUrl = output.trim();
-                const issueNumber = issueUrl.split("/").pop();
+                const response = await octokit.rest.issues.create({
+                    owner,
+                    repo: repoName,
+                    title,
+                    body: resolvedBody,
+                    labels: labelList,
+                    assignees: assigneeList,
+                    milestone: milestone,
+                });
 
+                const issue = response.data;
                 return createSuccessResult({
-                    message: `Issue #${issueNumber} created successfully`,
-                    url: issueUrl,
-                    title: title
+                    message: `Issue #${issue.number} created successfully`,
+                    url: issue.html_url,
+                    number: issue.number,
+                    title: issue.title,
                 });
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
                 return createErrorResult(message);
-            } finally {
-                if (tempFile) {
-                    try { fs.unlinkSync(tempFile); } catch { /* ignore */ }
-                }
             }
         }
     );

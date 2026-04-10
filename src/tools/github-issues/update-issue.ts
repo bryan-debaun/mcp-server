@@ -1,18 +1,16 @@
 import fs from "fs";
-import os from "os";
-import path from "path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { UpdateIssueInputSchema } from "./schemas.js";
-import { runGhCommand } from "./gh-cli.js";
+import { createOctokitClient, parseRepo } from "./octokit.js";
 import { createSuccessResult, createErrorResult } from "./results.js";
 import { jsonToMarkdown } from "./json-to-markdown.js";
 import { ensureLabelsExist } from "./label-helper.js";
 
 const name = "update-issue";
-const config = {
+const toolConfig = {
     title: "Update Issue",
-    description: "Update a GitHub issue's title, body (Markdown allowed), labels, or add a comment",
+    description: "Update a GitHub issue's title, body, labels, assignees, milestone, state, or add a comment",
     inputSchema: UpdateIssueInputSchema
 };
 
@@ -22,12 +20,13 @@ const config = {
 export function registerUpdateIssueTool(server: McpServer): void {
     (server as any).registerTool(
         name,
-        config,
+        toolConfig,
         async (args: any): Promise<CallToolResult> => {
-            let tempFile: string | undefined;
-
             try {
-                const { repo, issueNumber, title, body, bodyFile, bodyJson, labels, comment } = args as {
+                const {
+                    repo, issueNumber, title, body, bodyFile, bodyJson,
+                    labels, removeLabels, assignees, milestone, state, stateReason, comment
+                } = args as {
                     repo: string;
                     issueNumber: number;
                     title?: string;
@@ -35,102 +34,96 @@ export function registerUpdateIssueTool(server: McpServer): void {
                     bodyFile?: string;
                     bodyJson?: any;
                     labels?: string;
+                    removeLabels?: string;
+                    assignees?: string;
+                    milestone?: number;
+                    state?: "open" | "closed";
+                    stateReason?: "completed" | "not_planned" | "reopened";
                     comment?: string;
                 };
 
+                const { owner, repo: repoName } = parseRepo(repo);
+                const octokit = createOctokitClient();
                 const updates: string[] = [];
 
-                // Update issue fields if provided
-                if (title || body || labels || bodyFile || bodyJson) {
-                    const editArgs = [
-                        "issue", "edit",
-                        String(issueNumber),
-                        "--repo", repo
-                    ];
-
-                    if (title) {
-                        editArgs.push("--title", `"${title.replace(/"/g, '\\"')}"`);
-                        updates.push("title");
-                    }
-
-                    // Ensure labels exist before assigning
-                    if (labels) {
-                        const requested = labels.split(",").map(s => s.trim()).filter(Boolean);
-                        await ensureLabelsExist(repo, requested);
-                        editArgs.push("--add-label", labels);
-                        updates.push("labels");
-                    }
-
-                    // Body handling: prefer file when provided / multi-line / JSON
-                    if (bodyFile) {
-                        editArgs.push("--body-file", bodyFile);
-                        updates.push("body");
-                    } else if (bodyJson !== undefined) {
-                        const md = jsonToMarkdown(bodyJson);
-                        tempFile = path.join(os.tmpdir(), `mcp-issue-body-${Date.now()}.md`);
-                        fs.writeFileSync(tempFile, md, "utf8");
-                        editArgs.push("--body-file", tempFile);
-                        updates.push("body");
-                    } else if (body && body.includes("\n")) {
-                        tempFile = path.join(os.tmpdir(), `mcp-issue-body-${Date.now()}.md`);
-                        fs.writeFileSync(tempFile, body, "utf8");
-                        editArgs.push("--body-file", tempFile);
-                        updates.push("body");
-                    } else if (body) {
-                        editArgs.push("--body", `"${body.replace(/"/g, '\\"')}"`);
-                        updates.push("body");
-                    }
-
-                    await runGhCommand(editArgs);
+                // Resolve body content
+                let resolvedBody: string | undefined;
+                if (bodyFile) {
+                    resolvedBody = fs.readFileSync(bodyFile, "utf8");
+                    updates.push("body");
+                } else if (bodyJson !== undefined) {
+                    resolvedBody = jsonToMarkdown(bodyJson);
+                    updates.push("body");
+                } else if (body !== undefined) {
+                    resolvedBody = body;
+                    updates.push("body");
                 }
 
-                // Add comment if provided. Use --body-file for multiline/large comments
-                if (comment) {
-                    if (comment.includes('\n') || comment.length > 1000) {
-                        tempFile = path.join(os.tmpdir(), `mcp-issue-comment-${Date.now()}.md`);
-                        fs.writeFileSync(tempFile, comment, 'utf8');
+                if (title) updates.push("title");
+                if (state) updates.push("state");
+                if (milestone !== undefined) updates.push("milestone");
 
-                        const commentArgs = [
-                            "issue", "comment",
-                            String(issueNumber),
-                            "--repo", repo,
-                            "--body-file", tempFile
-                        ];
+                // Ensure labels exist before adding
+                if (labels) {
+                    const requested = labels.split(",").map((s) => s.trim()).filter(Boolean);
+                    await ensureLabelsExist(octokit, owner, repoName, requested);
+                    updates.push("labels");
+                }
 
-                        await runGhCommand(commentArgs);
-                    } else {
-                        const commentArgs = [
-                            "issue", "comment",
-                            String(issueNumber),
-                            "--repo", repo,
-                            "--body", `"${comment.replace(/"/g, '\\"')}"`
-                        ];
+                // Step 1: Update issue fields (title, body, state, milestone, assignees, stateReason)
+                const hasIssueUpdate = title !== undefined || resolvedBody !== undefined ||
+                    state !== undefined || milestone !== undefined || assignees !== undefined;
 
-                        await runGhCommand(commentArgs);
+                if (hasIssueUpdate) {
+                    await octokit.rest.issues.update({
+                        owner,
+                        repo: repoName,
+                        issue_number: issueNumber,
+                        ...(title !== undefined && { title }),
+                        ...(resolvedBody !== undefined && { body: resolvedBody }),
+                        ...(state !== undefined && { state }),
+                        ...(state === "closed" && stateReason ? { state_reason: stateReason } : {}),
+                        ...(milestone !== undefined && { milestone: milestone === 0 ? null : milestone }),
+                        ...(assignees !== undefined && {
+                            assignees: assignees.split(",").map((s) => s.trim()).filter(Boolean)
+                        }),
+                    });
+                    if (assignees !== undefined) updates.push("assignees");
+                }
+
+                // Step 2: Add labels
+                if (labels) {
+                    const labelList = labels.split(",").map((s) => s.trim()).filter(Boolean);
+                    await octokit.rest.issues.addLabels({ owner, repo: repoName, issue_number: issueNumber, labels: labelList });
+                }
+
+                // Step 3: Remove labels
+                if (removeLabels) {
+                    const toRemove = removeLabels.split(",").map((s) => s.trim()).filter(Boolean);
+                    for (const label of toRemove) {
+                        await octokit.rest.issues.removeLabel({ owner, repo: repoName, issue_number: issueNumber, name: label });
                     }
+                    updates.push("removeLabels");
+                }
 
+                // Step 4: Add comment
+                if (comment) {
+                    await octokit.rest.issues.createComment({ owner, repo: repoName, issue_number: issueNumber, body: comment });
                     updates.push("comment added");
                 }
 
                 if (updates.length === 0) {
-                    return createSuccessResult({
-                        message: "No updates provided",
-                        issueNumber: issueNumber
-                    });
+                    return createSuccessResult({ message: "No updates provided", issueNumber });
                 }
 
                 return createSuccessResult({
                     message: `Issue #${issueNumber} updated successfully`,
-                    updates: updates,
-                    repository: repo
+                    updates,
+                    repository: repo,
                 });
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
                 return createErrorResult(message);
-            } finally {
-                if (tempFile) {
-                    try { fs.unlinkSync(tempFile); } catch { /* ignore */ }
-                }
             }
         }
     );

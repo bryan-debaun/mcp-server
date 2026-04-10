@@ -5,6 +5,9 @@ import { registerUpdateProjectFieldTool } from "./update-project-field.js";
 import { registerDeleteProjectFieldTool } from "./delete-project-field.js";
 import { registerSetProjectFieldValueTool } from "./set-project-field-value.js";
 import { registerBulkSetProjectFieldValuesTool } from "./bulk-set-project-field-values.js";
+import { registerListProjectItemsTool } from "./list-project-items.js";
+import { registerGetProjectStatusOptionsTool } from "./get-project-status-options.js";
+import { registerCreateIssueInProjectTool } from "./create-issue-in-project.js";
 
 /**
  * Registers all GitHub Projects V2 tools with the MCP server.
@@ -19,4 +22,11 @@ export function registerGitHubProjectsTools(server: McpServer): void {
     // Value operations
     registerSetProjectFieldValueTool(server);
     registerBulkSetProjectFieldValuesTool(server);
+
+    // Board visibility
+    registerListProjectItemsTool(server);
+    registerGetProjectStatusOptionsTool(server);
+
+    // Atomic workflows
+    registerCreateIssueInProjectTool(server);
 }
