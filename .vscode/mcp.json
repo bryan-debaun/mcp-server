@@ -1,14 +1,19 @@
 {
     "servers": {
         "bryan-debaun-mcp": {
-            "type": "stdio",
-            "command": "node",
-            "args": [
-                "C:/Users/brndb/mcp-server/dist/index.js"
-            ],
-            "env": {
-                "MCP_TRANSPORT": "stdio"
+            "type": "http",
+            "url": "https://bad-mcp.onrender.com/mcp",
+            "headers": {
+                "Authorization": "Bearer ${input:mcpApiKey}"
             }
         }
-    }
+    },
+    "inputs": [
+        {
+            "id": "mcpApiKey",
+            "type": "promptString",
+            "description": "MCP API Key",
+            "password": true
+        }
+    ]
 }
