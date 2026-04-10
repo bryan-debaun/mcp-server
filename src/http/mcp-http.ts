@@ -204,7 +204,7 @@ export function registerMcpHttp(app: Application): void {
             console.error('mcp-http: POST /mcp registering tools and connecting');
             try {
                 await serverInstance.connect(transport as any);
-                await transport.handleRequest(req, res);
+                await transport.handleRequest(req as any, res as any, req.body);
                 console.error('mcp-http: mcp http request handled');
             } catch (err) {
                 console.error('mcp-http: mcp http connect/handle failed', err);
