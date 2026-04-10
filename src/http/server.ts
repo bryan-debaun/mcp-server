@@ -177,25 +177,6 @@ export async function registerDbDependentRoutes(app: any) {
         res.status(status).json({ error: message })
     })
 
-    // MCP HTTP transport (HTTP Stream + SSE fallback)
-    try {
-        const mod = await import('./mcp-http.js');
-        try {
-            mod.registerMcpHttp(app);
-            console.error('registered MCP HTTP transport (routes mounted at /mcp)');
-            try {
-                const routes = (app as any)._router?.stack?.filter((l: any) => l.route).map((l: any) => ({ path: l.route.path, methods: l.route.methods }));
-                console.error('registered routes:', JSON.stringify(routes));
-            } catch (e) {
-                console.error('failed to enumerate routes', e);
-            }
-        } catch (err) {
-            console.error('failed to register MCP HTTP transport', err)
-        }
-    } catch (err) {
-        console.error('failed to import MCP HTTP transport', err)
-    }
-
     // Basic 404 handler (must be registered after all other routes so it doesn't
     // intercept later-registered DB-dependent routes)
     app.use((_req: any, res: any) => res.status(404).json({ error: "not found" }));
@@ -241,6 +222,16 @@ export async function startHttpServer(port: number, host?: string, opts?: { earl
             }
 
             const early = opts?.earlyStart === true || config.server.earlyStart
+
+            // Register MCP HTTP transport immediately — no DB dependency at route-registration
+            // time. Tool handlers that need Prisma will lazily call initPrisma themselves.
+            try {
+                const mod = await import('./mcp-http.js');
+                mod.registerMcpHttp(app);
+                console.error('registered MCP HTTP transport (routes mounted at /mcp)');
+            } catch (err) {
+                console.error('failed to register MCP HTTP transport', err)
+            }
 
             // Initialize Prisma and register DB-dependent routes.
             // If `early` is true, do this in the background and resolve immediately.
