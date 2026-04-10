@@ -1,56 +1,40 @@
 // Input schemas for video game-related MCP tools
+import { z } from "zod";
+
+const StatusEnum = z.enum(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED']);
+const PlatformEnum = z.enum(['PlayStation', 'Xbox', 'PC']);
 
 export const CreateVideoGameInputSchema = {
-    type: "object",
-    properties: {
-        title: { type: "string", description: "Video game title" },
-        status: { type: "string", description: "Status", enum: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'] },
-        description: { type: "string", description: "Game description" },
-        platform: { type: "string", description: "Platform (PlayStation, Xbox, PC)", enum: ['PlayStation', 'Xbox', 'PC'] },
-        igdbId: { type: "string", description: "IGDB ID (optional, unique)" },
-        releasedAt: { type: "string", description: "Release date (ISO 8601)" },
-    },
-    required: ["title", "platform"],
-} as const;
+    title: z.string().describe("Video game title"),
+    platform: PlatformEnum.describe("Platform (PlayStation, Xbox, PC)"),
+    status: StatusEnum.optional().describe("Status"),
+    description: z.string().optional().describe("Game description"),
+    igdbId: z.string().optional().describe("IGDB ID (optional, unique)"),
+    releasedAt: z.string().optional().describe("Release date (ISO 8601)"),
+};
 
 export const UpdateVideoGameInputSchema = {
-    type: "object",
-    properties: {
-        id: { type: "number", description: "Video game ID" },
-        title: { type: "string", description: "Video game title" },
-        status: { type: "string", description: "Status", enum: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'] },
-        description: { type: "string", description: "Game description" },
-        platform: { type: "string", description: "Platform (PlayStation, Xbox, PC)", enum: ['PlayStation', 'Xbox', 'PC'] },
-        igdbId: { type: "string", description: "IGDB ID (optional, unique)" },
-        releasedAt: { type: "string", description: "Release date (ISO 8601)" },
-    },
-    required: ["id"],
-} as const;
+    id: z.number().describe("Video game ID"),
+    title: z.string().optional().describe("Video game title"),
+    status: StatusEnum.optional().describe("Status"),
+    description: z.string().optional().describe("Game description"),
+    platform: PlatformEnum.optional().describe("Platform (PlayStation, Xbox, PC)"),
+    igdbId: z.string().optional().describe("IGDB ID (optional, unique)"),
+    releasedAt: z.string().optional().describe("Release date (ISO 8601)"),
+};
 
 export const DeleteVideoGameInputSchema = {
-    type: "object",
-    properties: {
-        id: { type: "number", description: "Video game ID to delete" },
-    },
-    required: ["id"],
-} as const;
+    id: z.number().describe("Video game ID to delete"),
+};
 
 export const GetVideoGameInputSchema = {
-    type: "object",
-    properties: {
-        id: { type: "number", description: "Video game ID to retrieve" },
-    },
-    required: ["id"],
-} as const;
+    id: z.number().describe("Video game ID to retrieve"),
+};
 
 export const ListVideoGamesInputSchema = {
-    type: "object",
-    properties: {
-        platform: { type: "string", description: "Filter by platform", enum: ['PlayStation', 'Xbox', 'PC'] },
-        minRating: { type: "number", description: "Minimum average rating (1-10)" },
-        search: { type: "string", description: "Search in title and description" },
-        limit: { type: "number", description: "Maximum number of results (default 50)" },
-        offset: { type: "number", description: "Number of results to skip (default 0)" },
-    },
-    required: [],
-} as const;
+    platform: PlatformEnum.optional().describe("Filter by platform"),
+    minRating: z.number().optional().describe("Minimum average rating (1-10)"),
+    search: z.string().optional().describe("Search in title and description"),
+    limit: z.number().optional().describe("Maximum number of results (default 50)"),
+    offset: z.number().optional().describe("Number of results to skip (default 0)"),
+};

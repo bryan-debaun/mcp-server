@@ -1,69 +1,44 @@
 // Input schemas for book-related MCP tools
+import { z } from "zod";
+
+const StatusEnum = z.enum(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED']);
 
 export const CreateBookInputSchema = {
-    type: "object",
-    properties: {
-        title: { type: "string", description: "Book title" },
-        status: { type: "string", description: "Book status (e.g., Not started, In progress, Completed)", enum: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'] },
-        description: { type: "string", description: "Book description" },
-        isbn: { type: "string", description: "ISBN (optional, must be unique)" },
-        publishedAt: { type: "string", description: "Publication date (ISO 8601 format)" },
-        rating: { type: "number", description: "Your rating (1-10 scale, optional)" },
-        review: { type: "string", description: "Your review text (optional)" },
-        authorIds: {
-            type: "array",
-            items: { type: "number" },
-            description: "Array of author IDs to associate with this book"
-        },
-    },
-    required: ["title"],
-} as const;
+    title: z.string().describe("Book title"),
+    status: StatusEnum.optional().describe("Book status (e.g., Not started, In progress, Completed)"),
+    description: z.string().optional().describe("Book description"),
+    isbn: z.string().optional().describe("ISBN (optional, must be unique)"),
+    publishedAt: z.string().optional().describe("Publication date (ISO 8601 format)"),
+    rating: z.number().optional().describe("Your rating (1-10 scale, optional)"),
+    review: z.string().optional().describe("Your review text (optional)"),
+    authorIds: z.array(z.number()).optional().describe("Array of author IDs to associate with this book"),
+};
 
 export const UpdateBookInputSchema = {
-    type: "object",
-    properties: {
-        id: { type: "number", description: "Book ID" },
-        title: { type: "string", description: "Book title" },
-        status: { type: "string", description: "Book status (e.g., Not started, In progress, Completed)", enum: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'] },
-        description: { type: "string", description: "Book description" },
-        rating: { type: "number", description: "Your rating (1-10 scale, optional)" },
-        review: { type: "string", description: "Your review text (optional)" },
-        isbn: { type: "string", description: "ISBN (must be unique)" },
-        publishedAt: { type: "string", description: "Publication date (ISO 8601 format)" },
-        authorIds: {
-            type: "array",
-            items: { type: "number" },
-            description: "Array of author IDs to associate with this book"
-        },
-    },
-    required: ["id"],
-} as const;
+    id: z.number().describe("Book ID"),
+    title: z.string().optional().describe("Book title"),
+    status: StatusEnum.optional().describe("Book status (e.g., Not started, In progress, Completed)"),
+    description: z.string().optional().describe("Book description"),
+    rating: z.number().optional().describe("Your rating (1-10 scale, optional)"),
+    review: z.string().optional().describe("Your review text (optional)"),
+    isbn: z.string().optional().describe("ISBN (must be unique)"),
+    publishedAt: z.string().optional().describe("Publication date (ISO 8601 format)"),
+    authorIds: z.array(z.number()).optional().describe("Array of author IDs to associate with this book"),
+};
 
 export const DeleteBookInputSchema = {
-    type: "object",
-    properties: {
-        id: { type: "number", description: "Book ID to delete" },
-    },
-    required: ["id"],
-} as const;
+    id: z.number().describe("Book ID to delete"),
+};
 
 export const GetBookInputSchema = {
-    type: "object",
-    properties: {
-        id: { type: "number", description: "Book ID to retrieve" },
-    },
-    required: ["id"],
-} as const;
+    id: z.number().describe("Book ID to retrieve"),
+};
 
 export const ListBooksInputSchema = {
-    type: "object",
-    properties: {
-        authorId: { type: "number", description: "Filter by author ID" },
-        minRating: { type: "number", description: "Minimum average rating (1-10)" },
-        search: { type: "string", description: "Search in title and description" },
-        status: { type: "string", description: "Filter by status (Not started, In progress, Completed)", enum: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'] },
-        limit: { type: "number", description: "Maximum number of results (default 50)" },
-        offset: { type: "number", description: "Number of results to skip (default 0)" },
-    },
-    required: [],
-} as const;
+    authorId: z.number().optional().describe("Filter by author ID"),
+    minRating: z.number().optional().describe("Minimum average rating (1-10)"),
+    search: z.string().optional().describe("Search in title and description"),
+    status: StatusEnum.optional().describe("Filter by status (Not started, In progress, Completed)"),
+    limit: z.number().optional().describe("Maximum number of results (default 50)"),
+    offset: z.number().optional().describe("Number of results to skip (default 0)"),
+};
