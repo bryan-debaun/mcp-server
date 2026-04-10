@@ -4,6 +4,7 @@ import { registerGetIssueTool } from "./get-issue.js";
 import { registerCreateIssueTool } from "./create-issue.js";
 import { registerUpdateIssueTool } from "./update-issue.js";
 import { registerCloseIssueTool } from "./close-issue.js";
+import { registerListLabelsTool } from "./list-labels.js";
 
 /**
  * Registers all GitHub Issues tools with the MCP server.
@@ -14,4 +15,5 @@ export function registerGitHubIssuesTools(server: McpServer): void {
     registerCreateIssueTool(server);
     registerUpdateIssueTool(server);
     registerCloseIssueTool(server);
+    registerListLabelsTool(server);
 }

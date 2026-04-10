@@ -528,3 +528,117 @@ export function clearProjectCache(owner?: string, projectNumber?: number): void 
         projectCache.clear();
     }
 }
+
+/**
+ * List all items on a project board with their current field values.
+ * Returns up to 100 items per query (Projects V2 limit per page).
+ */
+export async function listProjectItems(
+    owner: string,
+    projectNumber: number
+): Promise<Array<{
+    id: string;
+    issueNumber: number | null;
+    title: string;
+    url: string;
+    fieldValues: Record<string, string | number>;
+}>> {
+    const client = createGraphqlClient();
+
+    const userQuery = `
+        query($owner: String!, $projectNumber: Int!) {
+            user(login: $owner) {
+                projectV2(number: $projectNumber) {
+                    items(first: 100) {
+                        nodes {
+                            id
+                            content {
+                                __typename
+                                ... on Issue {
+                                    number
+                                    title
+                                    url
+                                }
+                                ... on PullRequest {
+                                    number
+                                    title
+                                    url
+                                }
+                            }
+                            fieldValues(first: 20) {
+                                nodes {
+                                    __typename
+                                    ... on ProjectV2ItemFieldTextValue {
+                                        text
+                                        field { ... on ProjectV2Field { name } }
+                                    }
+                                    ... on ProjectV2ItemFieldNumberValue {
+                                        number
+                                        field { ... on ProjectV2Field { name } }
+                                    }
+                                    ... on ProjectV2ItemFieldDateValue {
+                                        date
+                                        field { ... on ProjectV2Field { name } }
+                                    }
+                                    ... on ProjectV2ItemFieldSingleSelectValue {
+                                        name
+                                        field { ... on ProjectV2SingleSelectField { name } }
+                                    }
+                                    ... on ProjectV2ItemFieldIterationValue {
+                                        title
+                                        field { ... on ProjectV2IterationField { name } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    `;
+
+    const orgQuery = userQuery.replace("user(login: $owner)", "organization(login: $owner)");
+
+    let response: any;
+    try {
+        response = await client<any>(userQuery, { owner, projectNumber });
+    } catch {
+        response = await client<any>(orgQuery, { owner, projectNumber });
+    }
+
+    const projectData = response.user?.projectV2 ?? response.organization?.projectV2;
+    if (!projectData) {
+        throw new Error(`Project #${projectNumber} not found for owner '${owner}'.`);
+    }
+
+    return (projectData.items.nodes as any[]).map((item: any) => {
+        const content = item.content ?? {};
+        const fieldValues: Record<string, string | number> = {};
+
+        for (const fv of (item.fieldValues?.nodes ?? []) as any[]) {
+            const fieldName: string | undefined =
+                fv.field?.name;
+            if (!fieldName) continue;
+
+            if (fv.__typename === "ProjectV2ItemFieldTextValue" && fv.text !== null && fv.text !== undefined) {
+                fieldValues[fieldName] = fv.text;
+            } else if (fv.__typename === "ProjectV2ItemFieldNumberValue" && fv.number !== null && fv.number !== undefined) {
+                fieldValues[fieldName] = fv.number;
+            } else if (fv.__typename === "ProjectV2ItemFieldDateValue" && fv.date) {
+                fieldValues[fieldName] = fv.date;
+            } else if (fv.__typename === "ProjectV2ItemFieldSingleSelectValue" && fv.name) {
+                fieldValues[fieldName] = fv.name;
+            } else if (fv.__typename === "ProjectV2ItemFieldIterationValue" && fv.title) {
+                fieldValues[fieldName] = fv.title;
+            }
+        }
+
+        return {
+            id: item.id,
+            issueNumber: content.number ?? null,
+            title: content.title ?? "(no title)",
+            url: content.url ?? "",
+            fieldValues,
+        };
+    });
+}

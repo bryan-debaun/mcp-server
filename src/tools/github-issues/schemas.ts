@@ -51,7 +51,9 @@ export const CreateIssueInputSchema = {
     body: z.string().optional().describe("Issue body/description (Markdown allowed)"),
     bodyFile: z.string().optional().describe("Path to a Markdown file to use as the issue body"),
     bodyJson: z.any().optional().describe("JSON payload to convert to Markdown for the issue body"),
-    labels: z.string().optional().describe("Comma-separated labels to add")
+    labels: z.string().optional().describe("Comma-separated labels to add"),
+    assignees: z.string().optional().describe("Comma-separated GitHub usernames to assign to the issue"),
+    milestone: z.number().int().positive().optional().describe("Milestone number to assign to the issue")
 };
 
 /**
@@ -64,7 +66,12 @@ export const UpdateIssueInputSchema = {
     body: z.string().optional().describe("New issue body (Markdown allowed)"),
     bodyFile: z.string().optional().describe("Path to a Markdown file to use as the issue body"),
     bodyJson: z.any().optional().describe("JSON payload to convert to Markdown for the issue body"),
-    labels: z.string().optional().describe("Comma-separated labels to set"),
+    labels: z.string().optional().describe("Comma-separated labels to add to the issue"),
+    removeLabels: z.string().optional().describe("Comma-separated labels to remove from the issue"),
+    assignees: z.string().optional().describe("Comma-separated GitHub usernames to assign to the issue"),
+    milestone: z.number().int().positive().optional().describe("Milestone number to assign (use 0 to clear)"),
+    state: z.enum(["open", "closed"]).optional().describe("Set issue state to open or closed"),
+    stateReason: z.enum(["completed", "not_planned", "reopened"]).optional().describe("Reason for closing: completed or not_planned (ignored when opening)"),
     comment: z.string().optional().describe("Comment to add to the issue")
 };
 
@@ -75,6 +82,13 @@ export const CloseIssueInputSchema = {
     repo: RepoSchema,
     issueNumber: IssueNumberSchema,
     comment: z.string().optional().describe("Comment to add before closing")
+};
+
+/**
+ * Schema for list-labels tool input.
+ */
+export const ListLabelsInputSchema = {
+    repo: RepoSchema
 };
 
 /**

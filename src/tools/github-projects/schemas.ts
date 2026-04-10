@@ -104,3 +104,32 @@ export const BulkSetProjectFieldValuesInputSchema = {
         .min(1)
         .describe("Array of updates, each with issueNumber and fields")
 };
+
+/**
+ * Schema for list-project-items tool input
+ */
+export const ListProjectItemsInputSchema = {
+    owner: OwnerSchema,
+    projectNumber: ProjectNumberSchema
+};
+
+/**
+ * Schema for get-project-status-options tool input
+ */
+export const GetProjectStatusOptionsInputSchema = {
+    owner: OwnerSchema,
+    projectNumber: ProjectNumberSchema
+};
+
+/**
+ * Schema for create-issue-in-project tool input
+ */
+export const CreateIssueInProjectInputSchema = {
+    owner: OwnerSchema,
+    repo: z.string().min(1).describe("Repository name (just the repo name, not owner/repo)"),
+    projectNumber: ProjectNumberSchema,
+    title: z.string().min(1).describe("Issue title"),
+    body: z.string().optional().describe("Issue body (Markdown allowed)"),
+    labels: z.string().optional().describe("Comma-separated labels to add to the issue"),
+    status: z.string().optional().describe("Status column name to place the issue in (e.g. 'Todo', 'In Progress')")
+};

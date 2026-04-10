@@ -1,11 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { GetIssueInputSchema, type GitHubIssue } from "./schemas.js";
-import { runGhCommand, parseGhJson } from "./gh-cli.js";
+import { GetIssueInputSchema } from "./schemas.js";
+import { createOctokitClient, parseRepo } from "./octokit.js";
 import { createSuccessResult, createErrorResult } from "./results.js";
 
 const name = "get-issue";
-const config = {
+const toolConfig = {
     title: "Get Issue",
     description: "Get full details of a specific GitHub issue by number",
     inputSchema: GetIssueInputSchema
@@ -17,7 +17,7 @@ const config = {
 export function registerGetIssueTool(server: McpServer): void {
     (server as any).registerTool(
         name,
-        config,
+        toolConfig,
         async (args: any): Promise<CallToolResult> => {
             try {
                 const { repo, issueNumber } = args as {
@@ -25,27 +25,28 @@ export function registerGetIssueTool(server: McpServer): void {
                     issueNumber: number;
                 };
 
-                const ghArgs = [
-                    "issue", "view",
-                    String(issueNumber),
-                    "--repo", repo,
-                    "--json", "number,title,state,body,url,createdAt,updatedAt,author,labels,assignees"
-                ];
+                const { owner, repo: repoName } = parseRepo(repo);
+                const octokit = createOctokitClient();
 
-                const output = await runGhCommand(ghArgs);
-                const issue = parseGhJson<GitHubIssue>(output);
+                const response = await octokit.rest.issues.get({
+                    owner,
+                    repo: repoName,
+                    issue_number: issueNumber,
+                });
 
+                const issue = response.data;
                 return createSuccessResult({
                     number: issue.number,
                     title: issue.title,
                     state: issue.state,
-                    url: issue.url,
-                    author: issue.author.login,
-                    labels: issue.labels.map((l) => l.name),
-                    assignees: issue.assignees.map((a) => a.login),
-                    createdAt: issue.createdAt,
-                    updatedAt: issue.updatedAt,
-                    body: issue.body
+                    url: issue.html_url,
+                    author: issue.user?.login ?? "unknown",
+                    labels: issue.labels.map((l) => (typeof l === "string" ? l : l.name ?? "")),
+                    assignees: issue.assignees?.map((a) => a.login) ?? [],
+                    milestone: issue.milestone ? { number: issue.milestone.number, title: issue.milestone.title } : null,
+                    createdAt: issue.created_at,
+                    updatedAt: issue.updated_at,
+                    body: issue.body ?? "",
                 });
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
