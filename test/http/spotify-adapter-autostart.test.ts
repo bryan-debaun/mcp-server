@@ -44,9 +44,15 @@ describe('Spotify adapter auto-start', () => {
         config.spotify.clientSecret = 'y'
         config.spotify.refreshToken = 'z'
 
+        // Re-apply mock implementation after vi.resetAllMocks() cleared it in beforeEach
+        mockStart.mockResolvedValue(undefined)
+
         const app = express()
         app.use(express.json())
         await registerDbDependentRoutes(app)
+
+        // The Spotify auto-start is a fire-and-forget IIFE; flush microtasks so it completes
+        await new Promise(resolve => setTimeout(resolve, 0))
 
         // IIFE in registerSpotifyRoute should import and call startSpotifyAdapter
         expect(mockStart).toHaveBeenCalled()
