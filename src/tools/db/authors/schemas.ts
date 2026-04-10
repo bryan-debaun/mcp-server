@@ -1,48 +1,29 @@
 // Input schemas for author-related MCP tools
+import { z } from "zod";
 
 export const CreateAuthorInputSchema = {
-    type: "object",
-    properties: {
-        name: { type: "string", description: "Author name" },
-        bio: { type: "string", description: "Author biography" },
-        website: { type: "string", description: "Author website URL" },
-    },
-    required: ["name"],
-} as const;
+    name: z.string().describe("Author name"),
+    bio: z.string().optional().describe("Author biography"),
+    website: z.string().optional().describe("Author website URL"),
+};
 
 export const UpdateAuthorInputSchema = {
-    type: "object",
-    properties: {
-        id: { type: "number", description: "Author ID" },
-        name: { type: "string", description: "Author name" },
-        bio: { type: "string", description: "Author biography" },
-        website: { type: "string", description: "Author website URL" },
-    },
-    required: ["id"],
-} as const;
+    id: z.number().describe("Author ID"),
+    name: z.string().optional().describe("Author name"),
+    bio: z.string().optional().describe("Author biography"),
+    website: z.string().optional().describe("Author website URL"),
+};
 
 export const DeleteAuthorInputSchema = {
-    type: "object",
-    properties: {
-        id: { type: "number", description: "Author ID to delete" },
-    },
-    required: ["id"],
-} as const;
+    id: z.number().describe("Author ID to delete"),
+};
 
 export const GetAuthorInputSchema = {
-    type: "object",
-    properties: {
-        id: { type: "number", description: "Author ID to retrieve" },
-    },
-    required: ["id"],
-} as const;
+    id: z.number().describe("Author ID to retrieve"),
+};
 
 export const ListAuthorsInputSchema = {
-    type: "object",
-    properties: {
-        search: { type: "string", description: "Search in author name and bio" },
-        limit: { type: "number", description: "Maximum number of results (default 50)" },
-        offset: { type: "number", description: "Number of results to skip (default 0)" },
-    },
-    required: [],
-} as const;
+    search: z.string().optional().describe("Search in author name and bio"),
+    limit: z.number().optional().describe("Maximum number of results (default 50)"),
+    offset: z.number().optional().describe("Number of results to skip (default 0)"),
+};

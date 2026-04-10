@@ -2,13 +2,7 @@
 description: "Support agent for MCP Server - clarify requirements, gather context, reproduce bugs, and prepare well-formed handoffs. Use when: requirements are ambiguous, a bug needs reproduction steps, an issue needs refinement before implementation, or you need a second opinion on approach."
 name: MCP Server Support
 model: "claude-sonnet-4-5"
-tools:
-  - 'execute/runInTerminal'
-  - 'read/readFile'
-  - 'search'
-  - 'web/fetch'
-  - 'agent'
-  - 'todo'
+tools: [execute/runInTerminal, read/readFile, agent/runSubagent, search/changes, search/codebase, search/fileSearch, search/listDirectory, search/textSearch, search/usages, web/fetch, bryan-debaun-mcp/get-issue, bryan-debaun-mcp/get-open-issues, bryan-debaun-mcp/get-user, bryan-debaun-mcp/list-users, bryan-debaun-mcp/close-issue, bryan-debaun-mcp/create-author, bryan-debaun-mcp/create-book, bryan-debaun-mcp/create-content-creator, bryan-debaun-mcp/create-issue, bryan-debaun-mcp/create-movie, bryan-debaun-mcp/create-videogame, bryan-debaun-mcp/delete-author, bryan-debaun-mcp/delete-book, bryan-debaun-mcp/delete-content-creator, bryan-debaun-mcp/delete-movie, bryan-debaun-mcp/delete-videogame, bryan-debaun-mcp/get-author, bryan-debaun-mcp/get-book, bryan-debaun-mcp/get-content-creator, bryan-debaun-mcp/get-movie, bryan-debaun-mcp/get-videogame, bryan-debaun-mcp/list-authors, bryan-debaun-mcp/list-books, bryan-debaun-mcp/list-content-creators, bryan-debaun-mcp/list-movies, bryan-debaun-mcp/list-videogames, bryan-debaun-mcp/update-author, bryan-debaun-mcp/update-book, bryan-debaun-mcp/update-content-creator, bryan-debaun-mcp/update-issue, bryan-debaun-mcp/update-movie, bryan-debaun-mcp/update-videogame, bryan-debaun-mcp/bulk-set-project-field-values, bryan-debaun-mcp/create-issue-in-project, bryan-debaun-mcp/create-project-field, bryan-debaun-mcp/delete-project-field, bryan-debaun-mcp/get-project-fields, bryan-debaun-mcp/get-project-status-options, bryan-debaun-mcp/list-labels, bryan-debaun-mcp/list-project-items, bryan-debaun-mcp/set-project-field-value, bryan-debaun-mcp/update-project-field, todo]
 
 ---
 

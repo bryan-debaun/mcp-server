@@ -1,48 +1,29 @@
 // Input schemas for content creator-related MCP tools
+import { z } from "zod";
 
 export const CreateContentCreatorInputSchema = {
-    type: "object",
-    properties: {
-        name: { type: "string", description: "Content creator name" },
-        description: { type: "string", description: "Description of content creator" },
-        website: { type: "string", description: "Website URL" },
-    },
-    required: ["name"],
-} as const;
+    name: z.string().describe("Content creator name"),
+    description: z.string().optional().describe("Description of content creator"),
+    website: z.string().optional().describe("Website URL"),
+};
 
 export const UpdateContentCreatorInputSchema = {
-    type: "object",
-    properties: {
-        id: { type: "number", description: "Content creator ID" },
-        name: { type: "string", description: "Content creator name" },
-        description: { type: "string", description: "Description of content creator" },
-        website: { type: "string", description: "Website URL" },
-    },
-    required: ["id"],
-} as const;
+    id: z.number().describe("Content creator ID"),
+    name: z.string().optional().describe("Content creator name"),
+    description: z.string().optional().describe("Description of content creator"),
+    website: z.string().optional().describe("Website URL"),
+};
 
 export const DeleteContentCreatorInputSchema = {
-    type: "object",
-    properties: {
-        id: { type: "number", description: "ContentCreator ID to delete" },
-    },
-    required: ["id"],
-} as const;
+    id: z.number().describe("ContentCreator ID to delete"),
+};
 
 export const GetContentCreatorInputSchema = {
-    type: "object",
-    properties: {
-        id: { type: "number", description: "ContentCreator ID to retrieve" },
-    },
-    required: ["id"],
-} as const;
+    id: z.number().describe("ContentCreator ID to retrieve"),
+};
 
 export const ListContentCreatorsInputSchema = {
-    type: "object",
-    properties: {
-        search: { type: "string", description: "Search in name and description" },
-        limit: { type: "number", description: "Maximum number of results (default 50)" },
-        offset: { type: "number", description: "Number of results to skip (default 0)" },
-    },
-    required: [],
-} as const;
+    search: z.string().optional().describe("Search in name and description"),
+    limit: z.number().optional().describe("Maximum number of results (default 50)"),
+    offset: z.number().optional().describe("Number of results to skip (default 0)"),
+};

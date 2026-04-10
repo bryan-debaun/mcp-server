@@ -21,31 +21,38 @@ An extensible Model Context Protocol (MCP) server for VS Code Copilot with GitHu
 |------|-------------|------------|
 | `get-open-issues` | List open issues from a repository | `repo`, `labels?`, `limit?` |
 | `get-issue` | Get full details of a specific issue | `repo`, `issueNumber` |
-| `create-issue` | Create a new issue | `repo`, `title`, `body?`, `labels?` |
-| `update-issue` | Update an issue or add a comment | `repo`, `issueNumber`, `title?`, `body?`, `labels?`, `comment?` |
+| `create-issue` | Create a new issue | `repo`, `title`, `body?`, `labels?`, `assignees?`, `milestone?` |
+| `update-issue` | Update an issue or add a comment | `repo`, `issueNumber`, `title?`, `body?`, `labels?`, `removeLabels?`, `assignees?`, `milestone?`, `state?`, `stateReason?`, `comment?` |
 | `close-issue` | Close an issue with optional comment | `repo`, `issueNumber`, `comment?` |
+| `list-labels` | List all labels defined in a repository | `repo` |
 
 ### GitHub Projects V2
 
-Manage GitHub Projects V2 custom fields and values. Supports TEXT, NUMBER, DATE, SINGLE_SELECT, and ITERATION field types.
+Manage GitHub Projects V2 boards — list items, set field values, and atomically create issues straight onto the board. Requires a GitHub token with `project` scope.
 
-**Prerequisites**: GitHub token with `project` scope. Run `gh auth refresh -s project` to add the scope.
+#### Board & Items
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `list-project-items` | List all items on a board, grouped by Status | `owner`, `projectNumber` |
+| `get-project-status-options` | Get available options for the Status field | `owner`, `projectNumber` |
+| `create-issue-in-project` | Create an issue and add it to the board in one call | `owner`, `repo`, `projectNumber`, `title`, `body?`, `labels?`, `status?` |
 
 #### Field Management
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
-| `get-project-fields` | List all custom fields in a project with types and options | `owner`, `projectNumber` |
+| `get-project-fields` | List all custom fields with types and options | `owner`, `projectNumber` |
 | `create-project-field` | Create a new custom field | `owner`, `projectNumber`, `name`, `dataType`, `options?` |
 | `update-project-field` | Update field name or SINGLE_SELECT options | `owner`, `projectNumber`, `fieldName`, `newName?`, `addOptions?`, `removeOptions?` |
-| `delete-project-field` | Delete a custom field from the project | `owner`, `projectNumber`, `fieldName` |
+| `delete-project-field` | Delete a custom field | `owner`, `projectNumber`, `fieldName` |
 
 #### Value Operations
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
 | `set-project-field-value` | Set a single field value on an issue | `owner`, `repo`, `projectNumber`, `issueNumber`, `fieldName`, `value` |
-| `bulk-set-project-field-values` | Set multiple fields on multiple issues (bulk operation) | `owner`, `repo`, `projectNumber`, `updates[]` |
+| `bulk-set-project-field-values` | Set multiple fields on multiple issues | `owner`, `repo`, `projectNumber`, `updates[]` |
 
 **Supported Field Types**:
 
@@ -144,19 +151,8 @@ Use this spec to generate client SDKs for any language using tools like [OpenAPI
 ## Prerequisites
 
 - **Node.js 20+**: Required runtime
-- **GitHub CLI (`gh`)**: Must be installed and authenticated
-- **PostgreSQL Database**: Required for book catalog features (optional for GitHub tools only)
-
-  ```bash
-  # Install gh CLI (if not already installed)
-  winget install --id GitHub.cli
-  
-  # Authenticate with GitHub
-  gh auth login
-  
-  # For GitHub Projects V2 tools, add project scope
-  gh auth refresh -s project
-  ```
+- **PostgreSQL Database**: Required for book/movie/game catalog features (optional for GitHub tools only)
+- **`GITHUB_TOKEN`**: A GitHub personal access token (PAT) or fine-grained token with `repo` and `project` scopes. Set via the `GITHUB_TOKEN` environment variable.
 
 ## Environment Variables
 
@@ -165,6 +161,9 @@ Create a `.env` file in the project root:
 ```env
 # Required for database features
 DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+
+# Required for GitHub Issues and Projects tools
+GITHUB_TOKEN=ghp_your_personal_access_token
 
 # Optional: For HTTP MCP transport authentication
 # When `MCP_API_KEY` is set, MCP transport endpoints (eg. `/mcp`) and DB-dependent routes (`/api/*` for books/authors/ratings) require `Authorization: Bearer <MCP_API_KEY>`.
@@ -233,23 +232,60 @@ ADMIN_DEBUG_ENABLED=true
 
 ## VS Code Configuration
 
-### Option 1: Workspace Configuration (Recommended)
+### Option 1: Remote (Deployed Server — Recommended)
 
-Create or update `.vscode/mcp.json` in your workspace:
+Connect any VS Code installation to the deployed Render instance over HTTP Stream. Open your user MCP config (Command Palette → **MCP: Open User Configuration**) and add:
 
 ```json
 {
   "servers": {
     "bryan-debaun-mcp": {
+      "type": "http",
+      "url": "https://mcp-server.onrender.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${input:mcpApiKey}"
+      }
+    }
+  },
+  "inputs": [
+    {
+      "id": "mcpApiKey",
+      "type": "promptString",
+      "description": "MCP API Key",
+      "password": true
+    }
+  ]
+}
+```
+
+VS Code will prompt once for the `MCP_API_KEY` the first time the server connects. The key is stored securely in VS Code's secret storage and reused for subsequent sessions.
+
+> **Note for other apps**: Any MCP client that supports HTTP Stream transport can connect the same way. Point it at `https://mcp-server.onrender.com/mcp` with `Authorization: Bearer <MCP_API_KEY>`.
+
+---
+
+### Option 2: Local (stdio — for development)
+
+Run the server from a local build. Useful when iterating on the server itself.
+
+Create or update `.vscode/mcp.json` in your workspace, or add to your VS Code user MCP config:
+
+```json
+{
+  "servers": {
+    "bryan-debaun-mcp-local": {
       "type": "stdio",
       "command": "node",
-      "args": ["C:/Users/brndb/mcp-server/dist/index.js"]
+      "args": ["C:/path/to/mcp-server/dist/index.js"],
+      "env": {
+        "MCP_TRANSPORT": "stdio"
+      }
     }
   }
 }
 ```
 
-### Option 2: User Configuration
+### Option 3: Legacy User Configuration
 
 Add to your VS Code user settings (use Command Palette → "MCP: Open User Configuration"):
 
