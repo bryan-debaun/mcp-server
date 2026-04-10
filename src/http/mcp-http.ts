@@ -1,5 +1,6 @@
 import { Application, Request, Response } from "express";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { config } from "../config.js";
 
 // Simple newline-delimited JSON HTTP stream transport
@@ -179,7 +180,7 @@ export class SseServerTransport {
 export function registerMcpHttp(app: Application): void {
     const base = "/mcp";
 
-    // POST /mcp -> primary HTTP stream endpoint (bidirectional NDJSON)
+    // POST /mcp -> MCP Streamable HTTP transport (bidirectional JSON-RPC over HTTP)
     app.post(base, async (req: Request, res: Response) => {
         try {
             console.error(`mcp-http: POST /mcp called authPresent=${!!req.headers.authorization}`);
@@ -193,10 +194,9 @@ export function registerMcpHttp(app: Application): void {
                 }
             }
 
-            const transport = new HttpStreamTransport(req, res);
-            console.error('mcp-http: POST /mcp created HttpStreamTransport');
+            const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+            console.error('mcp-http: POST /mcp created StreamableHTTPServerTransport');
 
-            // Lazily create MCP server instance for this connection
             const mod = await import("../server.js");
             const { registerTools } = await import("../tools/index.js");
             const serverInstance: McpServer = mod.createServer();
@@ -204,9 +204,10 @@ export function registerMcpHttp(app: Application): void {
             console.error('mcp-http: POST /mcp registering tools and connecting');
             try {
                 await serverInstance.connect(transport as any);
-                console.error('mcp-http: mcp http connected');
+                await transport.handleRequest(req as any, res as any, req.body);
+                console.error('mcp-http: mcp http request handled');
             } catch (err) {
-                console.error('mcp-http: mcp http connect failed', err);
+                console.error('mcp-http: mcp http connect/handle failed', err);
                 try { res.status(500).end(); } catch (e) { void e; }
             }
         } catch (err) {
