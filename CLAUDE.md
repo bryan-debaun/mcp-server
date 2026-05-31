@@ -81,6 +81,11 @@ Controllers are decorated TSOA classes. `npm run build:spec` runs `tsoa spec-and
 - `mcpAuthMiddleware` ([src/http/middleware/mcp-auth.ts](src/http/middleware/mcp-auth.ts)): when `MCP_API_KEY` is set, the gateway key is required on DB-dependent `/api/*` routes and `/mcp`, via either `Authorization: Bearer <MCP_API_KEY>` (pure MCP clients) or the `X-Mcp-Api-Key` header (first-class second factor for callers whose `Authorization` already carries a Supabase user JWT).
 - TSOA `@Security('jwt', ['admin'])`: Supabase-issued JWT verification (`src/auth/jwt.ts`) for user/admin REST endpoints.
 
+### 8. Observability
+- **Logging:** [src/logger.ts](src/logger.ts) is a pino-backed structured logger (pretty in dev, JSON in prod, silent in tests). Use `logger.{debug,info,warn,error}` — never `console.*` (enforced by eslint `no-console`, except `config.ts`/`logger.ts`). It exposes a single error choke point via `setErrorReporter`.
+- **Error alerting:** [src/sentry.ts](src/sentry.ts) `initSentry()` (called first in `index.ts`) is a no-op unless `SENTRY_DSN` is set. When enabled it bridges every `logger.error` to Sentry and captures process-level uncaught errors. Secrets are scrubbed in `beforeSend`.
+- **Metrics:** prom-client at `/metrics`.
+
 ## Data model
 
 Postgres via Prisma ([prisma/schema.prisma](prisma/schema.prisma)). Catalog entities (`Book`, `Movie`, `VideoGame`) share an `ItemStatus` enum (`NOT_STARTED|IN_PROGRESS|COMPLETED`) and **embed rating fields directly** (`rating`, `review`, `ratedAt`) rather than a separate ratings table for the single-user case. `Profile` is keyed by the Supabase Auth UUID. Row-Level-Security policies are exercised by `test/rls/**` and `test/integration/rls*` (DB-integration-gated), and migration SQL is lint-checked via the `sql:parse`/`sql:validate` scripts.

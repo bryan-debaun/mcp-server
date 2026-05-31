@@ -3,9 +3,15 @@
 // config.ts loads dotenv at module init — import it before anything else.
 import { config } from "./config.js";
 import { logger } from "./logger.js";
+import { initSentry, flushSentry } from "./sentry.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer } from "./server.js";
 import { registerTools } from "./tools/index.js";
+
+// Initialize error reporting first so startup failures are captured. No-op
+// unless SENTRY_DSN is set. Bridges logger.error and installs Sentry's
+// uncaught-exception / unhandled-rejection handlers.
+initSentry();
 
 /**
  * Main entry point for the MCP server.
@@ -84,7 +90,8 @@ async function main(): Promise<void> {
     }
 }
 
-main().catch((error) => {
+main().catch(async (error) => {
     logger.error("Fatal error:", error);
+    await flushSentry();
     process.exit(1);
 });

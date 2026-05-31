@@ -105,6 +105,18 @@ const envSchema = z.object({
     // ── GitHub ────────────────────────────────────────────────────────────
     GITHUB_TOKEN: z.string().optional(),
 
+    // ── Sentry ────────────────────────────────────────────────────────────
+    SENTRY_DSN: z.string().optional(),
+    SENTRY_ENVIRONMENT: z.string().optional(),
+    SENTRY_RELEASE: z.string().optional(),
+    SENTRY_TRACES_SAMPLE_RATE: z
+        .string()
+        .optional()
+        .transform((val) => {
+            const n = Number(val ?? 0);
+            return Number.isFinite(n) && n >= 0 && n <= 1 ? n : 0;
+        }),
+
     // ── Test / CI flags ───────────────────────────────────────────────────
     RUN_DB_INTEGRATION: boolFlag,
     RUN_GITHUB_PROJECTS_INTEGRATION: boolFlag,
@@ -210,6 +222,13 @@ export const config = {
 
     github: {
         token: env.GITHUB_TOKEN,
+    },
+
+    sentry: {
+        dsn: env.SENTRY_DSN,
+        environment: env.SENTRY_ENVIRONMENT ?? env.NODE_ENV,
+        release: env.SENTRY_RELEASE,
+        tracesSampleRate: env.SENTRY_TRACES_SAMPLE_RATE,
     },
 
     ci: {
