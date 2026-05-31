@@ -41,19 +41,8 @@ This document describes the new HTTP-based transports for the MCP server.
 - SSE is a fallback when an HTTP Stream client is not available; it requires clients to POST events separately to `/mcp/events`.
 - The endpoints are guarded by `MCP_API_KEY` to protect hosted servers.
 
-### Email / SendGrid
+### Authentication
 
-- The application uses SendGrid for transactional email when `SENDGRID_API_KEY` is present. Set `SENDER_EMAIL` (or `FROM_EMAIL`) to a verified address (recommended: `no-reply@bryandebaun.dev`).
-- See `docs/runbooks/sendgrid.md` for verification, DNS checks, key rotation, and CI gating details.
-
-### Auth session endpoint
-
-The server exposes `GET /api/auth/session` which reads the `session` cookie and returns a minimal authenticated user object. The cookie is signed using `SESSION_JWT_SECRET` in production; when `SESSION_JWT_SECRET` is not set (development), a base64-encoded JSON payload is accepted for convenience. Response shape:
-
-```
-{ "id": 42, "email": "you@example.com", "role": "admin", "isAdmin": true, "external_id": "<optional>" }
-```
-
-Missing or invalid sessions return `401`. Rate-limiting protections apply and are configurable via `SESSION_RATE_LIMIT_PER_IP` and `SESSION_RATE_LIMIT_WINDOW_MS`.
+Authentication is handled by **Supabase Auth** (client-side); this server only **validates Supabase JWTs** (`Authorization: Bearer <SUPABASE_JWT>`). The previous custom magic-link, password, and session-cookie endpoints were removed (issue #89).
 
 > **Note:** When `MCP_API_KEY` is set, DB-dependent routes under `/api/*` (books, authors, ratings) are also protected by the same API key. Present the key one of two supported ways: `Authorization: Bearer <MCP_API_KEY>` (pure MCP clients), or the **`X-Mcp-Api-Key: <MCP_API_KEY>`** header — a first-class second factor for callers whose `Authorization` header already carries a Supabase user JWT (e.g. the website's admin requests).

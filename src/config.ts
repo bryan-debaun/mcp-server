@@ -78,7 +78,6 @@ const envSchema = z.object({
     ADMIN_DEBUG_ENABLED: boolFlag,
     ADMIN_IP_ALLOWLIST: csvArray,
     INTERNAL_ADMIN_KEY: z.string().optional(),
-    SHOW_INVITE_TOKEN: boolFlag,
 
     // ── Database ──────────────────────────────────────────────────────────
     DATABASE_URL: z.string().url().optional(),
@@ -95,32 +94,6 @@ const envSchema = z.object({
     // Anon / publishable key — accept either alias
     SUPABASE_ANON_KEY: z.string().optional(),
     PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().optional(),
-
-    // ── Session ───────────────────────────────────────────────────────────
-    SESSION_JWT_SECRET: z.string().optional(),
-    SESSION_RATE_LIMIT_PER_IP: posInt(60),
-    SESSION_RATE_LIMIT_WINDOW_MS: posInt(60_000),
-    SESSION_COOKIE_MAX_AGE_SEC: posInt(60 * 60 * 24 * 7), // 7 days
-
-    // ── Magic-link ────────────────────────────────────────────────────────
-    MAGIC_LINK_JWT_SECRET: z.string().optional(),
-    MAGIC_LINK_BASE_URL: z.string().url().optional().default('http://localhost:3000'),
-    MAGIC_LINK_SUCCESS_URL: z.string().optional(),
-    MAGIC_LINK_FRONTEND_URL: z.string().optional(),
-    MAGIC_LINK_PER_EMAIL_LIMIT: posInt(5),
-
-    // ── Email / SendGrid ──────────────────────────────────────────────────
-    SENDGRID_API_KEY: z.string().optional(),
-    // Accept SENDER_EMAIL or FROM_EMAIL (SENDER_EMAIL preferred)
-    SENDER_EMAIL: z.string().email().optional(),
-    FROM_EMAIL: z.string().email().optional(),
-    SENDER_NAME: z.string().optional().default('bryandebaun.dev'),
-    SUPPORT_EMAIL: z.string().email().optional().default('support@bryandebaun.dev'),
-    INVITE_BASE_URL: z.string().url().optional().default('http://localhost:3000'),
-    SENDGRID_CLICK_TRACKING: z
-        .string()
-        .optional()
-        .transform((val) => (val ?? 'true') !== 'false'),
 
     // ── Spotify ───────────────────────────────────────────────────────────
     SPOTIFY_CLIENT_ID: z.string().optional(),
@@ -179,9 +152,6 @@ const supabaseServiceRoleKey: string | undefined =
 const supabaseAnonKey: string | undefined =
     env.SUPABASE_ANON_KEY ?? env.PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-/** Sender email: prefer SENDER_EMAIL; fall back to FROM_EMAIL. */
-const senderEmail: string | undefined = env.SENDER_EMAIL ?? env.FROM_EMAIL;
-
 /** Whether all three Spotify credentials are present. */
 const spotifyEnabled =
     Boolean(env.SPOTIFY_CLIENT_ID) &&
@@ -215,7 +185,6 @@ export const config = {
         adminDebugEnabled: env.ADMIN_DEBUG_ENABLED,
         adminIpAllowlist: env.ADMIN_IP_ALLOWLIST,
         internalAdminKey: env.INTERNAL_ADMIN_KEY,
-        showInviteToken: env.SHOW_INVITE_TOKEN,
     },
 
     database: {
@@ -228,24 +197,6 @@ export const config = {
         supabaseAud: env.SUPABASE_AUD,
         supabaseServiceRoleKey,
         supabaseAnonKey,
-        sessionJwtSecret: env.SESSION_JWT_SECRET,
-        sessionRateLimitPerIp: env.SESSION_RATE_LIMIT_PER_IP,
-        sessionRateLimitWindowMs: env.SESSION_RATE_LIMIT_WINDOW_MS,
-        sessionCookieMaxAgeSec: env.SESSION_COOKIE_MAX_AGE_SEC,
-        magicLinkJwtSecret: env.MAGIC_LINK_JWT_SECRET,
-        magicLinkBaseUrl: env.MAGIC_LINK_BASE_URL,
-        magicLinkSuccessUrl: env.MAGIC_LINK_SUCCESS_URL,
-        magicLinkFrontendUrl: env.MAGIC_LINK_FRONTEND_URL,
-        magicLinkPerEmailLimit: env.MAGIC_LINK_PER_EMAIL_LIMIT,
-    },
-
-    email: {
-        sendgridApiKey: env.SENDGRID_API_KEY,
-        senderEmail,
-        senderName: env.SENDER_NAME,
-        supportEmail: env.SUPPORT_EMAIL,
-        inviteBaseUrl: env.INVITE_BASE_URL,
-        clickTrackingEnabled: env.SENDGRID_CLICK_TRACKING,
     },
 
     spotify: {

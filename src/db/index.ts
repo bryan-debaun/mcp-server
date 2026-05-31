@@ -14,13 +14,13 @@ let prismaReadyPromise: Promise<void> | null = null
  * Models the application uses — the single source of truth for both stub
  * generation and real-client forwarding. Keep in sync with `prisma/schema.prisma`;
  * the `test/db/stub-coverage.test.ts` guard fails if a schema model is missing
- * here. (A few entries — `user`/`invite`/`role`/`accessRequest`/`authMagicLink` —
- * back legacy auth code and are intentionally retained beyond the current schema.)
+ * here. (`user`/`role`/`auditLog` are retained beyond the current schema for the
+ * users tools and admin audit logging.)
  */
 const MODEL_NAMES = [
-    'user', 'profile', 'invite', 'role', 'auditLog', 'accessRequest',
+    'user', 'profile', 'role', 'auditLog',
     'author', 'book', 'bookAuthor', 'movie', 'videoGame', 'contentCreator',
-    'rating', 'authMagicLink',
+    'rating',
 ] as const
 
 /** A model stub: reads resolve empty, writes throw a clear "not configured" error. */

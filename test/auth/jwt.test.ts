@@ -15,7 +15,6 @@ const audience = 'authenticated'
 let origJwksUrl: string | undefined
 let origIss: string | undefined
 let origAud: string | undefined
-let origSessionSecret: string | undefined
 let origSvcKey: string | undefined
 let origAnonKey: string | undefined
 let origAdminIpAllowlist: string[]
@@ -26,7 +25,6 @@ beforeAll(async () => {
     origJwksUrl = config.auth.supabaseJwksUrl
     origIss = config.auth.supabaseIss
     origAud = config.auth.supabaseAud
-    origSessionSecret = config.auth.sessionJwtSecret
     origSvcKey = config.auth.supabaseServiceRoleKey
     origAnonKey = config.auth.supabaseAnonKey
     origAdminIpAllowlist = config.security.adminIpAllowlist
@@ -60,7 +58,6 @@ afterAll(() => {
     config.auth.supabaseJwksUrl = origJwksUrl
     config.auth.supabaseIss = origIss
     config.auth.supabaseAud = origAud
-    config.auth.sessionJwtSecret = origSessionSecret
     config.auth.supabaseServiceRoleKey = origSvcKey
     config.auth.supabaseAnonKey = origAnonKey
     config.security.adminIpAllowlist = origAdminIpAllowlist
@@ -70,7 +67,6 @@ afterAll(() => {
 
 afterEach(() => {
     // Restore per-test mutations between tests
-    config.auth.sessionJwtSecret = origSessionSecret
     config.auth.supabaseServiceRoleKey = origSvcKey
     config.auth.supabaseAnonKey = origAnonKey
     config.security.adminIpAllowlist = origAdminIpAllowlist
@@ -107,66 +103,6 @@ describe('JWT middleware', () => {
 
         const res = await request(app).get('/whoami').set('Authorization', `Bearer invalid-token`)
         expect(res.status).toBe(401)
-    })
-
-    it('verifies a valid session cookie and attaches user', async () => {
-        config.auth.sessionJwtSecret = 'session-secret'
-        const sessionToken = await new SignJWT({ userId: 42 })
-            .setProtectedHeader({ alg: 'HS256' })
-            .setSubject('cookie-user')
-            .setIssuedAt()
-            .setExpirationTime('2h')
-            .sign(new TextEncoder().encode(config.auth.sessionJwtSecret) as any)
-
-        const app = express()
-        app.use(jwtMiddleware)
-        app.get('/whoami', (req, res) => res.json({ user: (req as any).user }))
-
-        const res = await request(app).get('/whoami').set('Cookie', `session=${sessionToken}`)
-        expect(res.status).toBe(200)
-        expect(res.body.user.sub).toBe('cookie-user')
-    })
-
-    it('rejects invalid session cookie', async () => {
-        const app = express()
-        app.use(jwtMiddleware)
-        app.get('/whoami', (req, res) => res.json({ user: (req as any).user }))
-
-        const res = await request(app).get('/whoami').set('Cookie', 'session=invalid-token')
-        expect(res.status).toBe(401)
-    })
-
-    it('uses Authorization header when both header and session cookie are present', async () => {
-        // build a supabase-signed token for the header
-        const token = await new SignJWT({ role: 'authenticated' })
-            .setProtectedHeader({ alg: 'RS256', kid: publicJwk.kid })
-            .setIssuer(issuer)
-            .setAudience(audience)
-            .setSubject('user-header')
-            .setIssuedAt()
-            .setExpirationTime('2h')
-            .sign(privateKey as any)
-
-        // set session cookie with different sub
-        config.auth.sessionJwtSecret = 'session-secret'
-        const sessionToken = await new SignJWT({ userId: 99 })
-            .setProtectedHeader({ alg: 'HS256' })
-            .setSubject('cookie-user')
-            .setIssuedAt()
-            .setExpirationTime('2h')
-            .sign(new TextEncoder().encode(config.auth.sessionJwtSecret) as any)
-
-        const app = express()
-        app.use(jwtMiddleware)
-        app.get('/whoami', (req, res) => res.json({ user: (req as any).user }))
-
-        const res = await request(app)
-            .get('/whoami')
-            .set('Authorization', `Bearer ${token}`)
-            .set('Cookie', `session=${sessionToken}`)
-
-        expect(res.status).toBe(200)
-        expect(res.body.user.sub).toBe('user-header')
     })
 
     it('verifySupabaseJwt fails for expired token', async () => {
@@ -283,71 +219,6 @@ describe('JWT middleware', () => {
         expect(res2.status).toBe(200)
         expect(p.prisma.auditLog.create).toHaveBeenCalled()
         expect(incSpy).toHaveBeenCalled()
-    })
-
-    it('maps a Supabase JWT sub (external_id) to local user and grants admin when local user is admin', async () => {
-        const supabaseSub = '00b72aac-2286-48e5-955a-c8012cceb9c5'
-
-        // Use a session cookie to exercise the mapping logic without JWKS/network dependence
-        config.auth.sessionJwtSecret = 'session-secret'
-        const sessionToken = await new SignJWT({})
-            .setProtectedHeader({ alg: 'HS256' })
-            .setSubject(supabaseSub)
-            .setIssuedAt()
-            .setExpirationTime('2h')
-            .sign(new TextEncoder().encode(config.auth.sessionJwtSecret) as any)
-
-        // stub prisma user lookup by external_id
-        const p = await import('../../src/db/index.js') as any
-        p.prisma.profile = {
-            findUnique: vi.fn().mockResolvedValue({
-                id: 1,
-                email: 'brn.dbn@gmail.com',
-                external_id: supabaseSub,
-                isAdmin: true,
-                role: { name: 'admin' },
-            })
-        }
-
-        const app = express()
-        app.get('/admin', jwtMiddleware, requireAdmin, (req, res) => res.json({ ok: true }))
-
-        const res = await request(app).get('/admin').set('Cookie', `session=${sessionToken}`)
-        expect(res.status).toBe(200)
-        expect(p.prisma.profile.findUnique).toHaveBeenCalled()
-    })
-
-    it('maps a Supabase JWT sub that is an email to local user and attaches role', async () => {
-        const emailSub = 'brn.dbn@gmail.com'
-
-        // Use a session cookie to exercise the mapping logic without JWKS/network dependence
-        config.auth.sessionJwtSecret = 'session-secret'
-        const sessionToken = await new SignJWT({})
-            .setProtectedHeader({ alg: 'HS256' })
-            .setSubject(emailSub)
-            .setIssuedAt()
-            .setExpirationTime('2h')
-            .sign(new TextEncoder().encode(config.auth.sessionJwtSecret) as any)
-
-        // stub prisma user lookup by email
-        const p = await import('../../src/db/index.js') as any
-        p.prisma.profile = {
-            findUnique: vi.fn().mockResolvedValue({
-                id: 1,
-                email: emailSub,
-                external_id: '00b72aac-2286-48e5-955a-c8012cceb9c5',
-                isAdmin: false,
-                role: { name: 'user' },
-            })
-        }
-
-        const app = express()
-        app.get('/whoami', jwtMiddleware, (req, res) => res.json({ user: (req as any).user }))
-
-        const res = await request(app).get('/whoami').set('Cookie', `session=${sessionToken}`)
-        expect(res.status).toBe(200)
-        expect(res.body.user.role).toBe('user')
-        expect(p.prisma.profile.findUnique).toHaveBeenCalled()
     })
 
     // --- Issue #90: JWT admin auth resolution -------------------------------

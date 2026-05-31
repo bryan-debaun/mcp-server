@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 import { logger } from "../logger.js";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose'
-import { verifySessionToken } from './session.js'
 import { prisma } from '../db/index.js'
 import { config } from '../config.js'
 
@@ -122,20 +121,6 @@ async function resolveUserAuthz(req: any, payload: any) {
     if (localUserId !== undefined) req.user.localUserId = localUserId
 }
 
-function parseCookies(header?: string) {
-    if (!header) return {}
-    return Object.fromEntries(
-        header
-            .split(';')
-            .map((c) => c.trim())
-            .filter(Boolean)
-            .map((s) => {
-                const i = s.indexOf('=')
-                return [s.slice(0, i), s.slice(i + 1)]
-            })
-    )
-}
-
 export async function jwtMiddleware(req: Request, res: Response, next: NextFunction) {
     try {
         const auth = req.headers.authorization
@@ -169,22 +154,8 @@ export async function jwtMiddleware(req: Request, res: Response, next: NextFunct
             return next()
         }
 
-        // No Authorization header: try session cookie
-        const cookies = parseCookies(req.headers.cookie)
-        const sessionToken = (cookies as any).session
-        if (sessionToken) {
-            const payload = await verifySessionToken(sessionToken)
-                ; (req as any).user = Object.assign({ sub: payload.sub ?? payload.userId }, payload)
-
-            try {
-                await resolveUserAuthz(req as any, (req as any).user)
-            } catch (err) {
-                logger.debug('jwtMiddleware: failed to resolve authz for session payload', err)
-            }
-
-            return next()
-        }
-
+        // No Authorization header — a Supabase JWT bearer token is the only
+        // accepted credential (custom session-cookie auth was removed).
         return res.status(401).json({ error: 'Missing token' })
     } catch (err: any) {
         logger.warn('JWT validation failed', err?.message ?? err)
