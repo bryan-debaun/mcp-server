@@ -83,9 +83,10 @@ export class SpotifyAdminController extends Controller {
                 throw err
             }
 
-            // Set in-process so adapter picks it up immediately
-            // Runtime write: seeds the token in-process after OAuth callback; config.spotify.refreshToken reflects startup value only
-            process.env.SPOTIFY_REFRESH_TOKEN = refreshToken
+            // Seed the token into the adapter in-process so it's used immediately
+            // (the adapter reads its own override, not process.env).
+            const adapter = await import('../../adapters/spotify/spotify-adapter.js')
+            adapter.setSpotifyRefreshToken(refreshToken)
 
             // Persist to .env.local in development for convenience (do NOT persist in test/prod)
             let persisted = false
@@ -110,13 +111,10 @@ export class SpotifyAdminController extends Controller {
                 }
             }
 
-            // If adapter is running/available, attempt to start/restart it so the new token is used immediately
+            // Start/restart the adapter so the new token is used immediately
+            // (idempotent; no-ops if prerequisites are still missing).
             try {
-                const mod = await import('../../adapters/spotify/spotify-adapter.js')
-                if (mod && typeof mod.startSpotifyAdapter === 'function') {
-                    // startSpotifyAdapter is idempotent and will no-op if prerequisites missing
-                    await mod.startSpotifyAdapter()
-                }
+                await adapter.startSpotifyAdapter()
             } catch (err) {
                 console.error('spotify-admin: failed to start adapter after seeding token', err)
             }

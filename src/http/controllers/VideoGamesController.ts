@@ -1,4 +1,6 @@
 import { Controller, Get, Post, Put, Delete, Path, Body, Route, Tags, Response, SuccessResponse, Security, Query } from 'tsoa';
+import { callTool } from '../../tools/local.js';
+import { isNotFound, httpError } from './_http-errors.js';
 
 export interface VideoGame {
     id: number;
@@ -47,27 +49,22 @@ export class VideoGamesController extends Controller {
     @Get()
     @SuccessResponse('200', 'Video games retrieved successfully')
     public async listVideoGames(@Query() platform?: string, @Query() search?: string, @Query() limit?: number, @Query() offset?: number): Promise<ListVideoGamesResponse> {
-        const { callTool } = await import('../../tools/local.js');
-        try {
-            const result = await callTool('list-videogames', { platform, search, limit, offset });
-            return result as ListVideoGamesResponse;
-        } catch (err: any) {
-            console.error('list-videogames failed', err);
-            return { videoGames: [], total: 0 };
-        }
+        const result = await callTool('list-videogames', { platform, search, limit, offset });
+        return result as ListVideoGamesResponse;
     }
 
     @Get('{id}')
     @SuccessResponse('200', 'Video game retrieved successfully')
     @Response('404', 'Video game not found')
     public async getVideoGame(@Path() id: number): Promise<VideoGame> {
-        const { callTool } = await import('../../tools/local.js');
         try {
             const result = await callTool('get-videogame', { id });
             return result as VideoGame;
         } catch (err: any) {
-            console.error('get-videogame failed', err);
-            throw new Error('Video game not found');
+            if (isNotFound(err)) {
+                throw httpError(404, 'Video game not found');
+            }
+            throw err;
         }
     }
 
@@ -75,16 +72,9 @@ export class VideoGamesController extends Controller {
     @Security('jwt', ['admin'])
     @SuccessResponse('201', 'Video game created successfully')
     public async createVideoGame(@Body() body: CreateVideoGameRequest): Promise<VideoGame> {
-        const { callTool } = await import('../../tools/local.js');
-        try {
-            const result = await callTool('create-videogame', body);
-            this.setStatus(201);
-            return result as VideoGame;
-        } catch (err: any) {
-            console.error('create-videogame failed', err);
-            this.setStatus(500);
-            throw new Error('Failed to create video game');
-        }
+        const result = await callTool('create-videogame', body);
+        this.setStatus(201);
+        return result as VideoGame;
     }
 
     @Put('{id}')
@@ -92,29 +82,30 @@ export class VideoGamesController extends Controller {
     @SuccessResponse('200', 'Video game updated successfully')
     @Response('404', 'Video game not found')
     public async updateVideoGame(@Path() id: number, @Body() body: UpdateVideoGameRequest): Promise<VideoGame> {
-        const { callTool } = await import('../../tools/local.js');
         try {
-            const payload = { ...(body as any), id };
-            const result = await callTool('update-videogame', payload);
+            const result = await callTool('update-videogame', { ...(body as any), id });
             return result as VideoGame;
         } catch (err: any) {
-            console.error('update-videogame failed', err);
-            throw new Error('Video game not found');
+            if (isNotFound(err)) {
+                throw httpError(404, 'Video game not found');
+            }
+            throw err;
         }
     }
 
     @Delete('{id}')
     @Security('jwt', ['admin'])
     @SuccessResponse('200', 'Video game deleted successfully')
+    @Response('404', 'Video game not found')
     public async deleteVideoGame(@Path() id: number): Promise<{ success: boolean }> {
-        const { callTool } = await import('../../tools/local.js');
         try {
             await callTool('delete-videogame', { id });
             return { success: true };
         } catch (err: any) {
-            console.error('delete-videogame failed', err);
-            this.setStatus(500);
-            throw new Error('Failed to delete video game');
+            if (isNotFound(err)) {
+                throw httpError(404, 'Video game not found');
+            }
+            throw err;
         }
     }
 }

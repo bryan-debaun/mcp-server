@@ -30,7 +30,17 @@ export async function runSeed(prismaClient?: any) {
 
     // Generate UUIDs for profiles (matching Supabase Auth format)
     const crypto = await import('crypto')
-    const bryanUuid = crypto.randomUUID()
+    // Bryan's Profile.id MUST equal his Supabase Auth user.id for JWT admin auth
+    // to resolve him as admin (see issue #90). Supply it via ADMIN_SUPABASE_UUID.
+    const adminSupabaseUuid = process.env.ADMIN_SUPABASE_UUID
+    if (!adminSupabaseUuid) {
+        console.warn(
+            'ADMIN_SUPABASE_UUID not set — using a random UUID for the admin Profile. ' +
+            'JWT admin auth will not match the Supabase user until this is set and any ' +
+            'existing prod row is reconciled (see issue #90).'
+        )
+    }
+    const bryanUuid = adminSupabaseUuid ?? crypto.randomUUID()
     const adminUuid = crypto.randomUUID()
 
     // Create Bryan's admin profile

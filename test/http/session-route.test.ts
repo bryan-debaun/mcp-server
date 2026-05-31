@@ -160,7 +160,8 @@ if (!shouldRunDbTests) {
 
         it('rate limits per IP', async () => {
             // Set a low limit for test
-            process.env.SESSION_RATE_LIMIT_PER_IP = '2'
+            const origLimit = config.auth.sessionRateLimitPerIp
+            config.auth.sessionRateLimitPerIp = 2
             config.auth.sessionJwtSecret = undefined
             delete process.env.SESSION_JWT_SECRET
             const user = await prisma.profile.create({ data: { id: `rls-${Date.now()}`, email: `rls+${Date.now()}@example.com` } })
@@ -169,6 +170,7 @@ if (!shouldRunDbTests) {
             await request(server).get('/api/auth/session').set('Cookie', `session=${token}`)
             const res = await request(server).get('/api/auth/session').set('Cookie', `session=${token}`)
             expect(res.status).toBe(429)
+            config.auth.sessionRateLimitPerIp = origLimit
         })
 
         it.skip('lazy-provisions a local users row from Supabase when external_id present (removed in single-user schema)', async () => {

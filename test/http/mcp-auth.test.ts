@@ -61,22 +61,24 @@ describe('MCP auth middleware', () => {
         expect(res.status).toBe(200)
     })
 
-    it('accepts x-mcp-api-key with deprecation warning', async () => {
+    it('accepts X-Mcp-Api-Key as a first-class second factor', async () => {
         config.security.mcpApiKey = 'testkey'
         const app = express()
         app.use(express.json())
-
-        const logs: any[] = []
-        const origErr = console.error
-        console.error = (...args: any[]) => logs.push(args)
-
         await registerDbDependentRoutes(app)
-        const res = await request(app).get('/api/books').set('x-mcp-api-key', 'testkey')
-        console.error = origErr
 
+        const res = await request(app).get('/api/books').set('x-mcp-api-key', 'testkey')
         expect(res.status).toBe(200)
-        const found = logs.some((entry: any) => JSON.stringify(entry).toLowerCase().includes('deprecated') || JSON.stringify(entry).toLowerCase().includes('x-mcp-api-key'))
-        expect(found).toBe(true)
+    })
+
+    it('rejects a wrong X-Mcp-Api-Key', async () => {
+        config.security.mcpApiKey = 'testkey'
+        const app = express()
+        app.use(express.json())
+        await registerDbDependentRoutes(app)
+
+        const res = await request(app).get('/api/books').set('x-mcp-api-key', 'wrong')
+        expect(res.status).toBe(401)
     })
 
     it('increments metric on auth failure', async () => {

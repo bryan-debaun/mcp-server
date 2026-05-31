@@ -1,6 +1,18 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { startHttpServer } from '../../src/http/server.js';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import type { Server } from 'http';
+
+// Mock the tool layer so these controller-wiring tests are deterministic and
+// independent of database availability. (Previously they relied on the
+// controllers swallowing DB errors into an empty 200 — that masking is gone.)
+vi.mock('../../src/tools/local.js', () => ({
+    callTool: vi.fn(async (name: string) => {
+        if (name === 'list-movies') return { movies: [], total: 0 };
+        if (name === 'get-movie') throw new Error('Movie not found');
+        return {};
+    }),
+}));
+
+import { startHttpServer } from '../../src/http/server.js';
 
 describe('tsoa movies controller', () => {
     let server: Server;
@@ -38,8 +50,8 @@ describe('tsoa movies controller', () => {
         expect(data).toHaveProperty('total');
     });
 
-    it('should return movie by ID via tsoa controller GET /api/movies/:id', async () => {
+    it('should return 404 for a missing movie via GET /api/movies/:id', async () => {
         const response = await fetch(`${baseUrl}/api/movies/1`, { headers: authHeaders });
-        expect([200, 404]).toContain(response.status);
+        expect(response.status).toBe(404);
     });
 });

@@ -14,18 +14,20 @@ export function mcpAuthMiddleware(req: Request, res: Response, next: NextFunctio
     if (path.startsWith('/api/auth/magic-link')) return next();
 
     try {
+        // The MCP gateway key may be presented two supported ways:
+        //   1. `Authorization: Bearer <MCP_API_KEY>` — pure MCP clients (e.g. VS
+        //      Code) whose Authorization header is free to carry the gateway key.
+        //   2. `X-Mcp-Api-Key: <MCP_API_KEY>` — first-class second factor for
+        //      callers (e.g. the website) whose Authorization header already
+        //      carries a Supabase user JWT for jwtMiddleware/TSOA admin auth.
         const auth = (req.headers.authorization || '').toString();
         if (auth === `Bearer ${mcpKey}`) return next();
 
-        // Temporary fallback for older clients
-        const fallback = (req.headers['x-mcp-api-key'] || '')?.toString();
-        if (fallback) {
-            console.error('mcp-auth: DEPRECATED: x-mcp-api-key header used; support for this header will be removed in a future release', { path: req.path, ip: req.ip });
-            if (fallback === mcpKey) return next();
-        }
+        const apiKeyHeader = (req.headers['x-mcp-api-key'] || '').toString();
+        if (apiKeyHeader && apiKeyHeader === mcpKey) return next();
 
-        // Auth failed
-        console.error('mcp-auth: auth failed', { path: req.path, ip: req.ip, got: auth || fallback || 'none' });
+        // Auth failed — never log the presented credential value.
+        console.error('mcp-auth: auth failed', { path: req.path, ip: req.ip });
         try { mcpAuthFailuresTotal.inc(); } catch (e) { /* noop */ }
         return res.status(401).json({ error: 'Unauthorized' });
     } catch (err) {

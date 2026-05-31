@@ -43,6 +43,9 @@ test/**/*.d.ts.map
 # Agent artifacts (working files for AI agents)
 agent-artifacts/
 
+# Claude Code local settings (machine-specific; agents/ and CLAUDE.md are tracked)
+.claude/settings.local.json
+
 # Logs
 *.log
 npm-debug.log*

@@ -349,4 +349,101 @@ describe('JWT middleware', () => {
         expect(res.body.user.role).toBe('user')
         expect(p.prisma.profile.findUnique).toHaveBeenCalled()
     })
+
+    // --- Issue #90: JWT admin auth resolution -------------------------------
+
+    it('grants admin by matching a UUID sub to a local admin Profile by id (issue #90)', async () => {
+        const supabaseSub = '00b72aac-2286-48e5-955a-c8012cceb9c5'
+        const token = await new SignJWT({ role: 'authenticated', email: 'brn.dbn@gmail.com' })
+            .setProtectedHeader({ alg: 'RS256', kid: publicJwk.kid })
+            .setIssuer(issuer)
+            .setAudience(audience)
+            .setSubject(supabaseSub)
+            .setIssuedAt()
+            .setExpirationTime('2h')
+            .sign(privateKey as any)
+
+        const p = await import('../../src/db/index.js') as any
+        const findUnique = vi.fn().mockResolvedValue({ id: supabaseSub, email: 'brn.dbn@gmail.com', isAdmin: true })
+        p.prisma.profile = { findUnique }
+
+        const app = express()
+        app.get('/admin', jwtMiddleware, requireAdmin, (_req, res) => res.json({ ok: true }))
+
+        const res = await request(app).get('/admin').set('Authorization', `Bearer ${token}`)
+        expect(res.status).toBe(200)
+        // Regression guard: lookup must be by `id`, not the nonexistent `external_id`
+        expect(findUnique).toHaveBeenCalledWith({ where: { id: supabaseSub } })
+    })
+
+    it('falls back to email lookup when the UUID id lookup misses (issue #90)', async () => {
+        const supabaseSub = '11111111-2222-3333-4444-555555555555'
+        const email = 'brn.dbn@gmail.com'
+        const token = await new SignJWT({ role: 'authenticated', email })
+            .setProtectedHeader({ alg: 'RS256', kid: publicJwk.kid })
+            .setIssuer(issuer)
+            .setAudience(audience)
+            .setSubject(supabaseSub)
+            .setIssuedAt()
+            .setExpirationTime('2h')
+            .sign(privateKey as any)
+
+        const p = await import('../../src/db/index.js') as any
+        const findUnique = vi.fn()
+            .mockResolvedValueOnce(null) // id miss (stored Profile.id not yet reconciled)
+            .mockResolvedValueOnce({ id: 'stored-random-uuid', email, isAdmin: true }) // email hit
+        p.prisma.profile = { findUnique }
+
+        const app = express()
+        app.get('/admin', jwtMiddleware, requireAdmin, (_req, res) => res.json({ ok: true }))
+
+        const res = await request(app).get('/admin').set('Authorization', `Bearer ${token}`)
+        expect(res.status).toBe(200)
+        expect(findUnique).toHaveBeenNthCalledWith(1, { where: { id: supabaseSub } })
+        expect(findUnique).toHaveBeenNthCalledWith(2, { where: { email } })
+    })
+
+    it('grants admin from app_metadata.role in the token without any DB lookup (hybrid)', async () => {
+        const token = await new SignJWT({ role: 'authenticated', app_metadata: { role: 'admin' } })
+            .setProtectedHeader({ alg: 'RS256', kid: publicJwk.kid })
+            .setIssuer(issuer)
+            .setAudience(audience)
+            .setSubject('00b72aac-2286-48e5-955a-c8012cceb9c5')
+            .setIssuedAt()
+            .setExpirationTime('2h')
+            .sign(privateKey as any)
+
+        const p = await import('../../src/db/index.js') as any
+        const findUnique = vi.fn()
+        p.prisma.profile = { findUnique }
+
+        const app = express()
+        app.get('/admin', jwtMiddleware, requireAdmin, (req, res) => res.json({ ok: true, user: (req as any).user }))
+
+        const res = await request(app).get('/admin').set('Authorization', `Bearer ${token}`)
+        expect(res.status).toBe(200)
+        expect(res.body.user.role).toBe('admin')
+        expect(res.body.user.isAdmin).toBe(true)
+        expect(findUnique).not.toHaveBeenCalled() // stateless: token claim trusted, no DB hit
+    })
+
+    it('does not grant admin when the token app role is non-admin', async () => {
+        const token = await new SignJWT({ role: 'authenticated', app_metadata: { role: 'user' } })
+            .setProtectedHeader({ alg: 'RS256', kid: publicJwk.kid })
+            .setIssuer(issuer)
+            .setAudience(audience)
+            .setSubject('00b72aac-2286-48e5-955a-c8012cceb9c5')
+            .setIssuedAt()
+            .setExpirationTime('2h')
+            .sign(privateKey as any)
+
+        const p = await import('../../src/db/index.js') as any
+        p.prisma.profile = { findUnique: vi.fn() }
+
+        const app = express()
+        app.get('/admin', jwtMiddleware, requireAdmin, (_req, res) => res.json({ ok: true }))
+
+        const res = await request(app).get('/admin').set('Authorization', `Bearer ${token}`)
+        expect(res.status).toBe(403)
+    })
 })
