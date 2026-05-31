@@ -53,13 +53,19 @@ describe('tsoa books controller', () => {
         expect(data).toHaveProperty('total');
     });
 
-    it('should accept status query parameter for GET /api/books', async () => {
-        const response = await fetch(`${baseUrl}/api/books?status=Not%20started`, { headers: authHeaders });
+    it('should accept a valid status query parameter for GET /api/books', async () => {
+        const response = await fetch(`${baseUrl}/api/books?status=NOT_STARTED`, { headers: authHeaders });
         expect(response.status).toBe(200);
 
         const data = await response.json();
         expect(data).toHaveProperty('books');
         expect(data).toHaveProperty('total');
+    });
+
+    it('should reject an invalid status query parameter for GET /api/books', async () => {
+        // TSOA validates against the ItemStatus enum (NOT_STARTED|IN_PROGRESS|COMPLETED).
+        const response = await fetch(`${baseUrl}/api/books?status=Not%20started`, { headers: authHeaders });
+        expect(response.status).toBe(400);
     });
 
     it('should serve swagger spec at /docs/swagger.json', async () => {
