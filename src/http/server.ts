@@ -9,8 +9,6 @@ import { registerMetricsRoute, httpRequestsTotal, httpRequestDurationSeconds } f
 // import { registerInviteRoutes } from './invite-route.js';
 // Magic link endpoints are now implemented as a TSOA controller (src/http/controllers/MagicLinkController.ts) and will be registered by `RegisterRoutes(app)`.
 
-import { registerBooksRoute } from './books-route.js';
-import { registerAuthorsRoute } from './authors-route.js';
 import { initPrisma } from '../db/index.js';
 import { RegisterRoutes } from './tsoa-routes.js';
 import { registerSwaggerRoute } from './swagger-route.js';
@@ -51,9 +49,7 @@ export async function createHttpApp() {
     // Public invite routes [Disabled for single-user system]
     // registerInviteRoutes(app)
     // Magic-link auth routes are provided by the TSOA controller and registered via `RegisterRoutes(app)`
-    // Book catalog routes
-    registerBooksRoute(app)
-    registerAuthorsRoute(app)
+    // Book/author catalog routes are served by the TSOA controllers (RegisterRoutes below)
     // Spotify read-only endpoints (require MCP API key when MCP_API_KEY set)
     try {
         const mod = await import('./spotify-route.js');
@@ -151,9 +147,7 @@ export async function registerDbDependentRoutes(app: any) {
     // Public invite routes [Disabled for single-user system]
     // registerInviteRoutes(app)
     // Magic-link auth routes are provided by the TSOA controller and registered via `RegisterRoutes(app)`
-    // Book catalog routes
-    registerBooksRoute(app)
-    registerAuthorsRoute(app)
+    // Book/author catalog routes are served by the TSOA controllers (RegisterRoutes below)
 
     // Spotify read-only endpoints (require MCP API key when MCP_API_KEY set)
     try {

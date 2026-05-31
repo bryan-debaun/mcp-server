@@ -1,6 +1,14 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import request from 'supertest'
 import express from 'express'
+
+// /api/books is served by the TSOA controller (which no longer swallows DB
+// errors), so mock the tool layer to keep these auth-middleware tests
+// deterministic and independent of database availability.
+vi.mock('../../src/tools/local.js', () => ({
+    callTool: vi.fn(async () => ({ books: [], total: 0 })),
+}))
+
 import { registerDbDependentRoutes } from '../../src/http/server.js'
 import { mcpAuthFailuresTotal } from '../../src/http/metrics-route.js'
 import { config } from '../../src/config.js'
