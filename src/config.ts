@@ -69,6 +69,9 @@ const envSchema = z.object({
     HOST: z.string().optional(),
     MCP_TRANSPORT: z.enum(['stdio', 'http']).optional(),
     EARLY_START: boolFlag,
+    LOG_LEVEL: z
+        .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+        .optional(),
 
     // ── Security ──────────────────────────────────────────────────────────
     MCP_API_KEY: z.string().optional(),
@@ -193,6 +196,12 @@ export const config = {
     nodeEnv: env.NODE_ENV,
     isProduction: env.NODE_ENV === 'production',
     isTest: env.NODE_ENV === 'test',
+
+    // Log level: explicit LOG_LEVEL wins; otherwise quiet in tests, verbose in
+    // dev, info in production.
+    logLevel:
+        env.LOG_LEVEL ??
+        (env.NODE_ENV === 'test' ? 'silent' : env.NODE_ENV === 'production' ? 'info' : 'debug'),
 
     server: {
         port: env.PORT,

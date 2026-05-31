@@ -1,11 +1,12 @@
 import { Request, Response, NextFunction } from 'express'
+import { logger } from "../logger.js";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose'
 import { verifySessionToken } from './session.js'
 import { prisma } from '../db/index.js'
 import { config } from '../config.js'
 
 if (!config.auth.supabaseJwksUrl) {
-    console.warn('SUPABASE_JWKS_URL not set; JWT middleware will not validate tokens')
+    logger.warn('SUPABASE_JWKS_URL not set; JWT middleware will not validate tokens')
 }
 
 export async function verifySupabaseJwt(token: string): Promise<JWTPayload> {
@@ -162,7 +163,7 @@ export async function jwtMiddleware(req: Request, res: Response, next: NextFunct
             try {
                 await resolveUserAuthz(req as any, payload)
             } catch (err) {
-                console.debug('jwtMiddleware: failed to resolve authz for token sub', err)
+                logger.debug('jwtMiddleware: failed to resolve authz for token sub', err)
             }
 
             return next()
@@ -178,7 +179,7 @@ export async function jwtMiddleware(req: Request, res: Response, next: NextFunct
             try {
                 await resolveUserAuthz(req as any, (req as any).user)
             } catch (err) {
-                console.debug('jwtMiddleware: failed to resolve authz for session payload', err)
+                logger.debug('jwtMiddleware: failed to resolve authz for session payload', err)
             }
 
             return next()
@@ -186,7 +187,7 @@ export async function jwtMiddleware(req: Request, res: Response, next: NextFunct
 
         return res.status(401).json({ error: 'Missing token' })
     } catch (err: any) {
-        console.warn('JWT validation failed', err?.message ?? err)
+        logger.warn('JWT validation failed', err?.message ?? err)
         return res.status(401).json({ error: 'Unauthorized' })
     }
 }

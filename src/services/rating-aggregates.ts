@@ -1,4 +1,5 @@
 import { prisma } from '../db/index.js'
+import { logger } from "../logger.js";
 
 export async function updateAggregates(entityType: string, entityId: number, tx?: any) {
     // If tx provided, use it; otherwise use global prisma
@@ -41,7 +42,7 @@ export async function updateAggregates(entityType: string, entityId: number, tx?
 
 export async function backfillAllBookAggregates(batchSize = 200) {
     // Create rating aggregates for all books (throttled)
-    console.log('Starting rating aggregate backfill for books...')
+    logger.info('Starting rating aggregate backfill for books...')
     let lastId = 0
     let processed = 0
     let hasMore = true
@@ -68,7 +69,7 @@ export async function backfillAllBookAggregates(batchSize = 200) {
         if (books.length < batchSize) hasMore = false
     }
 
-    console.log(`Backfill done: processed=${processed}`)
+    logger.info(`Backfill done: processed=${processed}`)
 }
 
 export default { updateAggregates, backfillAllBookAggregates }

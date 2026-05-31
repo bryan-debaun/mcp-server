@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
+import { logger } from "../logger.js";
 import { prisma } from '../db/index.js'
 import { serviceRoleBypassTotal } from '../http/metrics-route.js'
 import { config } from '../config.js'
@@ -17,7 +18,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
         const ipOk = allowlist.length > 0 ? allowlist.includes(clientIp) : false
 
         if (!(headerOk && ipOk)) {
-            console.warn('Service role access denied: missing internal header or IP not allowlisted', { ip: clientIp })
+            logger.warn('Service role access denied: missing internal header or IP not allowlisted', { ip: clientIp })
             return res.status(403).json({ error: 'forbidden' })
         }
 
@@ -27,7 +28,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
                 prisma.auditLog.create({ data: { action: 'service-role-bypass', metadata: { ip: clientIp, path: req.path, method: req.method } } }).catch(() => { /* noop */ })
             }
         } catch (e) {
-            console.error('failed to write audit log for service-role-bypass', e)
+            logger.error('failed to write audit log for service-role-bypass', e)
         }
 
         try { serviceRoleBypassTotal.inc() } catch (e) { /* noop */ }

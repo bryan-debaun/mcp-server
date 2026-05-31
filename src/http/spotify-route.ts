@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { logger } from "../logger.js";
 import { getPlayback } from './playback-store.js';
 import { config } from '../config.js';
 
@@ -22,7 +23,7 @@ export function registerSpotifyRoute(app: any) {
             const result = await getLikedTracks(limit, offset);
             res.json(result);
         } catch (err: any) {
-            console.error('spotify-route /liked error', err);
+            logger.error('spotify-route /liked error', err);
             res.status(500).json({ error: err?.message ?? 'spotify error' });
         }
     });
@@ -35,7 +36,7 @@ export function registerSpotifyRoute(app: any) {
             const result = await getPlaylists(limit, offset);
             res.json(result);
         } catch (err: any) {
-            console.error('spotify-route /playlists error', err);
+            logger.error('spotify-route /playlists error', err);
             res.status(500).json({ error: err?.message ?? 'spotify error' });
         }
     });
@@ -46,17 +47,17 @@ export function registerSpotifyRoute(app: any) {
     (async () => {
         // Only attempt auto-start when the Spotify configuration looks complete.
         if (!config.spotify.enabled) {
-            console.error('spotify-adapter: auto-start skipped (missing SPOTIFY env)');
+            logger.error('spotify-adapter: auto-start skipped (missing SPOTIFY env)');
             return;
         }
 
         try {
             const { startSpotifyAdapter } = await import('../adapters/spotify/spotify-adapter.js');
-            startSpotifyAdapter().catch((err) => console.error('spotify-adapter: auto-start failed', err));
-            console.error('spotify-adapter: auto-start requested');
+            startSpotifyAdapter().catch((err) => logger.error('spotify-adapter: auto-start failed', err));
+            logger.error('spotify-adapter: auto-start requested');
         } catch (err) {
             // Non-fatal — adapter may be unavailable in this runtime
-            console.error('spotify-adapter: auto-start import failed', (err as any)?.message ?? err);
+            logger.error('spotify-adapter: auto-start import failed', (err as any)?.message ?? err);
         }
     })();
 }

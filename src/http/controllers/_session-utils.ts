@@ -1,10 +1,11 @@
 import { config } from '../../config.js'
+import { logger } from "../../logger.js";
 
 export function setSessionCookie(res: any, payload: Record<string, any>) {
     const secret = config.auth.sessionJwtSecret
     const maxAge = config.auth.sessionCookieMaxAgeSec
     if (!secret) {
-        console.warn('SESSION_JWT_SECRET not set; session cookie will not be signed')
+        logger.warn('SESSION_JWT_SECRET not set; session cookie will not be signed')
         const token = Buffer.from(JSON.stringify(payload)).toString('base64')
         res.cookie('session', token, { httpOnly: true, secure: config.isProduction, sameSite: 'lax', maxAge })
         return
@@ -15,6 +16,6 @@ export function setSessionCookie(res: any, payload: Record<string, any>) {
     ).then((token: string) => {
         res.cookie('session', token, { httpOnly: true, secure: config.isProduction, sameSite: 'lax', maxAge })
     }).catch((err: any) => {
-        console.error('failed to sign session token', err)
+        logger.error('failed to sign session token', err)
     })
 }

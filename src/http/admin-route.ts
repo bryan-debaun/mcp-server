@@ -1,4 +1,5 @@
 import { Application, Request, Response } from 'express'
+import { logger } from "../logger.js";
 import { jwtMiddleware } from '../auth/jwt.js'
 import { requireAdmin } from '../auth/requireAdmin.js'
 import { sendInviteEmail } from "../email.js"
@@ -27,7 +28,7 @@ export function registerAdminRoute(app: Application) {
         try {
             invite = await callTool('create-invite', { email, invitedBy })
         } catch (err: any) {
-            console.error('create invite tool failed', err)
+            logger.error('create invite tool failed', err)
             return res.status(500).json({ error: 'failed to create invite' })
         }
 
@@ -35,7 +36,7 @@ export function registerAdminRoute(app: Application) {
         try {
             await sendInviteEmail(email, invite.token)
         } catch (err) {
-            console.error('failed to send invite email', err)
+            logger.error('failed to send invite email', err)
         }
 
         // Safety: don't expose the invite token in production responses by default

@@ -1,4 +1,5 @@
 import { Application, Request, Response } from 'express';
+import { logger } from "../logger.js";
 import { jwtMiddleware } from '../auth/jwt.js';
 import { requireAdmin } from '../auth/requireAdmin.js';
 
@@ -20,7 +21,7 @@ export function registerBooksRoute(app: Application) {
             });
             res.json(result);
         } catch (err: any) {
-            console.error('list-books failed', err);
+            logger.error('list-books failed', err);
             // Gracefully degrade: return empty list if database is unavailable
             res.json({ books: [], total: 0 });
         }
@@ -37,7 +38,7 @@ export function registerBooksRoute(app: Application) {
             const result = await callTool('get-book', { id });
             res.json(result);
         } catch (err: any) {
-            console.error('get-book failed', err);
+            logger.error('get-book failed', err);
             // Gracefully degrade: return 404 if database is unavailable or book not found
             res.status(404).json({ error: 'Book not found' });
         }
@@ -63,7 +64,7 @@ export function registerBooksRoute(app: Application) {
             });
             res.status(201).json(result);
         } catch (err: any) {
-            console.error('create-book failed', err);
+            logger.error('create-book failed', err);
             if (err.message?.includes('Unique constraint')) {
                 return res.status(400).json({ error: 'ISBN already exists' });
             }
@@ -91,7 +92,7 @@ export function registerBooksRoute(app: Application) {
             });
             res.json(result);
         } catch (err: any) {
-            console.error('update-book failed', err);
+            logger.error('update-book failed', err);
             if (err.message?.includes('not found')) {
                 return res.status(404).json({ error: 'Book not found' });
             }
@@ -113,7 +114,7 @@ export function registerBooksRoute(app: Application) {
             const result = await callTool('delete-book', { id });
             res.json(result);
         } catch (err: any) {
-            console.error('delete-book failed', err);
+            logger.error('delete-book failed', err);
             if (err.message?.includes('not found')) {
                 return res.status(404).json({ error: 'Book not found' });
             }

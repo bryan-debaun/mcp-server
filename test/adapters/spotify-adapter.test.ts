@@ -19,6 +19,7 @@ import {
 } from '../../src/adapters/spotify/spotify-adapter.js'
 import { getPlayback, setPlayback } from '../../src/http/playback-store.js'
 import { config } from '../../src/config.js'
+import { logger } from '../../src/logger.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -140,7 +141,7 @@ describe('fetchCurrentlyPlaying', () => {
 
     it('logs error and does not crash on non-ok API response', async () => {
         vi.stubGlobal('fetch', makeFetch('me/player/currently-playing', { ok: false, status: 503 }))
-        const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        const spy = vi.spyOn(logger, 'error').mockImplementation(() => {})
 
         await expect(startSpotifyAdapter()).resolves.not.toThrow()
 

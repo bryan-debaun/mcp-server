@@ -1,4 +1,5 @@
 import { config } from '../config.js'
+import { logger } from "../logger.js";
 
 // `prisma` is captured by reference by importers. `initPrisma()` populates it
 // with either a real PrismaClient (model accessors + raw helpers forwarded) or,
@@ -86,9 +87,9 @@ export async function initPrisma() {
                 if (name in real) prisma[name] = (real as any)[name]
             }
 
-            console.error('PrismaClient initialized successfully')
+            logger.info('PrismaClient initialized successfully')
         } catch (err) {
-            console.error('failed to initialize PrismaClient dynamically; falling back to stub', err)
+            logger.error('failed to initialize PrismaClient dynamically; falling back to stub', err)
             applyStubs('PrismaClient not initialized')
         }
     })()
@@ -114,7 +115,7 @@ export async function testConnection() {
             return res
         } catch (err) {
             lastErr = err
-            console.error(`testConnection attempt ${attempt} failed:`, (err as any)?.message ?? err)
+            logger.warn(`testConnection attempt ${attempt} failed:`, (err as any)?.message ?? err)
             if (attempt < maxAttempts) {
                 await new Promise((r) => setTimeout(r, delayMs))
                 continue

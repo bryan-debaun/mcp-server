@@ -3,6 +3,7 @@
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
 import type { Request as ExRequest, Response as ExResponse, RequestHandler, Router } from 'express';
+import { logger } from "../logger.js";
 import { TsoaRoute, fetchMiddlewares } from '@tsoa/runtime';
 
 // Minimal TSOA routes to get server started
@@ -29,7 +30,7 @@ const templates = {
 
 export function RegisterRoutes(app: Router): void {
     // Minimal implementation - allows server to start
-    console.warn('Using minimal TSOA routes. Build failed - check compilation errors.');
+    logger.warn('Using minimal TSOA routes. Build failed - check compilation errors.');
 }
 
 export { models };

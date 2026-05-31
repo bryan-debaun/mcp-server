@@ -1,4 +1,5 @@
 import { config } from './config.js'
+import { logger } from "./logger.js";
 
 export async function sendInviteEmail(email: string, token: string) {
     const inviteBase = config.email.inviteBaseUrl
@@ -31,7 +32,7 @@ export async function sendInviteEmail(email: string, token: string) {
     // Default to a safe dev-mode behavior: log the invite URL so it's easy to copy.
     // This avoids adding a production email provider to local dev/test.
     // Tests assert that this logging happens when SENDGRID_API_KEY is not present.
-    console.log(`Invite for ${email}: ${inviteUrl}`)
+    logger.info(`Invite for ${email}: ${inviteUrl}`)
 }
 
 export async function sendMagicLinkEmail(email: string, token: string, baseOverride?: string) {
@@ -103,5 +104,5 @@ export async function sendMagicLinkEmail(email: string, token: string, baseOverr
     }
 
     // Fallback: log magic link (safe dev behavior)
-    console.log(`Magic link for ${email}: ${url}`)
+    logger.info(`Magic link for ${email}: ${url}`)
 }
