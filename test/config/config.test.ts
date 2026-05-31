@@ -8,7 +8,6 @@ describe('config module', () => {
             expect(config).toHaveProperty('security')
             expect(config).toHaveProperty('database')
             expect(config).toHaveProperty('auth')
-            expect(config).toHaveProperty('email')
             expect(config).toHaveProperty('spotify')
             expect(config).toHaveProperty('github')
             expect(config).toHaveProperty('ci')
@@ -35,36 +34,11 @@ describe('config module', () => {
     })
 
     describe('default values', () => {
-        it('sessionCookieMaxAgeSec defaults to 7 days (604800)', () => {
-            const sevenDays = 60 * 60 * 24 * 7
-            if (!process.env.SESSION_COOKIE_MAX_AGE_SEC) {
-                expect(config.auth.sessionCookieMaxAgeSec).toBe(sevenDays)
-            } else {
-                expect(config.auth.sessionCookieMaxAgeSec).toBeGreaterThan(0)
-            }
-        })
-
-        it('magicLinkPerEmailLimit defaults to 5', () => {
-            if (!process.env.MAGIC_LINK_PER_EMAIL_LIMIT) {
-                expect(config.auth.magicLinkPerEmailLimit).toBe(5)
-            } else {
-                expect(config.auth.magicLinkPerEmailLimit).toBeGreaterThan(0)
-            }
-        })
-
         it('spotify.pollIntervalMs defaults to 15000', () => {
             if (!process.env.SPOTIFY_POLL_INTERVAL_MS) {
                 expect(config.spotify.pollIntervalMs).toBe(15_000)
             } else {
                 expect(config.spotify.pollIntervalMs).toBeGreaterThan(0)
-            }
-        })
-
-        it('email.senderName defaults to bryandebaun.dev', () => {
-            if (!process.env.SENDER_NAME) {
-                expect(config.email.senderName).toBe('bryandebaun.dev')
-            } else {
-                expect(typeof config.email.senderName).toBe('string')
             }
         })
 
@@ -91,10 +65,6 @@ describe('config module', () => {
     describe('boolean flag parsing', () => {
         it('adminDebugEnabled is a boolean', () => {
             expect(typeof config.security.adminDebugEnabled).toBe('boolean')
-        })
-
-        it('showInviteToken is a boolean', () => {
-            expect(typeof config.security.showInviteToken).toBe('boolean')
         })
 
         it('ci.runDbIntegration is a boolean', () => {
@@ -130,22 +100,5 @@ describe('config module', () => {
             }
         })
 
-        it('email.senderEmail normalizes SENDER_EMAIL and FROM_EMAIL aliases', () => {
-            if (config.email.senderEmail !== undefined) {
-                expect(config.email.senderEmail).toMatch(/@/)
-            }
-        })
-    })
-
-    describe('positive integer coercion', () => {
-        it('auth.sessionRateLimitPerIp is a positive integer', () => {
-            expect(Number.isInteger(config.auth.sessionRateLimitPerIp)).toBe(true)
-            expect(config.auth.sessionRateLimitPerIp).toBeGreaterThan(0)
-        })
-
-        it('auth.sessionRateLimitWindowMs is a positive integer', () => {
-            expect(Number.isInteger(config.auth.sessionRateLimitWindowMs)).toBe(true)
-            expect(config.auth.sessionRateLimitWindowMs).toBeGreaterThan(0)
-        })
     })
 })

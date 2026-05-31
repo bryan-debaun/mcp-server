@@ -82,21 +82,6 @@ async function main(): Promise<void> {
             logger.info('ADMIN_DEBUG_ENABLED is enabled for this process; debug endpoints will be registered (preview/staging only)')
         }
     }
-
-    // SendGrid configuration warning (non-blocking)
-    if (config.isProduction) {
-        if (!config.email.sendgridApiKey || !config.email.senderEmail) {
-            logger.warn('SendGrid not fully configured for production. Missing SENDGRID_API_KEY or SENDER_EMAIL; transactional emails will not be sent. See docs/runbooks/sendgrid.md for setup.')
-        } else {
-            logger.info('SendGrid appears configured for production (SENDER_EMAIL present).')
-        }
-    } else {
-        if (!config.email.sendgridApiKey || !config.email.senderEmail) {
-            logger.info('SendGrid not configured for local/testing — this is expected in development. Set SENDGRID_API_KEY/SENDER_EMAIL to test email sending.')
-        } else {
-            logger.info('SendGrid configured in non-production environment (SENDER_EMAIL=%s).', config.email.senderEmail)
-        }
-    }
 }
 
 main().catch((error) => {

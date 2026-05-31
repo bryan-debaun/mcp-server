@@ -8,12 +8,6 @@ export function mcpAuthMiddleware(req: Request, res: Response, next: NextFunctio
     // No-op when key not set
     if (!mcpKey) return next();
 
-    // Allow public magic-link/auth endpoints to remain unauthenticated so
-    // user-facing auth flows (send/register/verify) continue to work even when
-    // MCP_API_KEY is set for other DB-dependent routes.
-    const path = req.path || '';
-    if (path.startsWith('/api/auth/magic-link')) return next();
-
     try {
         // The MCP gateway key may be presented two supported ways:
         //   1. `Authorization: Bearer <MCP_API_KEY>` — pure MCP clients (e.g. VS

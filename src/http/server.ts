@@ -4,10 +4,6 @@ import cors from "cors";
 import { registerHealthRoute } from "./health-route.js";
 import { registerPlaybackRoute } from "./playback-route.js";
 import { registerMetricsRoute, httpRequestsTotal, httpRequestDurationSeconds } from "./metrics-route.js";
-// Admin and invite routes disabled for single-user system
-// import { registerAdminRoute } from './admin-route.js';
-// import { registerInviteRoutes } from './invite-route.js';
-// Magic link endpoints are now implemented as a TSOA controller (src/http/controllers/MagicLinkController.ts) and will be registered by `RegisterRoutes(app)`.
 
 import { initPrisma } from '../db/index.js';
 import { RegisterRoutes } from './tsoa-routes.js';
@@ -44,11 +40,6 @@ export async function createHttpApp() {
     registerHealthRoute(app);
     registerPlaybackRoute(app);
     registerMetricsRoute(app);
-    // Register admin routes [Disabled for single-user system]
-    // registerAdminRoute(app)
-    // Public invite routes [Disabled for single-user system]
-    // registerInviteRoutes(app)
-    // Magic-link auth routes are provided by the TSOA controller and registered via `RegisterRoutes(app)`
     // Book/author catalog routes are served by the TSOA controllers (RegisterRoutes below)
     // Spotify read-only endpoints (require MCP API key when MCP_API_KEY set)
     try {
@@ -142,11 +133,6 @@ export async function registerDbDependentRoutes(app: any) {
     // Install MCP API key middleware to protect DB-dependent routes when `MCP_API_KEY` is set
     app.use(mcpAuthMiddleware)
 
-    // Register admin routes [Disabled for single-user system]
-    // registerAdminRoute(app)
-    // Public invite routes [Disabled for single-user system]
-    // registerInviteRoutes(app)
-    // Magic-link auth routes are provided by the TSOA controller and registered via `RegisterRoutes(app)`
     // Book/author catalog routes are served by the TSOA controllers (RegisterRoutes below)
 
     // Spotify read-only endpoints (require MCP API key when MCP_API_KEY set)
