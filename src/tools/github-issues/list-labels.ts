@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerTool } from "../registration.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { ListLabelsInputSchema } from "./schemas.js";
 import { createOctokitClient, parseRepo } from "./octokit.js";
@@ -15,7 +16,7 @@ const toolConfig = {
  * Registers the list-labels tool with the MCP server.
  */
 export function registerListLabelsTool(server: McpServer): void {
-    (server as any).registerTool(
+    registerTool(server,
         name,
         toolConfig,
         async (args: any): Promise<CallToolResult> => {

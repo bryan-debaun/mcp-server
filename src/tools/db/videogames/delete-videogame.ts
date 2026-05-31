@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerTool } from "../../registration.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { DeleteVideoGameInputSchema } from "./schemas.js";
 import { prisma } from "../../../db/index.js";
@@ -12,7 +13,7 @@ const config = {
 };
 
 export function registerDeleteVideoGameTool(server: McpServer): void {
-    (server as any).registerTool(
+    registerTool(server,
         name,
         config,
         async (args: any): Promise<CallToolResult> => {

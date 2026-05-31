@@ -1,5 +1,6 @@
 import fs from "fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerTool } from "../registration.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { UpdateIssueInputSchema } from "./schemas.js";
 import { createOctokitClient, parseRepo } from "./octokit.js";
@@ -18,7 +19,7 @@ const toolConfig = {
  * Registers the update-issue tool with the MCP server.
  */
 export function registerUpdateIssueTool(server: McpServer): void {
-    (server as any).registerTool(
+    registerTool(server,
         name,
         toolConfig,
         async (args: any): Promise<CallToolResult> => {
