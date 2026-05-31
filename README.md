@@ -169,7 +169,7 @@ GITHUB_TOKEN=ghp_your_personal_access_token
 # When `MCP_API_KEY` is set, MCP transport endpoints (eg. `/mcp`) and DB-dependent routes (`/api/*` for books/authors/ratings) require `Authorization: Bearer <MCP_API_KEY>`.
 MCP_API_KEY=your-secret-key
 
-> Note: A legacy header `x-mcp-api-key` is temporarily supported as a fallback but is deprecated and will be removed in a future release; the server emits a deprecation log when it is used.
+> Note: The gateway key may also be sent via the `X-Mcp-Api-Key` header. This is a first-class, supported second factor for callers whose `Authorization` header already carries a Supabase user JWT (e.g. the website's admin requests, which send `Authorization: Bearer <SUPABASE_JWT>` + `X-Mcp-Api-Key: <MCP_API_KEY>`). Pure MCP clients may instead send the key directly as `Authorization: Bearer <MCP_API_KEY>`.
 
 # Optional: For admin endpoints
 INTERNAL_ADMIN_KEY=your-admin-key

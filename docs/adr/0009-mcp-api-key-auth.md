@@ -4,7 +4,9 @@ Date: 2026-02-04
 
 ## Status
 
-Proposed/Accepted
+Accepted
+
+> **Update (2026-05, #90):** The `X-Mcp-Api-Key` header is **no longer deprecated**. It is now a first-class second factor, because the dual-credential pattern is legitimate: a caller's `Authorization` header carries a Supabase **user JWT** (for `jwtMiddleware`/TSOA admin auth) while the **gateway key** needs its own header. The deprecation warning and the "remove after a short period" intent below are superseded. Pure MCP clients may still send the key as `Authorization: Bearer <MCP_API_KEY>`; callers presenting a user JWT send it as `X-Mcp-Api-Key`. The middleware also no longer logs the presented credential value.
 
 ## Context
 

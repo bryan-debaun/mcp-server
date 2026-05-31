@@ -56,4 +56,4 @@ The server exposes `GET /api/auth/session` which reads the `session` cookie and 
 
 Missing or invalid sessions return `401`. Rate-limiting protections apply and are configurable via `SESSION_RATE_LIMIT_PER_IP` and `SESSION_RATE_LIMIT_WINDOW_MS`.
 
-> **Note:** When `MCP_API_KEY` is set, DB-dependent routes under `/api/*` (books, authors, ratings) are also protected by the same API key. Requests must present `Authorization: Bearer <MCP_API_KEY>`. As a temporary fallback we accept `x-mcp-api-key` but this header is **deprecated** and will be removed in a future release (the server logs a deprecation warning when it is used).
+> **Note:** When `MCP_API_KEY` is set, DB-dependent routes under `/api/*` (books, authors, ratings) are also protected by the same API key. Present the key one of two supported ways: `Authorization: Bearer <MCP_API_KEY>` (pure MCP clients), or the **`X-Mcp-Api-Key: <MCP_API_KEY>`** header — a first-class second factor for callers whose `Authorization` header already carries a Supabase user JWT (e.g. the website's admin requests).

@@ -78,7 +78,7 @@ Controllers are decorated TSOA classes. `npm run build:spec` runs `tsoa spec-and
 [src/config.ts](src/config.ts) is the **only** place that reads `process.env`. It Zod-validates all env vars and `process.exit(1)`s on invalid config. Import it for its side effect (dotenv load + validation) before other modules — `src/index.ts` imports it first. Everywhere else, read from the exported `config` object, never `process.env`.
 
 ### 7. Security layers
-- `mcpAuthMiddleware` ([src/http/middleware/mcp-auth.ts](src/http/middleware/mcp-auth.ts)): when `MCP_API_KEY` is set, requires `Authorization: Bearer <MCP_API_KEY>` on DB-dependent `/api/*` routes and `/mcp`. Public magic-link auth routes are exempt. Legacy `x-mcp-api-key` header is a deprecated fallback.
+- `mcpAuthMiddleware` ([src/http/middleware/mcp-auth.ts](src/http/middleware/mcp-auth.ts)): when `MCP_API_KEY` is set, the gateway key is required on DB-dependent `/api/*` routes and `/mcp`, via either `Authorization: Bearer <MCP_API_KEY>` (pure MCP clients) or the `X-Mcp-Api-Key` header (first-class second factor for callers whose `Authorization` already carries a Supabase user JWT). Public magic-link auth routes are exempt.
 - TSOA `@Security('jwt', ['admin'])`: Supabase-issued JWT verification (`src/auth/jwt.ts`) for user/admin REST endpoints.
 
 ## Data model
