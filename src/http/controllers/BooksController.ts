@@ -1,6 +1,8 @@
 import { Controller, Get, Post, Put, Delete, Query, Route, Tags, Response, SuccessResponse, Path, Body, Security, Request } from 'tsoa';
 import type { Request as ExpressRequest } from 'express';
 import type { ItemStatus } from '../../tools/db/books/status';
+import { callTool } from '../../tools/local.js';
+import { isNotFound, isUniqueViolation, httpError } from './_http-errors.js';
 
 /**
  * Book representation - force TSOA refresh
@@ -89,21 +91,10 @@ export class BooksController extends Controller {
         @Query() limit?: number,
         @Query() offset?: number
     ): Promise<ListBooksResponse> {
-        const { callTool } = await import('../../tools/local.js');
-        try {
-            const result = await callTool('list-books', {
-                authorId,
-                minRating,
-                search,
-                limit,
-                offset
-            });
-            return result as ListBooksResponse;
-        } catch (err: any) {
-            console.error('list-books failed', err);
-            // Gracefully degrade: return empty list if database is unavailable
-            return { books: [], total: 0 };
-        }
+        // Let failures surface as 5xx via the global error handler — an empty
+        // result must mean "no books", never "the database is down".
+        const result = await callTool('list-books', { authorId, minRating, search, status, limit, offset });
+        return result as ListBooksResponse;
     }
 
     /**
@@ -116,14 +107,12 @@ export class BooksController extends Controller {
     @Response('404', 'Book not found')
     @Response('400', 'Invalid book ID')
     public async getBook(@Path() id: number): Promise<BookWithAuthors> {
-        const { callTool } = await import('../../tools/local.js');
         try {
             const result = await callTool('get-book', { id });
             return result as BookWithAuthors;
         } catch (err: any) {
-            console.error('get-book failed', err);
-            this.setStatus(404);
-            throw new Error('Book not found');
+            if (isNotFound(err)) throw httpError(404, 'Book not found');
+            throw err;
         }
     }
 
@@ -143,28 +132,16 @@ export class BooksController extends Controller {
         @Request() request: ExpressRequest,
         @Body() body: CreateBookRequest
     ): Promise<Book> {
-        const { callTool } = await import('../../tools/local.js');
-        try {
-            if (!body.title) {
-                this.setStatus(400);
-                throw new Error('title is required');
-            }
+        if (!body.title) throw httpError(400, 'title is required');
 
+        try {
             const createdBy = (request as any).user?.sub ? Number((request as any).user.sub) : undefined;
-            const result = await callTool('create-book', {
-                ...body,
-                createdBy
-            });
+            const result = await callTool('create-book', { ...body, createdBy });
             this.setStatus(201);
             return result as Book;
         } catch (err: any) {
-            console.error('create-book failed', err);
-            if (err.message?.includes('Unique constraint') || err.message?.includes('already exists')) {
-                this.setStatus(400);
-                throw new Error('ISBN already exists');
-            }
-            this.setStatus(500);
-            throw new Error('Failed to create book');
+            if (isUniqueViolation(err)) throw httpError(400, 'ISBN already exists');
+            throw err;
         }
     }
 
@@ -185,25 +162,13 @@ export class BooksController extends Controller {
         @Path() id: number,
         @Body() body: UpdateBookRequest
     ): Promise<Book> {
-        const { callTool } = await import('../../tools/local.js');
         try {
-            const result = await callTool('update-book', {
-                id,
-                ...body
-            });
+            const result = await callTool('update-book', { id, ...body });
             return result as Book;
         } catch (err: any) {
-            console.error('update-book failed', err);
-            if (err.message?.includes('not found')) {
-                this.setStatus(404);
-                throw new Error('Book not found');
-            }
-            if (err.message?.includes('Unique constraint') || err.message?.includes('already exists')) {
-                this.setStatus(400);
-                throw new Error('ISBN already exists');
-            }
-            this.setStatus(500);
-            throw new Error('Failed to update book');
+            if (isNotFound(err)) throw httpError(404, 'Book not found');
+            if (isUniqueViolation(err)) throw httpError(400, 'ISBN already exists');
+            throw err;
         }
     }
 
@@ -220,18 +185,12 @@ export class BooksController extends Controller {
     @Response('404', 'Book not found')
     @Response('500', 'Internal server error')
     public async deleteBook(@Path() id: number): Promise<{ success: boolean }> {
-        const { callTool } = await import('../../tools/local.js');
         try {
             await callTool('delete-book', { id });
             return { success: true };
         } catch (err: any) {
-            console.error('delete-book failed', err);
-            if (err.message?.includes('not found')) {
-                this.setStatus(404);
-                throw new Error('Book not found');
-            }
-            this.setStatus(500);
-            throw new Error('Failed to delete book');
+            if (isNotFound(err)) throw httpError(404, 'Book not found');
+            throw err;
         }
     }
 }

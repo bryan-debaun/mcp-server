@@ -214,8 +214,10 @@ describe('getPlaylists', () => {
 // ---------------------------------------------------------------------------
 
 describe('startSpotifyAdapter', () => {
-    it('does nothing when spotify is disabled', async () => {
-        config.spotify.enabled = false
+    it('does nothing when spotify is not configured (no refresh token)', async () => {
+        // The adapter now derives "configured" from the live credentials
+        // (override-aware) rather than a frozen startup `enabled` flag.
+        config.spotify.refreshToken = undefined
         const spy = vi.fn()
         vi.stubGlobal('fetch', spy)
 

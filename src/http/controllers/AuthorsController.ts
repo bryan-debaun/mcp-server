@@ -1,5 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Query, Route, Tags, Response, SuccessResponse, Path, Body, Security, Request } from 'tsoa';
 import type { Request as ExpressRequest } from 'express';
+import { callTool } from '../../tools/local.js';
+import { isNotFound, httpError } from './_http-errors.js';
 
 /**
  * Author representation
@@ -69,19 +71,8 @@ export class AuthorsController extends Controller {
         @Query() limit?: number,
         @Query() offset?: number
     ): Promise<ListAuthorsResponse> {
-        const { callTool } = await import('../../tools/local.js');
-        try {
-            const result = await callTool('list-authors', {
-                search,
-                limit,
-                offset
-            });
-            return result as ListAuthorsResponse;
-        } catch (err: any) {
-            console.error('list-authors failed', err);
-            // Gracefully degrade: return empty list if database is unavailable
-            return { authors: [], total: 0 };
-        }
+        const result = await callTool('list-authors', { search, limit, offset });
+        return result as ListAuthorsResponse;
     }
 
     /**
@@ -94,14 +85,12 @@ export class AuthorsController extends Controller {
     @Response('404', 'Author not found')
     @Response('400', 'Invalid author ID')
     public async getAuthor(@Path() id: number): Promise<AuthorWithBooks> {
-        const { callTool } = await import('../../tools/local.js');
         try {
             const result = await callTool('get-author', { id });
             return result as AuthorWithBooks;
         } catch (err: any) {
-            console.error('get-author failed', err);
-            this.setStatus(404);
-            throw new Error('Author not found');
+            if (isNotFound(err)) throw httpError(404, 'Author not found');
+            throw err;
         }
     }
 
@@ -121,25 +110,12 @@ export class AuthorsController extends Controller {
         @Request() request: ExpressRequest,
         @Body() body: CreateAuthorRequest
     ): Promise<Author> {
-        const { callTool } = await import('../../tools/local.js');
-        try {
-            if (!body.name) {
-                this.setStatus(400);
-                throw new Error('name is required');
-            }
+        if (!body.name) throw httpError(400, 'name is required');
 
-            const createdBy = (request as any).user?.sub ? Number((request as any).user.sub) : undefined;
-            const result = await callTool('create-author', {
-                ...body,
-                createdBy
-            });
-            this.setStatus(201);
-            return result as Author;
-        } catch (err: any) {
-            console.error('create-author failed', err);
-            this.setStatus(500);
-            throw new Error('Failed to create author');
-        }
+        const createdBy = (request as any).user?.sub ? Number((request as any).user.sub) : undefined;
+        const result = await callTool('create-author', { ...body, createdBy });
+        this.setStatus(201);
+        return result as Author;
     }
 
     /**
@@ -159,21 +135,12 @@ export class AuthorsController extends Controller {
         @Path() id: number,
         @Body() body: UpdateAuthorRequest
     ): Promise<Author> {
-        const { callTool } = await import('../../tools/local.js');
         try {
-            const result = await callTool('update-author', {
-                id,
-                ...body
-            });
+            const result = await callTool('update-author', { id, ...body });
             return result as Author;
         } catch (err: any) {
-            console.error('update-author failed', err);
-            if (err.message?.includes('not found')) {
-                this.setStatus(404);
-                throw new Error('Author not found');
-            }
-            this.setStatus(500);
-            throw new Error('Failed to update author');
+            if (isNotFound(err)) throw httpError(404, 'Author not found');
+            throw err;
         }
     }
 
@@ -190,18 +157,12 @@ export class AuthorsController extends Controller {
     @Response('404', 'Author not found')
     @Response('500', 'Internal server error')
     public async deleteAuthor(@Path() id: number): Promise<{ success: boolean }> {
-        const { callTool } = await import('../../tools/local.js');
         try {
             await callTool('delete-author', { id });
             return { success: true };
         } catch (err: any) {
-            console.error('delete-author failed', err);
-            if (err.message?.includes('not found')) {
-                this.setStatus(404);
-                throw new Error('Author not found');
-            }
-            this.setStatus(500);
-            throw new Error('Failed to delete author');
+            if (isNotFound(err)) throw httpError(404, 'Author not found');
+            throw err;
         }
     }
 }

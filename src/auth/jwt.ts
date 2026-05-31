@@ -51,20 +51,74 @@ export async function verifySupabaseJwt(token: string): Promise<JWTPayload> {
     return payload
 }
 
-async function findLocalProfileBySub(sub: string) {
-    if (!sub) return null
-    const s = String(sub)
-    if (/^[0-9a-fA-F-]{36}$/.test(s)) return prisma.profile.findUnique({ where: { external_id: s } as any, include: { role: true } })
-    if (s.includes('@')) return prisma.profile.findUnique({ where: { email: s } as any, include: { role: true } })
+/**
+ * Resolve an application role baked into the token, if present.
+ *
+ * NOTE: Supabase always sets a top-level `role` claim, but it is the Postgres
+ * role (`anon` | `authenticated` | `service_role`) — NOT an application role.
+ * We deliberately ignore that claim and look for an app-level role under
+ * `app_metadata.role` (admin-controlled, the standard Supabase RBAC location)
+ * or a custom top-level `user_role` claim emitted by a custom access-token hook.
+ */
+function roleFromToken(payload: any): string | undefined {
+    const appRole = payload?.app_metadata?.role ?? payload?.user_role
+    return typeof appRole === 'string' && appRole.length > 0 ? appRole : undefined
+}
+
+/**
+ * Look up the local Profile for a Supabase user. `Profile.id` IS the Supabase
+ * Auth `user.id` (UUID), so match on `id` first; fall back to `email` (from the
+ * JWT) so admin auth still works when a stored Profile.id has not yet been
+ * reconciled with the Supabase UUID. See issue #90.
+ */
+async function findLocalProfileBySub(sub: string, email?: string) {
+    const s = sub ? String(sub) : ''
+    if (s && /^[0-9a-fA-F-]{36}$/.test(s)) {
+        const byId = await prisma.profile.findUnique({ where: { id: s } })
+        if (byId) return byId
+    }
+    const emailToTry = s.includes('@') ? s : email
+    if (emailToTry) return prisma.profile.findUnique({ where: { email: emailToTry } })
     return null
 }
 
-function attachLocalProfileToReq(req: any, profile: any) {
-    if (!profile) return
-    req.user.role = profile.role?.name ?? (profile.isAdmin ? 'admin' : 'user')
-    req.user.isAdmin = Boolean(profile.isAdmin)
-    req.user.localUserId = profile.id
-    req.user.external_id = profile.external_id
+export interface ResolvedAuthz {
+    role: string
+    isAdmin: boolean
+    localUserId?: unknown
+}
+
+/**
+ * Hybrid authorization resolution: prefer an app role baked into the token
+ * (stateless, no DB hit — the standard/scalable path); otherwise fall back to
+ * the local Profile (by id, then email). Pure — returns the resolution so both
+ * the Express middleware and the TSOA authentication handler can share it.
+ */
+export async function resolveAppRole(payload: any): Promise<ResolvedAuthz> {
+    const tokenRole = roleFromToken(payload)
+    if (tokenRole) {
+        return { role: tokenRole, isAdmin: tokenRole === 'admin', localUserId: payload?.sub }
+    }
+
+    const profile = await findLocalProfileBySub(
+        payload?.sub ? String(payload.sub) : '',
+        typeof payload?.email === 'string' ? payload.email : undefined
+    )
+    if (profile) {
+        return { role: profile.isAdmin ? 'admin' : 'user', isAdmin: Boolean(profile.isAdmin), localUserId: profile.id }
+    }
+
+    // No app role and no local profile: preserve the token's (Postgres) role
+    // claim so non-admin authenticated users still pass non-admin guards.
+    return { role: typeof payload?.role === 'string' ? payload.role : 'user', isAdmin: false }
+}
+
+/** Resolve authz for a request and mutate `req.user` in place. */
+async function resolveUserAuthz(req: any, payload: any) {
+    const { role, isAdmin, localUserId } = await resolveAppRole(payload)
+    req.user.role = role
+    req.user.isAdmin = isAdmin
+    if (localUserId !== undefined) req.user.localUserId = localUserId
 }
 
 function parseCookies(header?: string) {
@@ -104,14 +158,11 @@ export async function jwtMiddleware(req: Request, res: Response, next: NextFunct
             // attach a minimal user object (from token)
             (<any>req).user = Object.assign({ sub: payload.sub }, payload);
 
-            // If the token represents a Supabase user (sub is UUID or email), attach local profile when present
+            // Resolve application role (token claim preferred, local Profile fallback)
             try {
-                if (payload.sub) {
-                    const localProfile = await findLocalProfileBySub(String(payload.sub))
-                    if (localProfile) attachLocalProfileToReq(req as any, localProfile)
-                }
+                await resolveUserAuthz(req as any, payload)
             } catch (err) {
-                console.debug('jwtMiddleware: failed to lookup local user for token sub', err)
+                console.debug('jwtMiddleware: failed to resolve authz for token sub', err)
             }
 
             return next()
@@ -125,12 +176,9 @@ export async function jwtMiddleware(req: Request, res: Response, next: NextFunct
                 ; (req as any).user = Object.assign({ sub: payload.sub ?? payload.userId }, payload)
 
             try {
-                if (payload.sub) {
-                    const localProfile = await findLocalProfileBySub(String(payload.sub))
-                    if (localProfile) attachLocalProfileToReq(req as any, localProfile)
-                }
+                await resolveUserAuthz(req as any, (req as any).user)
             } catch (err) {
-                console.debug('jwtMiddleware: failed to lookup local user for session payload', err)
+                console.debug('jwtMiddleware: failed to resolve authz for session payload', err)
             }
 
             return next()

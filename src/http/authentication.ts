@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import { verifySupabaseJwt } from '../auth/jwt.js';
+import { verifySupabaseJwt, resolveAppRole } from '../auth/jwt.js';
 
 /**
  * Tsoa authentication handler for JWT bearer tokens
@@ -17,25 +17,25 @@ export async function expressAuthentication(
             throw new Error('No token provided');
         }
 
-        try {
-            // Use existing Supabase JWT verification
-            const decoded = await verifySupabaseJwt(token);
-            // If scopes are required (e.g., ['admin']), verify user has them
-            if (scopes && scopes.length > 0) {
-                const userRole = decoded.role || 'user';
-                const hasRequiredScope = scopes.some(scope =>
-                    scope === userRole || userRole === 'admin'
-                );
+        const decoded = await verifySupabaseJwt(token);
 
-                if (!hasRequiredScope) {
-                    throw new Error('Insufficient permissions');
-                }
+        // Resolve the application role the same way as the Express middleware:
+        // a token-baked app role (app_metadata.role) wins, otherwise the local
+        // Profile (by id, then email). The Supabase top-level `role` claim is
+        // the Postgres role ('authenticated') — NOT an app role — so checking it
+        // directly (the previous behavior) always failed admin scope checks.
+        const { role, isAdmin } = await resolveAppRole(decoded);
+
+        if (scopes && scopes.length > 0) {
+            const hasRequiredScope = isAdmin || scopes.some(scope => scope === role);
+            if (!hasRequiredScope) {
+                throw new Error('Insufficient permissions');
             }
-
-            return decoded;
-        } catch (err: any) {
-            throw new Error('Invalid token: ' + err.message);
         }
+
+        // Attach the resolved user to the request so controllers can read it.
+        (request as any).user = Object.assign({}, decoded, { role, isAdmin });
+        return (request as any).user;
     }
 
     throw new Error('Unknown security name: ' + securityName);

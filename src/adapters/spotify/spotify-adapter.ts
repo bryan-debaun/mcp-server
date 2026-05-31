@@ -8,12 +8,39 @@ let cachedAccessToken: string | null = null;
 let tokenExpiresAt = 0; // epoch ms
 let pollHandle: NodeJS.Timeout | null = null;
 
+// Runtime override for the refresh token (e.g. seeded via the admin OAuth
+// callback after startup). When set it takes precedence over the startup
+// config value, so a freshly-seeded token is used without a restart.
+let refreshTokenOverride: string | null = null;
+
 function nowMs() { return Date.now(); }
+
+/** The active refresh token: a runtime override wins over the startup config. */
+function currentRefreshToken(): string | undefined {
+    return refreshTokenOverride ?? config.spotify.refreshToken;
+}
+
+/** Whether the adapter has all credentials it needs to run (override-aware). */
+export function isSpotifyConfigured(): boolean {
+    return Boolean(config.spotify.clientId && config.spotify.clientSecret && currentRefreshToken());
+}
+
+/**
+ * Seed/replace the refresh token at runtime and invalidate the cached access
+ * token so the next call re-authenticates with the new token. Used by the admin
+ * OAuth-callback endpoint instead of mutating process.env (which the adapter
+ * never reads).
+ */
+export function setSpotifyRefreshToken(token: string): void {
+    refreshTokenOverride = token;
+    cachedAccessToken = null;
+    tokenExpiresAt = 0;
+}
 
 async function refreshAccessToken(): Promise<string> {
     const clientId = config.spotify.clientId;
     const clientSecret = config.spotify.clientSecret;
-    const refreshToken = config.spotify.refreshToken;
+    const refreshToken = currentRefreshToken();
 
     if (!clientId || !clientSecret || !refreshToken) throw new Error('Spotify credentials not configured');
 
@@ -105,7 +132,7 @@ export async function getPlaylists(limit = 20, offset = 0): Promise<any> {
 }
 
 export async function startSpotifyAdapter() {
-    if (!config.spotify.enabled) return;
+    if (!isSpotifyConfigured()) return;
 
     // Prime a token so errors are visible on startup
     try {

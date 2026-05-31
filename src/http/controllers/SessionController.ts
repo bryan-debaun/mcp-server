@@ -2,6 +2,7 @@ import { Controller, Route, Tags, Get, Request, Response } from 'tsoa'
 import type { Request as ExpressRequest } from 'express'
 import { verifySessionToken } from '../../auth/session.js'
 import { prisma } from '../../db/index.js'
+import { config } from '../../config.js'
 import { Counter } from 'prom-client'
 
 const sessionRequestsTotal = new Counter({ name: 'session_requests_total', help: 'Total session endpoint requests' })
@@ -10,9 +11,9 @@ const sessionRateLimitedTotal = new Counter({ name: 'session_rate_limited_total'
 // Simple per-IP rate limiting
 const ipRateMap: Map<string, { count: number; reset: number }> = new Map()
 function rateLimitIp(req: ExpressRequest): boolean {
-    // Read limits dynamically so tests can override env vars at runtime
-    const limit = Number(process.env.SESSION_RATE_LIMIT_PER_IP ?? 60)
-    const windowMs = Number(process.env.SESSION_RATE_LIMIT_WINDOW_MS ?? 60 * 1000)
+    // Centralized config (tests can override config.auth.* at runtime)
+    const limit = config.auth.sessionRateLimitPerIp
+    const windowMs = config.auth.sessionRateLimitWindowMs
 
     // Normalize IP so IPv4-mapped IPv6 addresses match the IPv4 representation
     const rawIp = req.ip || 'unknown'
@@ -81,8 +82,8 @@ export class SessionController extends Controller {
             }
 
             // Lazy-provision local profile if Supabase Auth is configured and we found a Supabase subject
-            const supabaseUrlEnv = process.env.PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_ISS
-            const supabaseKeyEnv = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY
+            const supabaseUrlEnv = config.auth.supabaseIss
+            const supabaseKeyEnv = config.auth.supabaseServiceRoleKey
             if (!user && supabaseUrlEnv && supabaseKeyEnv && payload.sub) {
                 try {
                     const supabaseUrl = String(supabaseUrlEnv).replace(/\/$/, '')

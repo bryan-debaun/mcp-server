@@ -1,6 +1,20 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { startHttpServer } from '../../src/http/server.js';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import type { Server } from 'http';
+
+// Mock the tool layer so these controller-wiring tests are deterministic and
+// independent of database availability. (Previously they relied on the
+// controllers/routes swallowing DB errors into an empty 200 — that masking is gone.)
+vi.mock('../../src/tools/local.js', () => ({
+    callTool: vi.fn(async (name: string) => {
+        if (name === 'list-books') return { books: [], total: 0 };
+        if (name === 'list-authors') return { authors: [], total: 0 };
+        if (name === 'get-book') throw new Error('Book not found');
+        if (name === 'get-author') throw new Error('Author not found');
+        return {};
+    }),
+}));
+
+import { startHttpServer } from '../../src/http/server.js';
 
 describe('tsoa books controller', () => {
     let server: Server;
@@ -72,10 +86,9 @@ describe('tsoa books controller', () => {
 
     });
 
-    it('should return book by ID via tsoa controller GET /api/books/:id', async () => {
+    it('should return 404 for a missing book via GET /api/books/:id', async () => {
         const response = await fetch(`${baseUrl}/api/books/1`, { headers: authHeaders });
-        // Gracefully handles non-existent IDs (returns 404 or empty)
-        expect([200, 404]).toContain(response.status);
+        expect(response.status).toBe(404);
     });
 
     it('should return authors via tsoa controller GET /api/authors', async () => {
@@ -88,9 +101,8 @@ describe('tsoa books controller', () => {
         expect(Array.isArray(data.authors)).toBe(true);
     });
 
-    it('should return author by ID via tsoa controller GET /api/authors/:id', async () => {
+    it('should return 404 for a missing author via GET /api/authors/:id', async () => {
         const response = await fetch(`${baseUrl}/api/authors/1`, { headers: authHeaders });
-        // Gracefully handles non-existent IDs
-        expect([200, 404]).toContain(response.status);
+        expect(response.status).toBe(404);
     });
 });
