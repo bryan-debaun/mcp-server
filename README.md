@@ -174,6 +174,13 @@ MCP_API_KEY=your-secret-key
 # Optional: For admin endpoints
 INTERNAL_ADMIN_KEY=your-admin-key
 ADMIN_DEBUG_ENABLED=true
+
+# Optional: Sentry error alerting. When SENTRY_DSN is set, unhandled errors and
+# every logger.error are reported to Sentry. Unset = disabled (dev/test default).
+SENTRY_DSN=https://<key>@o<org>.ingest.sentry.io/<project>
+# SENTRY_ENVIRONMENT=production        # defaults to NODE_ENV
+# SENTRY_TRACES_SAMPLE_RATE=0          # 0..1; 0 = errors only (no perf tracing)
+# SENTRY_RELEASE=mcp-server@0.1.0
 ```
 
 ## Installation

@@ -38,9 +38,19 @@ type LogFn = (...args: unknown[]) => void;
  * renaming `console.*` to `logger.*` without rewriting each call, while new code
  * can pass a context object for proper structured logging.
  *
- * This is also the single choke point for error reporting — a future Sentry
- * bridge can hook the `error` level here without touching call sites.
+ * This is also the single choke point for error reporting — an error reporter
+ * (e.g. Sentry) can be attached via `setErrorReporter` to receive every
+ * `logger.error` call without coupling this module to the reporter.
  */
+export type ErrorReporter = (err: unknown, context: Record<string, unknown>, message: string) => void;
+
+let errorReporter: ErrorReporter | null = null;
+
+/** Attach (or clear) a reporter invoked for every `logger.error` call. */
+export function setErrorReporter(reporter: ErrorReporter | null): void {
+    errorReporter = reporter;
+}
+
 function adapt(level: 'debug' | 'info' | 'warn' | 'error'): LogFn {
     return (...args: unknown[]) => {
         const ctx: Record<string, unknown> = {};
@@ -53,6 +63,11 @@ function adapt(level: 'debug' | 'info' | 'warn' | 'error'): LogFn {
         const msg = parts.join(' ');
         if (Object.keys(ctx).length) base[level](ctx, msg);
         else base[level](msg);
+
+        if (level === 'error' && errorReporter) {
+            // Never let error reporting break logging.
+            try { errorReporter(ctx.err, ctx, msg); } catch { /* noop */ }
+        }
     };
 }
 
