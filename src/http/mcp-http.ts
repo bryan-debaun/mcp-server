@@ -1,4 +1,5 @@
 import { Application, Request, Response } from "express";
+import { logger } from "../logger.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { config } from "../config.js";
@@ -183,35 +184,35 @@ export function registerMcpHttp(app: Application): void {
     // POST /mcp -> MCP Streamable HTTP transport (bidirectional JSON-RPC over HTTP)
     app.post(base, async (req: Request, res: Response) => {
         try {
-            console.error(`mcp-http: POST /mcp called authPresent=${!!req.headers.authorization}`);
+            logger.error(`mcp-http: POST /mcp called authPresent=${!!req.headers.authorization}`);
             const mcpKey = config.security.mcpApiKey;
             if (mcpKey) {
                 const auth = (req.headers.authorization || '').toString();
                 if (auth !== `Bearer ${mcpKey}`) {
-                    console.error('mcp-http: POST /mcp auth failed', { got: auth });
+                    logger.error('mcp-http: POST /mcp auth failed', { got: auth });
                     res.status(401).json({ error: 'unauthorized' });
                     return;
                 }
             }
 
             const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-            console.error('mcp-http: POST /mcp created StreamableHTTPServerTransport');
+            logger.error('mcp-http: POST /mcp created StreamableHTTPServerTransport');
 
             const mod = await import("../server.js");
             const { registerTools } = await import("../tools/index.js");
             const serverInstance: McpServer = mod.createServer();
             registerTools(serverInstance);
-            console.error('mcp-http: POST /mcp registering tools and connecting');
+            logger.error('mcp-http: POST /mcp registering tools and connecting');
             try {
                 await serverInstance.connect(transport as any);
                 await transport.handleRequest(req as any, res as any, req.body);
-                console.error('mcp-http: mcp http request handled');
+                logger.error('mcp-http: mcp http request handled');
             } catch (err) {
-                console.error('mcp-http: mcp http connect/handle failed', err);
+                logger.error('mcp-http: mcp http connect/handle failed', err);
                 try { res.status(500).end(); } catch (e) { void e; }
             }
         } catch (err) {
-            console.error('mcp-http: error handling /mcp post', err);
+            logger.error('mcp-http: error handling /mcp post', err);
             try { res.status(500).end(); } catch (e) { void e; }
         }
     });
@@ -222,12 +223,12 @@ export function registerMcpHttp(app: Application): void {
 
     app.get(base, async (req: Request, res: Response) => {
         try {
-            console.error(`mcp-http: GET /mcp called authPresent=${!!req.headers.authorization}`);
+            logger.error(`mcp-http: GET /mcp called authPresent=${!!req.headers.authorization}`);
             const mcpKey = config.security.mcpApiKey;
             if (mcpKey) {
                 const auth = (req.headers.authorization || '').toString();
                 if (auth !== `Bearer ${mcpKey}`) {
-                    console.error('mcp-http: GET /mcp auth failed', { got: auth });
+                    logger.error('mcp-http: GET /mcp auth failed', { got: auth });
                     res.status(401).json({ error: 'unauthorized' });
                     return;
                 }
@@ -235,7 +236,7 @@ export function registerMcpHttp(app: Application): void {
 
             const connId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
             const transport = new SseServerTransport(res, connId);
-            console.error('mcp-http: GET /mcp created SseServerTransport', { connId });
+            logger.error('mcp-http: GET /mcp created SseServerTransport', { connId });
             sseMap.set(connId, transport);
 
             // Wire it to an MCP server instance
@@ -244,18 +245,18 @@ export function registerMcpHttp(app: Application): void {
                 const { registerTools } = await import("../tools/index.js");
                 const serverInstance: McpServer = mod.createServer();
                 registerTools(serverInstance);
-                console.error('mcp-http: GET /mcp registering tools and connecting');
+                logger.error('mcp-http: GET /mcp registering tools and connecting');
                 try {
                     await serverInstance.connect(transport as any);
-                    console.error('mcp-http: mcp sse connected', { connId });
+                    logger.error('mcp-http: mcp sse connected', { connId });
                 } catch (err) {
-                    console.error('mcp-http: mcp sse connect failed', err);
+                    logger.error('mcp-http: mcp sse connect failed', err);
                     transport.close();
                     sseMap.delete(connId);
                     return;
                 }
             } catch (err) {
-                console.error('mcp-http: error creating mcp server for sse', err);
+                logger.error('mcp-http: error creating mcp server for sse', err);
                 transport.close();
                 sseMap.delete(connId);
                 return;
@@ -266,7 +267,7 @@ export function registerMcpHttp(app: Application): void {
                 sseMap.delete(connId);
             });
         } catch (err) {
-            console.error('mcp-http: unexpected error in GET /mcp', err);
+            logger.error('mcp-http: unexpected error in GET /mcp', err);
             try { res.status(500).end(); } catch (e) { /* noop */ }
         }
     });
@@ -274,12 +275,12 @@ export function registerMcpHttp(app: Application): void {
     // POST /mcp/events -> used by SSE clients to send messages back to server
     app.post(`${base}/events`, async (req: Request, res: Response) => {
         try {
-            console.error('mcp-http: POST /mcp/events called', { connIdHeader: req.headers['x-mcp-conn-id'] });
+            logger.error('mcp-http: POST /mcp/events called', { connIdHeader: req.headers['x-mcp-conn-id'] });
             const mcpKey = config.security.mcpApiKey;
             if (mcpKey) {
                 const auth = (req.headers.authorization || '').toString();
                 if (auth !== `Bearer ${mcpKey}`) {
-                    console.error('mcp-http: POST /mcp/events auth failed', { got: auth });
+                    logger.error('mcp-http: POST /mcp/events auth failed', { got: auth });
                     res.status(401).json({ error: 'unauthorized' });
                     return;
                 }
@@ -287,19 +288,19 @@ export function registerMcpHttp(app: Application): void {
 
             const connId = req.headers['x-mcp-conn-id']?.toString() || '';
             if (!connId) {
-                console.error('mcp-http: missing conn id for /mcp/events');
+                logger.error('mcp-http: missing conn id for /mcp/events');
                 return res.status(400).json({ error: 'missing conn id' });
             }
             const transport = sseMap.get(connId);
             if (!transport) {
-                console.error('mcp-http: connection not found for connId', connId);
+                logger.error('mcp-http: connection not found for connId', connId);
                 return res.status(404).json({ error: 'connection not found' });
             }
 
             // Accept newline-delimited JSON body
             try {
                 const body = (req as any).body;
-                console.error('mcp-http: /mcp/events received body', { bodyType: Array.isArray(body) ? 'array' : typeof body });
+                logger.error('mcp-http: /mcp/events received body', { bodyType: Array.isArray(body) ? 'array' : typeof body });
                 // Support both single object and arrays
                 if (Array.isArray(body)) {
                     for (const msg of body) transport.receiveMessage(msg);
@@ -308,11 +309,11 @@ export function registerMcpHttp(app: Application): void {
                 }
                 res.status(204).end();
             } catch (err) {
-                console.error('mcp-http: invalid payload for /mcp/events', err);
+                logger.error('mcp-http: invalid payload for /mcp/events', err);
                 res.status(400).json({ error: 'invalid payload' });
             }
         } catch (err) {
-            console.error('mcp-http: unexpected error in POST /mcp/events', err);
+            logger.error('mcp-http: unexpected error in POST /mcp/events', err);
             try { res.status(500).end(); } catch (e) { /* noop */ }
         }
     });

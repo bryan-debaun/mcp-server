@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { logger } from "../../logger.js";
 import { mcpAuthFailuresTotal } from '../metrics-route.js';
 import { config } from '../../config.js';
 
@@ -27,11 +28,11 @@ export function mcpAuthMiddleware(req: Request, res: Response, next: NextFunctio
         if (apiKeyHeader && apiKeyHeader === mcpKey) return next();
 
         // Auth failed — never log the presented credential value.
-        console.error('mcp-auth: auth failed', { path: req.path, ip: req.ip });
+        logger.error('mcp-auth: auth failed', { path: req.path, ip: req.ip });
         try { mcpAuthFailuresTotal.inc(); } catch (e) { /* noop */ }
         return res.status(401).json({ error: 'Unauthorized' });
     } catch (err) {
-        console.error('mcp-auth: unexpected error', err);
+        logger.error('mcp-auth: unexpected error', err);
         // Fail closed: treat as unauthorized
         try { mcpAuthFailuresTotal.inc(); } catch (e) { /* noop */ }
         return res.status(401).json({ error: 'Unauthorized' });

@@ -1,4 +1,5 @@
 import { Application } from 'express';
+import { logger } from "../logger.js";
 import swaggerUi from 'swagger-ui-express';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -24,8 +25,8 @@ export function registerSwaggerRoute(app: Application) {
             customCss: '.swagger-ui .topbar { display: none }',
         }));
 
-        console.error('registered Swagger UI at /docs');
+        logger.info('registered Swagger UI at /docs');
     } catch (err) {
-        console.error('failed to register Swagger UI', err);
+        logger.error('failed to register Swagger UI', err);
     }
 }

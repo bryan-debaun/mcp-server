@@ -1,4 +1,5 @@
 import { setPlayback } from '../../http/playback-store.js';
+import { logger } from "../../logger.js";
 import { config } from '../../config.js';
 
 const TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
@@ -111,7 +112,7 @@ async function fetchCurrentlyPlaying(): Promise<void> {
 
         setPlayback({ is_playing: j.is_playing, progress_ms: j.progress_ms ?? null, track, device, repeat_state: j.repeat_state ?? null, shuffle_state: j.shuffle_state ?? null });
     } catch (err) {
-        console.error('spotify-adapter: failed to fetch currently-playing', err);
+        logger.error('spotify-adapter: failed to fetch currently-playing', err);
     }
 }
 
@@ -138,7 +139,7 @@ export async function startSpotifyAdapter() {
     try {
         await getAccessToken();
     } catch (err) {
-        console.error('spotify-adapter: failed to refresh token on startup', err);
+        logger.error('spotify-adapter: failed to refresh token on startup', err);
     }
 
     const intervalMs = config.spotify.pollIntervalMs;
@@ -146,7 +147,7 @@ export async function startSpotifyAdapter() {
     // Immediately fetch once, then poll
     await fetchCurrentlyPlaying();
     pollHandle = setInterval(fetchCurrentlyPlaying, intervalMs);
-    console.error('spotify-adapter: started polling (interval ms)', intervalMs);
+    logger.info('spotify-adapter: started polling (interval ms)', intervalMs);
 }
 
 export async function stopSpotifyAdapter() {

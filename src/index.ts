@@ -2,6 +2,7 @@
 
 // config.ts loads dotenv at module init — import it before anything else.
 import { config } from "./config.js";
+import { logger } from "./logger.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer } from "./server.js";
 import { registerTools } from "./tools/index.js";
@@ -25,9 +26,9 @@ async function main(): Promise<void> {
             stdinIsTTY: typeof process.stdin.isTTY !== 'undefined' ? process.stdin.isTTY : null,
             stdinReadable: Boolean(process.stdin && (process.stdin.readable || process.stdin.readableFlowing)),
         };
-        console.error('startup diagnostic:', JSON.stringify(diag));
+        logger.info('startup diagnostic:', JSON.stringify(diag));
     } catch (e) {
-        console.error('startup diagnostic failed', e);
+        logger.warn('startup diagnostic failed', e);
     }
 
     // Decide transport based on runtime environment.
@@ -47,9 +48,9 @@ async function main(): Promise<void> {
 
         // Mirror previous logging behavior for the notable cases
         if (decision.reason === 'production-port-prefers-http') {
-            console.error('transport decision: NODE_ENV=production and PORT present; forcing HTTP transport. Set MCP_TRANSPORT=stdio to force stdio.');
+            logger.info('transport decision: NODE_ENV=production and PORT present; forcing HTTP transport. Set MCP_TRANSPORT=stdio to force stdio.');
         } else if (decision.reason === 'stdin-attached-port-prefers-stdio') {
-            console.error('transport decision: stdin attached and PORT present; preferring stdio transport to support LocalProcess. Set MCP_TRANSPORT=http to force HTTP.');
+            logger.info('transport decision: stdin attached and PORT present; preferring stdio transport to support LocalProcess. Set MCP_TRANSPORT=http to force HTTP.');
         }
 
         const useStdio = decision.useStdio;
@@ -58,15 +59,15 @@ async function main(): Promise<void> {
             // Hosted mode: start HTTP server and do not use stdio transport.
             const { startHttpServer } = await import("./http/server.js");
             await startHttpServer(port as number);
-            console.error(`MCP server started in HTTP mode on port ${port}`);
+            logger.info(`MCP server started in HTTP mode on port ${port}`);
         } else {
             // Local dev / extension-host mode: use stdio transport for extension integration.
             const transport = new StdioServerTransport();
             await server.connect(transport);
-            console.error("MCP server started on stdio transport");
+            logger.info("MCP server started on stdio transport");
         }
     } catch (err) {
-        console.error("Failed to start server transport or HTTP server:", err);
+        logger.error("Failed to start server transport or HTTP server:", err);
     }
 
     // Note: transport-specific startup messages are logged in each branch above.
@@ -76,29 +77,29 @@ async function main(): Promise<void> {
         if (config.isProduction) {
             // Hard block: the endpoint is suppressed in production regardless of the flag.
             // Error-level so operators notice this in production logs.
-            console.error('ADMIN_DEBUG_ENABLED is set but IGNORED in production — debug endpoints are never registered in production. Unset this flag to silence this message.')
+            logger.warn('ADMIN_DEBUG_ENABLED is set but IGNORED in production — debug endpoints are never registered in production. Unset this flag to silence this message.')
         } else {
-            console.error('ADMIN_DEBUG_ENABLED is enabled for this process; debug endpoints will be registered (preview/staging only)')
+            logger.info('ADMIN_DEBUG_ENABLED is enabled for this process; debug endpoints will be registered (preview/staging only)')
         }
     }
 
     // SendGrid configuration warning (non-blocking)
     if (config.isProduction) {
         if (!config.email.sendgridApiKey || !config.email.senderEmail) {
-            console.warn('SendGrid not fully configured for production. Missing SENDGRID_API_KEY or SENDER_EMAIL; transactional emails will not be sent. See docs/runbooks/sendgrid.md for setup.')
+            logger.warn('SendGrid not fully configured for production. Missing SENDGRID_API_KEY or SENDER_EMAIL; transactional emails will not be sent. See docs/runbooks/sendgrid.md for setup.')
         } else {
-            console.error('SendGrid appears configured for production (SENDER_EMAIL present).')
+            logger.info('SendGrid appears configured for production (SENDER_EMAIL present).')
         }
     } else {
         if (!config.email.sendgridApiKey || !config.email.senderEmail) {
-            console.error('SendGrid not configured for local/testing — this is expected in development. Set SENDGRID_API_KEY/SENDER_EMAIL to test email sending.')
+            logger.info('SendGrid not configured for local/testing — this is expected in development. Set SENDGRID_API_KEY/SENDER_EMAIL to test email sending.')
         } else {
-            console.error('SendGrid configured in non-production environment (SENDER_EMAIL=%s).', config.email.senderEmail)
+            logger.info('SendGrid configured in non-production environment (SENDER_EMAIL=%s).', config.email.senderEmail)
         }
     }
 }
 
 main().catch((error) => {
-    console.error("Fatal error:", error);
+    logger.error("Fatal error:", error);
     process.exit(1);
 });

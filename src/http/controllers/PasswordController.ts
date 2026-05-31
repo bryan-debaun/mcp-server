@@ -1,4 +1,5 @@
 import { Controller, Route, Tags, Post, Body, Request, Response } from 'tsoa'
+import { logger } from "../../logger.js";
 import type { Request as ExpressRequest } from 'express'
 import { Counter } from 'prom-client'
 import { setSessionCookie } from './_session-utils.js'
@@ -35,7 +36,7 @@ export class PasswordController extends Controller {
             })
             if (!r.ok) {
                 const txt = await r.text().catch(() => '')
-                console.error('supabase recover failed', r.status, txt)
+                logger.error('supabase recover failed', r.status, txt)
                 res.status(502).json({ error: 'supabase request failed' })
                 return undefined as any
             }
@@ -43,7 +44,7 @@ export class PasswordController extends Controller {
             passwordResetSent.inc()
             return { status: 'ok' }
         } catch (err: any) {
-            console.error('password reset request failed', err)
+            logger.error('password reset request failed', err)
             res.status(502).json({ error: 'supabase request failed' })
             return undefined as any
         }
@@ -81,7 +82,7 @@ export class PasswordController extends Controller {
             await setSessionCookie(res, { sub: email })
             return { status: 'ok' }
         } catch (err: any) {
-            console.error('password login failed', err)
+            logger.error('password login failed', err)
             passwordLoginFailed.inc()
             res.status(401).json({ error: 'invalid credentials' })
             return undefined as any

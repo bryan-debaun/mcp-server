@@ -1,4 +1,5 @@
 import { Controller, Route, Tags, Get, Request, Response } from 'tsoa'
+import { logger } from "../../logger.js";
 import type { Request as ExpressRequest } from 'express'
 import { verifySessionToken } from '../../auth/session.js'
 import { prisma } from '../../db/index.js'
@@ -109,11 +110,11 @@ export class SessionController extends Controller {
                         user = await prisma.profile.findUnique({ where: { id: created.id } })
                     }
                 } catch (err) {
-                    console.error('Supabase lookup during session provisioning failed', err)
+                    logger.error('Supabase lookup during session provisioning failed', err)
                 }
             }
         } catch (err) {
-            console.error('failed to lookup user for session', err)
+            logger.error('failed to lookup user for session', err)
         }
 
         if (!user) { (request as any).res.status(401).json({ error: 'user not found' }); this.setStatus(401); return }

@@ -1,4 +1,5 @@
 import { Application, Request, Response } from 'express'
+import { logger } from "../logger.js";
 import { z } from 'zod'
 
 // Simple IP-based rate limiter for invite acceptance to help prevent brute force
@@ -40,7 +41,7 @@ export function registerInviteRoutes(app: Application) {
             if (err.message === 'expired token') return res.status(400).json({ error: 'expired token' })
             if (err.message === 'user already exists') return res.status(400).json({ error: 'user already exists' })
             if (err.message === 'supabase provisioning failed') return res.status(502).json({ error: 'provisioning failed' })
-            console.error('accept invite error', err)
+            logger.error('accept invite error', err)
             return res.status(500).json({ error: 'internal error' })
         }
     })
@@ -60,7 +61,7 @@ export function registerInviteRoutes(app: Application) {
             if (err.message === 'expired token') return res.status(400).json({ error: 'expired token' })
             if (err.message === 'user already exists') return res.status(400).json({ error: 'user already exists' })
             if (err.message === 'supabase provisioning failed') return res.status(502).json({ error: 'provisioning failed' })
-            console.error('accept invite error', err)
+            logger.error('accept invite error', err)
             return res.status(500).json({ error: 'internal error' })
         }
     })

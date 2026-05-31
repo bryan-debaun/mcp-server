@@ -1,4 +1,5 @@
 import { Controller, Post, Route, Tags, Body, SuccessResponse, Response } from 'tsoa'
+import { logger } from "../../logger.js";
 import fs from 'fs'
 import path from 'path'
 import { config } from '../../config.js'
@@ -33,7 +34,7 @@ export class SpotifyAdminController extends Controller {
     public async seedRefreshToken(@Body() body: SeedRequest): Promise<SeedResponse> {
         // Validate early so validation errors escape the function (TSOA will map status correctly)
         if (!body || (!body.code && !body.refreshToken)) {
-            console.error('spotify-admin: validation failed - missing code or refreshToken', { body })
+            logger.error('spotify-admin: validation failed - missing code or refreshToken', { body })
             this.setStatus(400)
             const err: any = new Error('Either `code` or `refreshToken` must be provided')
             err.status = 400
@@ -107,7 +108,7 @@ export class SpotifyAdminController extends Controller {
                     persisted = true
                 } catch (err) {
                     // non-fatal — continue but report not persisted
-                    console.error('spotify-admin: failed to persist .env.local', err)
+                    logger.error('spotify-admin: failed to persist .env.local', err)
                 }
             }
 
@@ -116,12 +117,12 @@ export class SpotifyAdminController extends Controller {
             try {
                 await adapter.startSpotifyAdapter()
             } catch (err) {
-                console.error('spotify-admin: failed to start adapter after seeding token', err)
+                logger.error('spotify-admin: failed to start adapter after seeding token', err)
             }
 
             return { success: true, persistedToEnvFile: persisted }
         } catch (err: any) {
-            console.error('spotify-admin: seedRefreshToken failed', err)
+            logger.error('spotify-admin: seedRefreshToken failed', err)
             // Preserve validation status if already set
             if (this.getStatus && this.getStatus() === 400) { this.setStatus(400); throw err }
             this.setStatus(500)

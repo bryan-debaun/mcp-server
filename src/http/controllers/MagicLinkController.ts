@@ -1,4 +1,5 @@
 import { Controller, Route, Tags, Post, Get, Body, Query, Request, SuccessResponse, Response } from 'tsoa'
+import { logger } from "../../logger.js";
 import type { Request as ExpressRequest } from 'express'
 import { generateMagicLinkToken, verifyMagicLinkToken } from '../../auth/magic-link.js'
 import { sendMagicLinkEmail } from '../../email.js'
@@ -87,10 +88,10 @@ export class MagicLinkController extends Controller {
 
                 await sendMagicLinkEmail(email, token, base)
                 magicLinkSent.inc()
-                console.info('magic_link.sent', { email })
+                logger.info('magic_link.sent', { email })
             } catch (err: any) {
                 const msg = err?.message ?? String(err)
-                console.error('magic link send failed', msg)
+                logger.error('magic link send failed', msg)
                 magicLinkFailed.inc()
             }
 
@@ -98,7 +99,7 @@ export class MagicLinkController extends Controller {
             return { status: 'accepted' }
         } catch (err: any) {
             if (this.getStatus() === 429) throw new Error('rate limited')
-            console.error('magic-link send error', err)
+            logger.error('magic-link send error', err)
             this.setStatus(400)
             throw new Error('Invalid request')
         }
@@ -145,7 +146,7 @@ export class MagicLinkController extends Controller {
 
             if (!res.ok) {
                 const txt = await res.text()
-                try { console.error('Supabase user creation failed:', txt) } catch (e) { /* ignore */ }
+                try { logger.error('Supabase user creation failed:', txt) } catch (e) { /* ignore */ }
                 (request as any).res.status(502).json({ error: `Supabase provisioning failed: ${txt}` })
                 this.setStatus(502)
                 return
@@ -196,13 +197,13 @@ export class MagicLinkController extends Controller {
                 const base = requestBase ?? config.auth.magicLinkBaseUrl ?? 'http://localhost:3000'
                 await sendMagicLinkEmail(email, token, base)
             } catch (err: any) {
-                console.error('failed to send magic link after register', err)
+                logger.error('failed to send magic link after register', err)
             }
 
             this.setStatus(201)
             return user
         } catch (err: any) {
-            console.error('register failed', err)
+            logger.error('register failed', err)
             try { (request as any).res.status(500).json({ error: 'Internal server error' }) } catch (e) { /* ignore */ }
             this.setStatus(500)
             return
@@ -221,13 +222,13 @@ export class MagicLinkController extends Controller {
             const info = await verifyMagicLinkToken(token)
             await setSessionCookie(res, { sub: info.email, userId: info.userId })
             magicLinkVerified.inc()
-            console.info('magic_link.verified', { email: info.email })
+            logger.info('magic_link.verified', { email: info.email })
             const redirect = config.auth.magicLinkSuccessUrl ?? (config.auth.magicLinkFrontendUrl ?? '/')
             try {
                 res.redirect(String(redirect))
                 return
             } catch (err) {
-                console.error('redirect failed', err)
+                logger.error('redirect failed', err)
                 res.status(500).json({ error: 'redirect failed' })
                 return
             }
@@ -251,7 +252,7 @@ export class MagicLinkController extends Controller {
             const info = await verifyMagicLinkToken(token)
             await setSessionCookie((request as any).res, { sub: info.email, userId: info.userId })
             magicLinkVerified.inc()
-            console.info('magic_link.verified', { email: info.email })
+            logger.info('magic_link.verified', { email: info.email })
             return { status: 'ok' }
         } catch (err: any) {
             if (err.message === 'expired token') { res.status(410).json({ error: 'expired token' }); return undefined as any }

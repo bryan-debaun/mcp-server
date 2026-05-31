@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { sendInviteEmail, sendMagicLinkEmail } from '../src/email.js'
 import { config } from '../src/config.js'
+import { logger } from '../src/logger.js'
 
 const origSendgridKey = config.email.sendgridApiKey
 const origSenderEmail = config.email.senderEmail
@@ -22,7 +23,7 @@ afterEach(() => {
 describe('sendInviteEmail', () => {
     it('logs invite URL when no SENDGRID_API_KEY', async () => {
         delete process.env.SENDGRID_API_KEY
-        const spy = vi.spyOn(console, 'log').mockImplementation(() => { })
+        const spy = vi.spyOn(logger, 'info').mockImplementation(() => { })
         await sendInviteEmail('test@example.com', 'the-token')
         expect(spy).toHaveBeenCalledWith(expect.stringContaining('Invite for test@example.com:'))
         spy.mockRestore()

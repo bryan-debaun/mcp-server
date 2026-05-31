@@ -1,4 +1,5 @@
 import { Application, Request, Response } from 'express';
+import { logger } from "../logger.js";
 import { jwtMiddleware } from '../auth/jwt.js';
 import { requireAdmin } from '../auth/requireAdmin.js';
 
@@ -17,7 +18,7 @@ export function registerAuthorsRoute(app: Application) {
             });
             res.json(result);
         } catch (err: any) {
-            console.error('list-authors failed', err);
+            logger.error('list-authors failed', err);
             // Gracefully degrade: return empty list if database is unavailable
             res.json({ authors: [], total: 0 });
         }
@@ -34,7 +35,7 @@ export function registerAuthorsRoute(app: Application) {
             const result = await callTool('get-author', { id });
             res.json(result);
         } catch (err: any) {
-            console.error('get-author failed', err);
+            logger.error('get-author failed', err);
             // Gracefully degrade: return 404 if database is unavailable or author not found
             res.status(404).json({ error: 'Author not found' });
         }
@@ -57,7 +58,7 @@ export function registerAuthorsRoute(app: Application) {
             });
             res.status(201).json(result);
         } catch (err: any) {
-            console.error('create-author failed', err);
+            logger.error('create-author failed', err);
             res.status(500).json({ error: 'Failed to create author' });
         }
     });
@@ -79,7 +80,7 @@ export function registerAuthorsRoute(app: Application) {
             });
             res.json(result);
         } catch (err: any) {
-            console.error('update-author failed', err);
+            logger.error('update-author failed', err);
             if (err.message?.includes('not found')) {
                 return res.status(404).json({ error: 'Author not found' });
             }
@@ -98,7 +99,7 @@ export function registerAuthorsRoute(app: Application) {
             const result = await callTool('delete-author', { id });
             res.json(result);
         } catch (err: any) {
-            console.error('delete-author failed', err);
+            logger.error('delete-author failed', err);
             if (err.message?.includes('not found')) {
                 return res.status(404).json({ error: 'Author not found' });
             }

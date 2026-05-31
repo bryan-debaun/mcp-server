@@ -1,11 +1,12 @@
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose'
+import { logger } from "../logger.js";
 import { config } from '../config.js'
 
 const EXP_MINUTES = 15
 const SECRET = config.auth.magicLinkJwtSecret
 
 if (!SECRET) {
-    console.warn('MAGIC_LINK_JWT_SECRET not set; magic-link token signing will fail')
+    logger.warn('MAGIC_LINK_JWT_SECRET not set; magic-link token signing will fail')
 }
 
 function getKey() {

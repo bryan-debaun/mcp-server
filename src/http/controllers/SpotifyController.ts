@@ -1,4 +1,5 @@
 import { Controller, Get, Route, Tags, Query, Response, SuccessResponse } from 'tsoa';
+import { logger } from "../../logger.js";
 import { getPlayback, PlaybackState } from '../playback-store.js';
 
 /**
@@ -61,7 +62,7 @@ export class SpotifyController extends Controller {
                 offset: res.offset ?? Number(offset ?? 0)
             };
         } catch (err: any) {
-            console.error('SpotifyController.liked failed', err);
+            logger.error('SpotifyController.liked failed', err);
             this.setStatus(500);
             throw new Error(err?.message ?? 'spotify error');
         }
@@ -81,7 +82,7 @@ export class SpotifyController extends Controller {
                 offset: res.offset ?? Number(offset ?? 0)
             };
         } catch (err: any) {
-            console.error('SpotifyController.playlists failed', err);
+            logger.error('SpotifyController.playlists failed', err);
             this.setStatus(500);
             throw new Error(err?.message ?? 'spotify error');
         }
