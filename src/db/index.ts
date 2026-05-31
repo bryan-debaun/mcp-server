@@ -1,248 +1,95 @@
 import { config } from '../config.js'
 
-// Export a `prisma` object that is initialized synchronously when possible.
-// If `DATABASE_URL` is set and `@prisma/client` is available (as in CI after
-// running `prisma generate`), we create a real `PrismaClient` instance.
-// Otherwise, export a minimal stub so tests can import and mock methods.
+// `prisma` is captured by reference by importers. `initPrisma()` populates it
+// with either a real PrismaClient (model accessors + raw helpers forwarded) or,
+// when `DATABASE_URL` is unset or the client can't load, a set of stubs so the
+// server still starts in a degraded, DB-less mode (reads empty, writes throw).
+// It stays a plain mutable object so tests can override individual models.
 export const prisma: any = {}
 
 let prismaReadyPromise: Promise<void> | null = null
+
+/**
+ * Models the application uses — the single source of truth for both stub
+ * generation and real-client forwarding. Keep in sync with `prisma/schema.prisma`;
+ * the `test/db/stub-coverage.test.ts` guard fails if a schema model is missing
+ * here. (A few entries — `user`/`invite`/`role`/`accessRequest`/`authMagicLink` —
+ * back legacy auth code and are intentionally retained beyond the current schema.)
+ */
+const MODEL_NAMES = [
+    'user', 'profile', 'invite', 'role', 'auditLog', 'accessRequest',
+    'author', 'book', 'bookAuthor', 'movie', 'videoGame', 'contentCreator',
+    'rating', 'authMagicLink',
+] as const
+
+/** A model stub: reads resolve empty, writes throw a clear "not configured" error. */
+function makeStubModel(fail: () => never) {
+    return {
+        findMany: async (_opts?: any) => [],
+        findUnique: async (_opts?: any) => null,
+        findFirst: async (_opts?: any) => null,
+        create: async (_data?: any) => fail(),
+        update: async (_opts?: any) => fail(),
+        upsert: async (_opts?: any) => fail(),
+        delete: async (_opts?: any) => fail(),
+        deleteMany: async (_opts?: any) => fail(),
+    }
+}
+
+/**
+ * Install DB-less stubs onto `prisma`. Used both when `DATABASE_URL` is unset and
+ * when the Prisma client fails to load; `reason` is the error thrown by writes.
+ */
+function applyStubs(reason: string) {
+    const fail = (): never => { throw new Error(reason) }
+
+    prisma.$queryRaw = async () => fail()
+    prisma.$executeRaw = async () => fail()
+    prisma.$transaction = async () => fail()
+    prisma.$disconnect = async () => { /* noop */ }
+
+    for (const name of MODEL_NAMES) prisma[name] = makeStubModel(fail)
+
+    // A couple of stubs intentionally return values rather than throwing so
+    // best-effort callers (role provisioning, audit logging) don't crash sans DB.
+    prisma.role = { findUnique: async () => null, create: async () => ({ id: 1, name: 'user' }) }
+    prisma.auditLog = { create: async () => ({ id: 1 }) }
+}
 
 export async function initPrisma() {
     if (prismaReadyPromise) return prismaReadyPromise
 
     const dbUrl = config.database.url
     if (!dbUrl) {
-        // No DB configured; provide stub methods used in tests and safe no-op model stubs to avoid
-        // runtime TypeErrors when server is running without a database (e.g., preview environments).
-        // Read methods return empty results; write methods throw to indicate missing DB.
-        prisma.$queryRaw = async () => { throw new Error('DATABASE_URL not configured') }
-        prisma.$disconnect = async () => { /* noop */ }
-
-        // Model stubs
-        prisma.profile = {
-            findMany: async (_opts?: any) => [],
-            findUnique: async (_opts?: any) => null,
-            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
-            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-        }
-
-        prisma.invite = {
-            findMany: async (_opts?: any) => [],
-            findUnique: async (_opts?: any) => null,
-            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
-            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-        }
-
-        // Stub for magic-link single-use token persistence
-        prisma.authMagicLink = {
-            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
-            findUnique: async (_opts?: any) => null,
-            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-        }
-
-        prisma.role = {
-            findUnique: async (_opts?: any) => null,
-            create: async (_data?: any) => ({ id: 1, name: 'user' }),
-        }
-
-        prisma.auditLog = {
-            create: async (_data?: any) => ({ id: 1 })
-        }
-
-        prisma.accessRequest = {
-            findMany: async (_opts?: any) => [],
-            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-        }
-
-        prisma.author = {
-            findMany: async (_opts?: any) => [],
-            findUnique: async (_opts?: any) => null,
-            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
-            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-            delete: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-        }
-
-        prisma.book = {
-            findMany: async (_opts?: any) => [],
-            findUnique: async (_opts?: any) => null,
-            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
-            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-            delete: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-        }
-
-        prisma.bookAuthor = {
-            findMany: async (_opts?: any) => [],
-            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
-            deleteMany: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-        }
-
-        prisma.movie = {
-            findMany: async (_opts?: any) => [],
-            findUnique: async (_opts?: any) => null,
-            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
-            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-            delete: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-        }
-
-        prisma.videoGame = {
-            findMany: async (_opts?: any) => [],
-            findUnique: async (_opts?: any) => null,
-            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
-            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-            delete: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-        }
-
-        prisma.contentCreator = {
-            findMany: async (_opts?: any) => [],
-            findUnique: async (_opts?: any) => null,
-            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
-            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-            delete: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-        }
-
-        prisma.rating = {
-            findMany: async (_opts?: any) => [],
-            findUnique: async (_opts?: any) => null,
-            findFirst: async (_opts?: any) => null,
-            create: async (_data?: any) => { throw new Error('DATABASE_URL not configured') },
-            update: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-            upsert: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-            delete: async (_opts?: any) => { throw new Error('DATABASE_URL not configured') },
-        }
+        // No DB configured: provide safe stubs so the server (e.g. GitHub-only
+        // tooling, preview envs) still runs without a database.
+        applyStubs('DATABASE_URL not configured')
         prismaReadyPromise = Promise.resolve()
         return prismaReadyPromise
     }
 
     prismaReadyPromise = (async () => {
         try {
-            const pkg = await import('@prisma/client') as any
-            const { PrismaClient } = pkg
-            const adapterPkg = await import('@prisma/adapter-pg') as any
-            const { PrismaPg } = adapterPkg
+            const { PrismaClient } = await import('@prisma/client') as any
+            const { PrismaPg } = await import('@prisma/adapter-pg') as any
             const adapter = new PrismaPg({ connectionString: dbUrl })
             const real = new PrismaClient({ adapter })
-            // Copy own instance properties and functions (via descriptors) so that
-            // instance-defined methods (if any) are bound correctly.
-            const descriptors = Object.getOwnPropertyDescriptors(real)
-            for (const [k, d] of Object.entries(descriptors)) {
-                if (typeof (d as any).value === 'function') {
-                    (prisma as any)[k] = (d as any).value.bind(real)
-                } else {
-                    Object.defineProperty(prisma, k, d as PropertyDescriptor)
-                }
-            }
-            // Also bind prototype methods (e.g., $queryRaw) so callers can invoke them directly on the
-            // exported `prisma` object. This ensures mocked PrismaClients in tests (which often
-            // define methods on prototypes) behave correctly.
-            const proto = Object.getPrototypeOf(real)
-            for (const k of Object.getOwnPropertyNames(proto)) {
-                const v = (proto as any)[k]
-                if (typeof v === 'function') {
-                    (prisma as any)[k] = v.bind(real)
-                }
-            }
 
-            // Ensure commonly used raw query helpers are always available and callable as template-tag
-            // functions. Some Prisma client internals expose these via non-enumerable or lazy accessors
-            // so we explicitly forward them to the real client to avoid runtime "not a function" errors
-            // in CI and runtime environments.
-            (prisma as any).$queryRaw = (...args: any[]) => (real as any).$queryRaw(...args);
-            (prisma as any).$executeRaw = (...args: any[]) => (real as any).$executeRaw(...args);
-            (prisma as any).$transaction = (...args: any[]) => (real as any).$transaction(...args);
-            (prisma as any).$disconnect = (real as any).$disconnect?.bind(real) ?? (async () => { });
+            // Forward the raw helpers and model accessors onto the shared `prisma`
+            // object. Direct assignment keeps each model reassignable by tests.
+            prisma.$queryRaw = (...args: any[]) => real.$queryRaw(...args)
+            prisma.$executeRaw = (...args: any[]) => real.$executeRaw(...args)
+            prisma.$transaction = (...args: any[]) => real.$transaction(...args)
+            prisma.$disconnect = () => (real.$disconnect ? real.$disconnect() : Promise.resolve())
 
-            // Explicitly forward model accessors (user, book, etc.) to ensure they're available
-            // These are often defined as getters on the Prisma client and may not be enumerable
-            const modelNames = ['user', 'profile', 'invite', 'role', 'auditLog', 'accessRequest', 'author', 'book', 'bookAuthor', 'movie', 'videoGame', 'contentCreator', 'rating', 'authMagicLink'];
-            for (const modelName of modelNames) {
-                if (modelName in real) {
-                    Object.defineProperty(prisma, modelName, {
-                        get() { return (real as any)[modelName]; },
-                        enumerable: true,
-                        configurable: true
-                    });
-                }
+            for (const name of MODEL_NAMES) {
+                if (name in real) prisma[name] = (real as any)[name]
             }
 
             console.error('PrismaClient initialized successfully')
-            return
         } catch (err) {
             console.error('failed to initialize PrismaClient dynamically; falling back to stub', err)
-        }
-
-        // Fallback stubs when PrismaClient cannot be initialized
-        prisma.$queryRaw = async () => { throw new Error('PrismaClient not initialized') }
-        prisma.$disconnect = async () => { /* noop */ }
-
-        // Provide minimal model stubs to avoid runtime TypeErrors when code attempts
-        // to call model methods in preview or non-DB environments. Read methods return
-        // empty results or null; write methods throw a clear error to fail fast.
-        prisma.profile = {
-            findMany: async (_opts?: any) => [],
-            findUnique: async (_opts?: any) => null,
-            create: async (_data?: any) => { throw new Error('PrismaClient not initialized') },
-            update: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
-        }
-
-        prisma.invite = {
-            findMany: async (_opts?: any) => [],
-            findUnique: async (_opts?: any) => null,
-            create: async (_data?: any) => { throw new Error('PrismaClient not initialized') },
-            update: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
-        }
-
-        // Fallback stub for magic-link single-use token persistence
-        prisma.authMagicLink = {
-            create: async (_data?: any) => { throw new Error('PrismaClient not initialized') },
-            findUnique: async (_opts?: any) => null,
-            update: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
-        }
-
-        prisma.role = {
-            findUnique: async (_opts?: any) => null,
-            create: async (_data?: any) => ({ id: 1, name: 'user' }),
-        }
-
-        prisma.auditLog = {
-            create: async (_data?: any) => ({ id: 1 })
-        }
-
-        prisma.accessRequest = {
-            findMany: async (_opts?: any) => [],
-            update: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
-        }
-
-        prisma.author = {
-            findMany: async (_opts?: any) => [],
-            findUnique: async (_opts?: any) => null,
-            create: async (_data?: any) => { throw new Error('PrismaClient not initialized') },
-            update: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
-            delete: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
-        }
-
-        prisma.book = {
-            findMany: async (_opts?: any) => [],
-            findUnique: async (_opts?: any) => null,
-            create: async (_data?: any) => { throw new Error('PrismaClient not initialized') },
-            update: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
-            delete: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
-        }
-
-        prisma.bookAuthor = {
-            findMany: async (_opts?: any) => [],
-            create: async (_data?: any) => { throw new Error('PrismaClient not initialized') },
-            deleteMany: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
-        }
-
-        prisma.rating = {
-            findMany: async (_opts?: any) => [],
-            findUnique: async (_opts?: any) => null,
-            findFirst: async (_opts?: any) => null,
-            create: async (_data?: any) => { throw new Error('PrismaClient not initialized') },
-            update: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
-            upsert: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
-            delete: async (_opts?: any) => { throw new Error('PrismaClient not initialized') },
+            applyStubs('PrismaClient not initialized')
         }
     })()
 
@@ -267,7 +114,6 @@ export async function testConnection() {
             return res
         } catch (err) {
             lastErr = err
-            // Log and retry on transient connection errors
             console.error(`testConnection attempt ${attempt} failed:`, (err as any)?.message ?? err)
             if (attempt < maxAttempts) {
                 await new Promise((r) => setTimeout(r, delayMs))
