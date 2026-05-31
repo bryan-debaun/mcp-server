@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerTool } from "../registration.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { BulkSetProjectFieldValuesInputSchema } from "./schemas.js";
 import {
@@ -31,7 +32,7 @@ interface UpdateResult {
  * Registers the bulk-set-project-field-values tool with the MCP server.
  */
 export function registerBulkSetProjectFieldValuesTool(server: McpServer): void {
-    (server as any).registerTool(
+    registerTool(server,
         name,
         config,
         async (args: any): Promise<CallToolResult> => {

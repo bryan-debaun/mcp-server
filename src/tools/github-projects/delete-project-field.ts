@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerTool } from "../registration.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { DeleteProjectFieldInputSchema } from "./schemas.js";
 import { getProjectFields, deleteProjectField, clearProjectCache } from "./graphql.js";
@@ -20,7 +21,7 @@ const config = {
  * Registers the delete-project-field tool with the MCP server.
  */
 export function registerDeleteProjectFieldTool(server: McpServer): void {
-    (server as any).registerTool(
+    registerTool(server,
         name,
         config,
         async (args: any): Promise<CallToolResult> => {

@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerTool } from "../registration.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { CreateProjectFieldInputSchema } from "./schemas.js";
 import { getProjectFields, createProjectField, clearProjectCache } from "./graphql.js";
@@ -15,7 +16,7 @@ const config = {
  * Registers the create-project-field tool with the MCP server.
  */
 export function registerCreateProjectFieldTool(server: McpServer): void {
-    (server as any).registerTool(
+    registerTool(server,
         name,
         config,
         async (args: any): Promise<CallToolResult> => {

@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerTool } from "../registration.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { SetProjectFieldValueInputSchema } from "./schemas.js";
 import {
@@ -26,7 +27,7 @@ const config = {
  * Registers the set-project-field-value tool with the MCP server.
  */
 export function registerSetProjectFieldValueTool(server: McpServer): void {
-    (server as any).registerTool(
+    registerTool(server,
         name,
         config,
         async (args: any): Promise<CallToolResult> => {
