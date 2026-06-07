@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "anthropic.claude-code",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "Prisma.prisma",
+    "ms-azuretools.vscode-docker",
+    "redhat.vscode-yaml"
+  ]
+}
