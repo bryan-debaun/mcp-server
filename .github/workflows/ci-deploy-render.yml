@@ -24,12 +24,15 @@ jobs:
           --health-cmd "pg_isready -U postgres -d mcp_ci" --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js 20
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
+          cache: 'pnpm'
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       - name: Set DATABASE_URL (for Prisma client generation)
         run: echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/mcp_ci" >> $GITHUB_ENV
       - name: Ensure rls_test_role exists (CI DB)
@@ -57,10 +60,10 @@ jobs:
           done
           echo "Postgres is ready"
       - name: Run Prisma DB push & generate
-        run: npx prisma db push && npx prisma generate
+        run: pnpm exec prisma db push && pnpm exec prisma generate
       - name: Generate tsoa routes (required for tests)
-        run: npm run build:spec
+        run: pnpm run build:spec
       - name: Run tests
-        run: npm test
+        run: pnpm test
       - name: Build
-        run: npm run build
+        run: pnpm run build

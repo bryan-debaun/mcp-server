@@ -29,7 +29,7 @@ const TEST_ISSUE_NUMBER = parseInt(process.env.GITHUB_TEST_ISSUE_NUMBER || "73",
  * - Test issue exists for value testing
  * 
  * Run with:
- * RUN_GITHUB_PROJECTS_INTEGRATION=true npm test -- github-projects.test.ts
+ * RUN_GITHUB_PROJECTS_INTEGRATION=true pnpm test -- github-projects.test.ts
  */
 describe("GitHub Projects V2 Integration", () => {
     if (!RUN_INTEGRATION) {

@@ -6,7 +6,7 @@
  * external service.
  *
  * Gate: gated by `RUN_TRANSPORT_INTEGRATION=true` to keep CI fast by default.
- * Run locally: RUN_TRANSPORT_INTEGRATION=true npx vitest run test/integration/http-stream.test.ts
+ * Run locally: RUN_TRANSPORT_INTEGRATION=true pnpm exec vitest run test/integration/http-stream.test.ts
  */
 
 import { describe, it, expect, afterEach } from 'vitest'

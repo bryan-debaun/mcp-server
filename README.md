@@ -150,7 +150,8 @@ Use this spec to generate client SDKs for any language using tools like [OpenAPI
 
 ## Prerequisites
 
-- **Node.js 20+**: Required runtime
+- **Node.js 24 (active LTS)**: The toolchain (Docker image, CI, `.nvmrc`) targets Node 24; 20+ is the supported minimum (`engines.node`)
+- **pnpm**: This project uses [pnpm](https://pnpm.io) as its package manager (pinned via the `packageManager` field in `package.json`). The easiest way to get the right version is Corepack, which ships with Node.js — run `corepack enable` once and pnpm commands will use the pinned version automatically.
 - **PostgreSQL Database**: Required for book/movie/game catalog features (optional for GitHub tools only)
 - **`GITHUB_TOKEN`**: A GitHub personal access token (PAT) or fine-grained token with `repo` and `project` scopes. Set via the `GITHUB_TOKEN` environment variable.
 
@@ -191,7 +192,7 @@ SENTRY_DSN=https://<key>@o<org>.ingest.sentry.io/<project>
 
    ```bash
    # Run migrations
-   npx prisma migrate deploy
+   pnpm exec prisma migrate deploy
    ```
 
    **Deploy-time seeding (recommended)**
@@ -199,7 +200,7 @@ SENTRY_DSN=https://<key>@o<org>.ingest.sentry.io/<project>
    ```bash
    # Seed initial data (creates admin user and sample books)
    # NOTE: Run this as a deploy step (CI or Render deploy hook) to avoid re-seeding on cold-starts
-   npm run prisma:seed
+   pnpm run prisma:seed
    ```
 
    Example GitHub Actions snippet (run seed after migrations):
@@ -210,15 +211,17 @@ SENTRY_DSN=https://<key>@o<org>.ingest.sentry.io/<project>
        runs-on: ubuntu-latest
        steps:
          - uses: actions/checkout@v4
+         - uses: pnpm/action-setup@v4
          - uses: actions/setup-node@v4
            with:
-             node-version: 20
-         - run: npm ci
-         - run: npx prisma migrate deploy
-         - run: npm run prisma:seed
+             node-version: 24
+             cache: 'pnpm'
+         - run: pnpm install --frozen-lockfile
+         - run: pnpm exec prisma migrate deploy
+         - run: pnpm run prisma:seed
    ```
 
-   Render: you can add a post-deploy command in your service settings (Render UI) to run `npm run prisma:seed`, or use a Deploy Hook to trigger seeding after deploy.
+   Render: you can add a post-deploy command in your service settings (Render UI) to run `pnpm run prisma:seed`, or use a Deploy Hook to trigger seeding after deploy.
 
    ```bash
    git clone https://github.com/bryan-debaun/mcp-server.git
@@ -228,13 +231,13 @@ SENTRY_DSN=https://<key>@o<org>.ingest.sentry.io/<project>
 3. **Install dependencies**:
 
    ```bash
-   npm install
+   pnpm install
    ```
 
 4. **Build**:
 
    ```bash
-   npm run build
+   pnpm run build
    ```
 
 ## VS Code Configuration
@@ -429,19 +432,19 @@ Once configured, the MCP tools are available in VS Code Copilot chat:
 
 ```bash
 # Build
-npm run build
+pnpm run build
 
 # Watch mode (rebuild on changes)
-npm run dev
+pnpm run dev
 
 # Run tests
-npm test
+pnpm test
 
 # Run tests in watch mode
-npm run test:watch
+pnpm run test:watch
 
 # Type check
-npm run typecheck
+pnpm run typecheck
 ```
 
 ## Project Structure

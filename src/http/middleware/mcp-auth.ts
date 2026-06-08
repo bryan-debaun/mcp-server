@@ -23,12 +23,12 @@ export function mcpAuthMiddleware(req: Request, res: Response, next: NextFunctio
 
         // Auth failed — never log the presented credential value.
         logger.error('mcp-auth: auth failed', { path: req.path, ip: req.ip });
-        try { mcpAuthFailuresTotal.inc(); } catch (e) { /* noop */ }
+        try { mcpAuthFailuresTotal.inc(); } catch { /* noop */ }
         return res.status(401).json({ error: 'Unauthorized' });
     } catch (err) {
         logger.error('mcp-auth: unexpected error', err);
         // Fail closed: treat as unauthorized
-        try { mcpAuthFailuresTotal.inc(); } catch (e) { /* noop */ }
+        try { mcpAuthFailuresTotal.inc(); } catch { /* noop */ }
         return res.status(401).json({ error: 'Unauthorized' });
     }
 }

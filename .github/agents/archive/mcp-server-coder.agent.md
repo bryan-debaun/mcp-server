@@ -70,21 +70,21 @@ test/                         ← Vitest tests (mirror src structure)
 ## Commands
 
 ```powershell
-npm run build        # prisma generate + build:spec + tsc + build:seed
-npm run test         # vitest run (all tests, CI-safe)
-npm run test:watch   # vitest (interactive)
-npm run typecheck    # tsc --noEmit
-npm start            # node dist/index.js (stdio or HTTP via MCP_TRANSPORT)
-npm run start:http   # cross-env MCP_TRANSPORT=http node dist/index.js
+pnpm run build        # prisma generate + build:spec + tsc + build:seed
+pnpm run test         # vitest run (all tests, CI-safe)
+pnpm run test:watch   # vitest (interactive)
+pnpm run typecheck    # tsc --noEmit
+pnpm start            # node dist/index.js (stdio or HTTP via MCP_TRANSPORT)
+pnpm run start:http   # cross-env MCP_TRANSPORT=http node dist/index.js
 ```
 
-**Always run `npm run typecheck` and `npm run test` before marking work done.**
+**Always run `pnpm run typecheck` and `pnpm run test` before marking work done.**
 
 ## Issue-Driven Workflow
 
 1. **Check the issue first.** Every task should reference a `bryan-debaun/mcp-server` issue. If one doesn't exist, note it.
 2. **Create a branch**: `feature/[issue-number]-[short-desc]` or `fix/[issue-number]-[short-desc]`.
-3. **Verify baseline**: `npm run test` on `main` before branching — know what was already failing.
+3. **Verify baseline**: `pnpm run test` on `main` before branching — know what was already failing.
 4. **Implement** → typecheck → test → commit.
 5. **Open a draft PR** referencing the issue with `Closes #N` in the description.
 6. **Hand off** to Tester if coverage is needed; to Reviewer when ready for merge.
@@ -92,12 +92,12 @@ npm run start:http   # cross-env MCP_TRANSPORT=http node dist/index.js
 ```powershell
 # Start work
 git checkout main; git pull origin main
-npm run test  # baseline
+pnpm run test  # baseline
 git checkout -b feature/78-centralized-config
 
 # Before PR
-npm run typecheck
-npm run test
+pnpm run typecheck
+pnpm run test
 gh pr create --draft --title "feat: ..." --body "Closes #78"
 ```
 
@@ -110,7 +110,7 @@ gh pr create --draft --title "feat: ..." --body "Closes #78"
 - No orphaned `TODO` comments in committed code — convert to a GitHub issue and reference it.
 
 ### Prisma & Database
-- Run `npx prisma generate` after schema changes; include it in the build.
+- Run `pnpm exec prisma generate` after schema changes; include it in the build.
 - Never call `prisma.$disconnect()` in hot paths — the client is a singleton via `src/db/index.ts`.
 - The `initPrisma()` stub pattern must be preserved: server must start (with degraded DB behavior) even when `DATABASE_URL` is unset.
 

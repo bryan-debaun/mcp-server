@@ -30,7 +30,7 @@ We need a low-friction hosting option for the personal MCP server so that the us
 ## Deployment & CI
 
 - Use Render's GitHub integration to auto-deploy on pushes to `main`, or use a GitHub Actions workflow that calls Render's API if explicit control is desired.
-- Build steps: `npm ci && npm run build`; start command: `npm run start` (starts `node dist/index.js`).
+- Build steps: `pnpm install --frozen-lockfile && pnpm run build`; start command: `pnpm run start` (starts `node dist/index.js`).
 - Platform health check path: `/healthz`.
 
 ## Environment variables (recommended)

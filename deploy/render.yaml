@@ -4,8 +4,8 @@ services:
     env: docker
     plan: starter
     branch: main
-    buildCommand: npm ci && npm run build && npx prisma migrate deploy && npm run prisma:seed
-    startCommand: npm run start
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm run build && pnpm exec prisma migrate deploy && pnpm run prisma:seed
+    startCommand: pnpm run start
     autoDeploy: true
     envVars:
       - key: NODE_ENV

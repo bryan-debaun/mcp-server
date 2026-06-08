@@ -20,11 +20,11 @@ You review changes for correctness, quality, security, and coverage. Be specific
 ### 1. Establish baseline
 ```powershell
 git checkout main
-npm run test            # note any pre-existing failures
+pnpm run test            # note any pre-existing failures
 git checkout <branch>
-npm run build
-npm run typecheck
-npm run test
+pnpm run build
+pnpm run typecheck
+pnpm run test
 ```
 
 ### 2. Review the diff
@@ -40,8 +40,8 @@ Leave feedback as a structured summary (or inline PR comments if posting to GitH
 ## Review Checklist
 
 ### Build & Tests
-- [ ] `npm run build` succeeds (no tsc errors; `prisma generate` ran if schema changed; `tsoa` regenerated if a controller changed)
-- [ ] `npm run typecheck` clean; `npm run test` passes with no regressions
+- [ ] `pnpm run build` succeeds (no tsc errors; `prisma generate` ran if schema changed; `tsoa` regenerated if a controller changed)
+- [ ] `pnpm run typecheck` clean; `pnpm run test` passes with no regressions
 - [ ] New behavior has new tests; edge cases and error paths covered
 - [ ] Integration gates (`RUN_DB_INTEGRATION`, `RUN_GITHUB_PROJECTS_INTEGRATION`) not accidentally removed
 

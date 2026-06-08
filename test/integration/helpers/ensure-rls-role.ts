@@ -6,7 +6,7 @@ export async function ensureRlsTestRoleReady(prisma: any) {
             // Create role if it does not exist (ignore duplicate errors)
             try {
                 await prisma.$executeRaw`CREATE ROLE rls_test_role NOINHERIT`;
-            } catch (e) {
+            } catch {
                 // ignore
             }
 
@@ -24,7 +24,7 @@ export async function ensureRlsTestRoleReady(prisma: any) {
 
             // Success
             return;
-        } catch (e) {
+        } catch {
             // Wait a bit and retry
             await new Promise(r => setTimeout(r, 200 * (i + 1)));
         }

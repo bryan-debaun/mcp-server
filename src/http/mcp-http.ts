@@ -22,7 +22,7 @@ export class HttpStreamTransport {
         this._onmessage = fn;
         if (this._onmessage && this.pendingMessages.length) {
             for (const m of this.pendingMessages) {
-                try { this._onmessage(m); } catch (e) { /* noop */ }
+                try { this._onmessage(m); } catch { /* noop */ }
             }
             this.pendingMessages = [];
         }
@@ -117,7 +117,7 @@ export class SseServerTransport {
         this._onmessage = fn;
         if (this._onmessage && this.pendingMessages.length) {
             for (const m of this.pendingMessages) {
-                try { this._onmessage(m); } catch (e) { /* noop */ }
+                try { this._onmessage(m); } catch { /* noop */ }
             }
             this.pendingMessages = [];
         }
@@ -268,7 +268,7 @@ export function registerMcpHttp(app: Application): void {
             });
         } catch (err) {
             logger.error('mcp-http: unexpected error in GET /mcp', err);
-            try { res.status(500).end(); } catch (e) { /* noop */ }
+            try { res.status(500).end(); } catch { /* noop */ }
         }
     });
 
@@ -314,7 +314,7 @@ export function registerMcpHttp(app: Application): void {
             }
         } catch (err) {
             logger.error('mcp-http: unexpected error in POST /mcp/events', err);
-            try { res.status(500).end(); } catch (e) { /* noop */ }
+            try { res.status(500).end(); } catch { /* noop */ }
         }
     });
 }

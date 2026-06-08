@@ -60,33 +60,33 @@ test/                         ← Vitest tests (mirror src structure)
 ## Commands (PowerShell)
 
 ```powershell
-npm run build        # prisma generate → tsoa spec+routes → fix-imports → tsc → seed
-npm run build:spec   # regenerate tsoa routes + swagger.json ONLY (after editing a controller)
-npm run test         # vitest run (all tests, CI-safe)
-npm run test:watch   # vitest (interactive)
-npm run typecheck    # tsc -p tsconfig.test.json --noEmit (checks src + test)
-npm run lint         # eslint
-npm run verify       # lint + typecheck
-npm start            # node dist/index.js (stdio or HTTP via MCP_TRANSPORT)
-npm run start:http   # cross-env MCP_TRANSPORT=http node dist/index.js
+pnpm run build        # prisma generate → tsoa spec+routes → fix-imports → tsc → seed
+pnpm run build:spec   # regenerate tsoa routes + swagger.json ONLY (after editing a controller)
+pnpm run test         # vitest run (all tests, CI-safe)
+pnpm run test:watch   # vitest (interactive)
+pnpm run typecheck    # tsc -p tsconfig.test.json --noEmit (checks src + test)
+pnpm run lint         # eslint
+pnpm run verify       # lint + typecheck
+pnpm start            # node dist/index.js (stdio or HTTP via MCP_TRANSPORT)
+pnpm run start:http   # cross-env MCP_TRANSPORT=http node dist/index.js
 ```
 
-**Always run `npm run typecheck` and `npm run test` before marking work done.**
+**Always run `pnpm run typecheck` and `pnpm run test` before marking work done.**
 
 ## Issue-Driven Workflow
 
 1. **Check the issue first.** Every task should reference a `bryan-debaun/mcp-server` issue. If one doesn't exist, note it and offer to create one — do not invent scope.
-2. **Verify baseline**: `npm run test` on `main` before branching — know what was already failing.
+2. **Verify baseline**: `pnpm run test` on `main` before branching — know what was already failing.
 3. **Create a branch**: `feature/[issue-number]-[short-desc]` or `fix/[issue-number]-[short-desc]`. Never commit to `main`.
 4. **Implement** → typecheck → test → propose a commit (do not commit or push without explicit go-ahead).
 5. **Open a draft PR** referencing the issue with `Closes #N` once authorized.
 
 ```powershell
 git checkout main; git pull origin main
-npm run test                              # baseline
+pnpm run test                              # baseline
 git checkout -b feature/NN-short-desc
 # ...implement...
-npm run typecheck; npm run test
+pnpm run typecheck; pnpm run test
 ```
 
 ## Coding Rules
@@ -104,12 +104,12 @@ npm run typecheck; npm run test
 
 ### Express / HTTP / TSOA
 - Routes needing OpenAPI docs go through TSOA controllers (`src/http/controllers/`); plain Express for internal/MCP-only routes.
-- **After editing a controller's routes/params/DTOs, run `npm run build:spec`** to regenerate `src/http/tsoa-routes.ts` + `swagger.json` (these are committed). The post-step adds `.js` import extensions.
+- **After editing a controller's routes/params/DTOs, run `pnpm run build:spec`** to regenerate `src/http/tsoa-routes.ts` + `swagger.json` (these are committed). The post-step adds `.js` import extensions.
 - All API error handlers must return JSON — never HTML.
 - Auth-sensitive routes must be exercised with and without `MCP_API_KEY` set.
 
 ### Prisma & Database
-- Run `prisma generate` after schema changes (it's part of `npm run build`).
+- Run `prisma generate` after schema changes (it's part of `pnpm run build`).
 - The `initPrisma()` stub pattern in `src/db/index.ts` must be preserved: the server must start (with degraded DB behavior) even when `DATABASE_URL` is unset. Any new model usage needs a matching stub method.
 - No `require()` — this is an ESM project; use dynamic `import()`. The client is effectively a singleton; don't call `$disconnect()` in hot paths.
 

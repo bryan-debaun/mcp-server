@@ -24,7 +24,7 @@ function getCounterValue(counter: any) {
             const keys = Object.keys(hm)
             if (keys.length) return hm[keys[0]].value
         }
-    } catch (e) { /* noop */ }
+    } catch { /* noop */ }
     return 0
 }
 

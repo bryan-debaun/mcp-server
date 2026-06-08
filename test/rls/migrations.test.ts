@@ -12,7 +12,7 @@ describe('RLS migration lint', () => {
             .filter(p => {
                 try {
                     return Boolean(readFileSync(p, 'utf8'))
-                } catch (e) {
+                } catch {
                     return false
                 }
             })

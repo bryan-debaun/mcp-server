@@ -18,19 +18,19 @@ You write and run Vitest tests and diagnose failures for this repository.
 ## Test Commands (PowerShell)
 
 ```powershell
-npm run test                               # all tests (CI-safe)
-npm run test:watch                         # interactive watch
-npx vitest run test/tools/                 # single directory
-npx vitest run test/http/mcp-http.test.ts  # single file
-npx vitest run -t "test name substring"    # single test by name
-npx vitest run --coverage                  # with v8 coverage report
+pnpm run test                               # all tests (CI-safe)
+pnpm run test:watch                         # interactive watch
+pnpm exec vitest run test/tools/                 # single directory
+pnpm exec vitest run test/http/mcp-http.test.ts  # single file
+pnpm exec vitest run -t "test name substring"    # single test by name
+pnpm exec vitest run --coverage                  # with v8 coverage report
 
 # Integration tests (require live DB / GitHub token); DB integration runs serially
-$env:RUN_DB_INTEGRATION="true"; npm run test
-$env:RUN_GITHUB_PROJECTS_INTEGRATION="true"; npm run test
+$env:RUN_DB_INTEGRATION="true"; pnpm run test
+$env:RUN_GITHUB_PROJECTS_INTEGRATION="true"; pnpm run test
 ```
 
-`vitest.config.ts` loads `.env.local` for tests. **Run `npm run test` on `main` first to establish a clean baseline before writing new tests.**
+`vitest.config.ts` loads `.env.local` for tests. **Run `pnpm run test` on `main` first to establish a clean baseline before writing new tests.**
 
 ## Test Structure
 

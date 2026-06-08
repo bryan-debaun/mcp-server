@@ -118,7 +118,7 @@ export async function getProjectFields(
             owner,
             projectNumber
         });
-    } catch (error) {
+    } catch {
         // If user query fails, try as organization
         const orgQuery = `
             query($owner: String!, $projectNumber: Int!) {

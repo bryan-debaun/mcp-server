@@ -154,7 +154,7 @@ describe('JWT middleware', () => {
         }
 
         // cleanup - restore previous fetch and config
-        ; (global as any).fetch = prevFetch
+         (global as any).fetch = prevFetch
         config.auth.supabaseJwksUrl = prevConfigJwksUrl
         config.auth.supabaseAnonKey = prevConfigAnonKey
     })

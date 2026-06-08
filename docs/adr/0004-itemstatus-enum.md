@@ -40,7 +40,7 @@ Keep `ItemStatus` as a Postgres ENUM type. Ensure the API surface (tsoa controll
 
 ## Migration / Rollout Plan
 
-- For today's change (surface enum to OpenAPI): merge code, regenerate spec (`npm run build:spec`), publish updated spec, and notify client SDK consumers to regenerate if needed.
+- For today's change (surface enum to OpenAPI): merge code, regenerate spec (`pnpm run build:spec`), publish updated spec, and notify client SDK consumers to regenerate if needed.
 - If we later convert to a lookup table: write a migration that creates the table, inserts canonical rows, performs a backfill, and updates application code to use the relationship. Include a rollback to restore previous enum state.
 
 ## Observability & Runbook

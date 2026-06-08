@@ -437,4 +437,4 @@ The seed script creates initial data:
 - 3 books (The Way of Kings, The Name of the Wind, Mistborn: The Final Empire)
 - 2 sample ratings
 
-Run: `npm run prisma:seed`
+Run: `pnpm run prisma:seed`

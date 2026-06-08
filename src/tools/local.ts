@@ -26,7 +26,7 @@ function parseToolResult(result: any) {
     // Try to parse JSON, fallback to raw text
     try {
         return JSON.parse(txt);
-    } catch (e) {
+    } catch {
         return txt;
     }
 }

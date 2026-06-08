@@ -10,7 +10,7 @@ import { RegisterRoutes } from './tsoa-routes.js';
 import { registerSwaggerRoute } from './swagger-route.js';
 import { config } from '../config.js';
 
-export async function createHttpApp() {
+export async function createHttpApp(): Promise<express.Application> {
     // Backwards-compatible: keep existing behavior when callers expect Prisma initialized
     // before the app is returned.
     await initPrisma();
@@ -22,7 +22,7 @@ export async function createHttpApp() {
     app.use((req, res, next) => {
         try {
             logger.debug('incoming request', { method: req.method, path: req.path, authPresent: !!req.headers.authorization });
-        } catch (e) { /* noop */ }
+        } catch { /* noop */ }
         next();
     });
 
@@ -57,7 +57,7 @@ export async function createHttpApp() {
 
     // Global JSON error handler — ensure API routes always return structured JSON
     app.use((err: any, _req: express.Request, res: express.Response, _next: any) => {
-        try { logger.error('unhandled error', err) } catch (e) { /* noop */ }
+        try { logger.error('unhandled error', err) } catch { /* noop */ }
         const status = (res.statusCode && res.statusCode >= 400) ? res.statusCode : (err?.status || 500)
         const message = config.isProduction ? 'internal error' : (err?.message ?? 'internal error')
         res.status(status).json({ error: message })
@@ -90,7 +90,7 @@ export async function createHttpApp() {
 }
 
 // New helper: create a minimal app that can listen early and expose liveness/readiness
-export function createBasicApp() {
+export function createBasicApp(): express.Application {
     const app = express();
     app.use(cors());
     app.use(express.json());
@@ -99,7 +99,7 @@ export function createBasicApp() {
     app.use((req, res, next) => {
         try {
             logger.debug('incoming request', { method: req.method, path: req.path, authPresent: !!req.headers.authorization });
-        } catch (e) { /* noop */ }
+        } catch { /* noop */ }
         next();
     });
 
@@ -152,7 +152,7 @@ export async function registerDbDependentRoutes(app: any) {
 
     // Global JSON error handler — ensure API routes always return structured JSON
     app.use((err: any, _req: express.Request, res: express.Response, _next: any) => {
-        try { logger.error('unhandled error', err) } catch (e) { /* noop */ }
+        try { logger.error('unhandled error', err) } catch { /* noop */ }
         const status = (res.statusCode && res.statusCode >= 400) ? res.statusCode : (err?.status || 500)
         const message = config.isProduction ? 'internal error' : (err?.message ?? 'internal error')
         res.status(status).json({ error: message })
