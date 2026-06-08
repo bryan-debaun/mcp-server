@@ -5,7 +5,7 @@
     "type": "module",
     "main": "dist/index.js",
     "scripts": {
-        "build": "prisma generate && npm run build:spec && tsc && npm run build:seed",
+        "build": "prisma generate && pnpm run build:spec && tsc && pnpm run build:seed",
         "build:spec": "tsoa spec-and-routes && tsx scripts/fix-tsoa-imports.ts",
         "build:seed": "tsc prisma/seed.ts --outDir dist --module ES2022 --target ES2022 --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports --resolveJsonModule --skipLibCheck",
         "dev": "tsc --watch",
@@ -21,7 +21,7 @@
         "typecheck": "tsc -p tsconfig.test.json --noEmit",
         "lint": "eslint src/**/*.ts test/**/*.ts --ext .ts",
         "lint:fix": "eslint src/**/*.ts test/**/*.ts --ext .ts --fix",
-        "verify": "npm run lint && npm run typecheck",
+        "verify": "pnpm run lint && pnpm run typecheck",
         "prisma:dev": "prisma db push && prisma generate",
         "prisma:seed": "node dist/seed.js",
         "prisma:seed:dev": "tsx prisma/seed.ts",
@@ -36,8 +36,10 @@
     ],
     "author": "bryan-debaun",
     "license": "MIT",
+    "packageManager": "pnpm@10.34.1",
     "engines": {
-        "node": ">=20.0.0"
+        "node": ">=20.0.0",
+        "pnpm": ">=10.0.0"
     },
     "dependencies": {
         "@modelcontextprotocol/sdk": "^1.0.0",
@@ -69,6 +71,7 @@
         "@types/supertest": "^2.0.12",
         "@types/swagger-ui-express": "^4.1.8",
         "@types/ws": "^8.18.1",
+        "@prisma/config": "^7.3.0",
         "@typescript-eslint/eslint-plugin": "^8.58.1",
         "@typescript-eslint/parser": "^8.58.1",
         "eslint": "^8.57.1",
@@ -82,5 +85,12 @@
     },
     "prisma": {
         "schema": "prisma/schema.prisma"
+    },
+    "pnpm": {
+        "onlyBuiltDependencies": [
+            "@prisma/engines",
+            "esbuild",
+            "prisma"
+        ]
     }
 }
