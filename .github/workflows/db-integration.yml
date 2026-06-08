@@ -24,12 +24,15 @@ jobs:
           --health-cmd "pg_isready -U postgres -d mcp_test" --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'pnpm'
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       - name: Wait for Postgres
         run: |
           until pg_isready -h localhost -p 5432 -U postgres -d mcp_test; do sleep 1; done
@@ -39,16 +42,16 @@ jobs:
         run: |
           psql postgresql://postgres:postgres@localhost:5432/mcp_test -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'rls_test_role') THEN CREATE ROLE rls_test_role NOINHERIT; END IF; END \$\$;"
       - name: Parse SQL migrations (fast syntax check) 🔍
-        run: npm run sql:parse
+        run: pnpm run sql:parse
       - name: Run Prisma migrate deploy & generate
-        run: npx prisma migrate deploy && npx prisma generate
+        run: pnpm exec prisma migrate deploy && pnpm exec prisma generate
       # SQL runtime validation removed — running migration SQL against an already-migrated DB
       # can produce false negatives when later migrations drop objects. The
-      # repository already performs a syntax check (`npm run sql:parse`) and
+      # repository already performs a syntax check (`pnpm run sql:parse`) and
       # migrations are validated by `prisma migrate deploy` above.
       - name: Build TypeScript (including seed script)
-        run: npm run build && npx tsc prisma/seed.ts --outDir dist --module NodeNext --moduleResolution NodeNext --target ES2022 --esModuleInterop --skipLibCheck
+        run: pnpm run build && pnpm exec tsc prisma/seed.ts --outDir dist --module NodeNext --moduleResolution NodeNext --target ES2022 --esModuleInterop --skipLibCheck
       - name: Seed DB
-        run: npm run prisma:seed
+        run: pnpm run prisma:seed
       - name: Run tests
-        run: npm test
+        run: pnpm test
