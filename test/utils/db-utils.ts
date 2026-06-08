@@ -5,7 +5,7 @@ export async function ensureRlsTestRoleReady(prisma: PrismaClient, retries = 5) 
         try {
             // best-effort create (ignore duplicate/permission errors)
             await prisma.$executeRaw`CREATE ROLE rls_test_role NOINHERIT`;
-        } catch (e) {
+        } catch {
             // ignore - role may already exist or permissions may prevent creation
         }
 
@@ -26,7 +26,7 @@ export async function ensureRlsTestRoleReady(prisma: PrismaClient, retries = 5) 
             }
 
             return
-        } catch (err) {
+        } catch {
             if (i === retries - 1) {
                 throw new Error(
                     "rls_test_role could not be created or granted privileges. Please run as a DB superuser:\n" +

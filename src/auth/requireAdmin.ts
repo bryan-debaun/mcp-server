@@ -31,7 +31,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
             logger.error('failed to write audit log for service-role-bypass', e)
         }
 
-        try { serviceRoleBypassTotal.inc() } catch (e) { /* noop */ }
+        try { serviceRoleBypassTotal.inc() } catch { /* noop */ }
 
         return next()
     }

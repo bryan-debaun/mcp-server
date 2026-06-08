@@ -22,7 +22,7 @@ export class WsServerTransport {
     async close(): Promise<void> {
         try {
             this.ws.close()
-        } catch (e) {
+        } catch {
             // ignore
         }
         this.onclose?.()

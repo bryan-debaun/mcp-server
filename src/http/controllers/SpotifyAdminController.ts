@@ -95,7 +95,7 @@ export class SpotifyAdminController extends Controller {
                 try {
                     const envPath = path.resolve(process.cwd(), '.env.local')
                     let content = ''
-                    try { content = fs.readFileSync(envPath, { encoding: 'utf8' }) } catch (e) { content = '' }
+                    try { content = fs.readFileSync(envPath, { encoding: 'utf8' }) } catch { content = '' }
                     const key = 'SPOTIFY_REFRESH_TOKEN'
                     const regex = new RegExp(`^${key}=.*$`, 'm')
                     if (regex.test(content)) {
