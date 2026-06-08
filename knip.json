@@ -1,0 +1,10 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/http/controllers/**/*Controller.ts",
+    "src/http/authentication.ts",
+    "scripts/**/*.ts"
+  ],
+  "project": ["src/**/*.ts"],
+  "ignoreDependencies": ["@tsoa/runtime"]
+}
