@@ -2,12 +2,12 @@ Write-Host "Testing TSOA generation..."
 
 # Test TypeScript compilation first
 Write-Host "=== TypeScript Check ==="
-$tscOutput = npx tsc --noEmit --skipLibCheck 2>&1 | Out-String
+$tscOutput = pnpm exec tsc --noEmit --skipLibCheck 2>&1 | Out-String
 Write-Host $tscOutput
 
 # Test TSOA generation
 Write-Host "=== TSOA Generation ==="
-$tsoaOutput = npx tsoa spec-and-routes 2>&1 | Out-String  
+$tsoaOutput = pnpm exec tsoa spec-and-routes 2>&1 | Out-String  
 Write-Host $tsoaOutput
 
 # Check results

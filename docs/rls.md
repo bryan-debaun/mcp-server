@@ -63,7 +63,7 @@ CREATE POLICY "YourTable_admin_all" ON "YourTable" FOR ALL USING (current_settin
 ## Running integration tests locally
 
 - Start a development Postgres instance and configure `DATABASE_URL`.
-- Run: `RUN_DB_INTEGRATION=true npm test`
+- Run: `RUN_DB_INTEGRATION=true pnpm test`
 
 ## Rollout guidance
 

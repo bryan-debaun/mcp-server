@@ -1,7 +1,7 @@
 #!/usr/bin/env powershell
 Write-Host "Running TypeScript compilation check..."
 try {
-    $output = npx tsc --noEmit --skipLibCheck 2>&1
+    $output = pnpm exec tsc --noEmit --skipLibCheck 2>&1
     Write-Host "TypeScript output:"
     Write-Host $output
     Write-Host "TypeScript compilation completed"
@@ -12,7 +12,7 @@ catch {
 
 Write-Host "`nRunning TSOA generation..."
 try {
-    $output = npx tsoa spec-and-routes 2>&1
+    $output = pnpm exec tsoa spec-and-routes 2>&1
     Write-Host "TSOA output:"
     Write-Host $output 
     Write-Host "TSOA generation completed"

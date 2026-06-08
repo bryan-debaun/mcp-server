@@ -54,7 +54,7 @@ Use the Grep/Glob tools (not raw Select-String) to locate where an env var, rout
 **Environment:** local stdio | local HTTP | Render preview | Render production
 **Steps to reproduce:**
 1. Set env vars: DATABASE_URL=... MCP_API_KEY=test
-2. Start: npm run start:http (or stdio)
+2. Start: pnpm run start:http (or stdio)
 3. Call: curl -H "Authorization: Bearer test" http://localhost:<PORT>/[route]
 **Expected:** [status code + response shape]
 **Actual:** [what happened, including logs]

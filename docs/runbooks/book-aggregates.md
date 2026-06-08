@@ -9,15 +9,15 @@ Steps to run a backfill (staging/production):
 
    # Dry run (no writes)
 
-   npm run backfill:books -- --dry-run
+   pnpm run backfill:books -- --dry-run
 
    # To run against production you MUST use an explicit confirmation token and the --force flag
 
-   CONFIRM=REALLY_I_AGREE npm run backfill:books:force
+   CONFIRM=REALLY_I_AGREE pnpm run backfill:books:force
 
    - Use `--batch-size` to tune chunk size (e.g., `--batch-size=500`).
    - The script will set `book_aggregates_last_backfill_timestamp` Gauge on completion (skipped in dry-run).
-   - For convenience there are wrappers: `npm run backfill:books` (normal), `npm run backfill:books:dry-run` (shorthand dry), and `npm run backfill:books:force` (production guarded).
+   - For convenience there are wrappers: `pnpm run backfill:books` (normal), `pnpm run backfill:books:dry-run` (shorthand dry), and `pnpm run backfill:books:force` (production guarded).
 
 3. Verify in metrics endpoint `/metrics` that `book_aggregates_last_backfill_timestamp` and `book_aggregate_update_failures_total` look healthy.
 

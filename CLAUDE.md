@@ -11,40 +11,40 @@ ESM project (`"type": "module"`), Node 20+, TypeScript strict mode.
 ## Commands
 
 ```powershell
-npm run build          # FULL build: prisma generate → tsoa spec+routes → fix imports → tsc → seed
-npm run build:spec     # Regenerate tsoa routes + swagger.json ONLY (run after editing controllers)
-npm run dev            # tsc --watch
-npm start              # node dist/index.js (transport auto-selected)
-npm run start:http     # force HTTP transport (MCP_TRANSPORT=http)
+pnpm run build          # FULL build: prisma generate → tsoa spec+routes → fix imports → tsc → seed
+pnpm run build:spec     # Regenerate tsoa routes + swagger.json ONLY (run after editing controllers)
+pnpm run dev            # tsc --watch
+pnpm start              # node dist/index.js (transport auto-selected)
+pnpm run start:http     # force HTTP transport (MCP_TRANSPORT=http)
 
-npm test               # vitest run (all)
-npm run test:watch     # vitest watch
-npm run typecheck      # tsc -p tsconfig.test.json --noEmit  (type-checks src + test)
-npm run lint           # eslint src/**/*.ts test/**/*.ts
-npm run lint:fix
-npm run verify         # lint + typecheck (run before proposing a commit)
+pnpm test               # vitest run (all)
+pnpm run test:watch     # vitest watch
+pnpm run typecheck      # tsc -p tsconfig.test.json --noEmit  (type-checks src + test)
+pnpm run lint           # eslint src/**/*.ts test/**/*.ts
+pnpm run lint:fix
+pnpm run verify         # lint + typecheck (run before proposing a commit)
 ```
 
 Run a single test file / single test by name (PowerShell):
 ```powershell
-npx vitest run test/http/mcp-http.test.ts
-npx vitest run -t "decideTransport prefers stdio"
+pnpm exec vitest run test/http/mcp-http.test.ts
+pnpm exec vitest run -t "decideTransport prefers stdio"
 ```
 
 Most tests mock external services and run without a DB. Tests that hit a real Postgres are **opt-in and gated by env flags**, and DB integration runs serially (`fileParallelism` is disabled when the flag is set — see [vitest.config.ts](vitest.config.ts)):
 ```powershell
-$env:RUN_DB_INTEGRATION='true'; npm test               # enables test/integration/db.test.ts, RLS tests, etc.
-$env:RUN_GITHUB_PROJECTS_INTEGRATION='true'; npm test   # hits real GitHub Projects (needs GITHUB_TEST_* vars)
+$env:RUN_DB_INTEGRATION='true'; pnpm test               # enables test/integration/db.test.ts, RLS tests, etc.
+$env:RUN_GITHUB_PROJECTS_INTEGRATION='true'; pnpm test   # hits real GitHub Projects (needs GITHUB_TEST_* vars)
 ```
 `vitest.config.ts` loads `.env.local` for tests.
 
 Database / migrations / SQL tooling:
 ```powershell
-npx prisma migrate deploy        # apply migrations
-npm run prisma:dev               # prisma db push + generate (local schema iteration)
-npm run prisma:seed:dev          # seed via tsx (dev); prisma:seed runs the compiled seed
-npm run sql:parse                # dry-run lint a migration SQL file (scripts/find-sql-error.ts)
-npm run sql:validate             # apply-validate a migration SQL file
+pnpm exec prisma migrate deploy        # apply migrations
+pnpm run prisma:dev               # prisma db push + generate (local schema iteration)
+pnpm run prisma:seed:dev          # seed via tsx (dev); prisma:seed runs the compiled seed
+pnpm run sql:parse                # dry-run lint a migration SQL file (scripts/find-sql-error.ts)
+pnpm run sql:validate             # apply-validate a migration SQL file
 ```
 
 ## Architecture — the big picture
@@ -58,7 +58,7 @@ Business logic lives **once** in `src/tools/**`. Each tool is its own file expor
 **Implication:** to add catalog functionality, write the tool under `src/tools/db/<category>/`, register it, then add a controller method that delegates via `callTool`. Don't duplicate logic in the controller.
 
 ### 2. TSOA code generation (REST routes + OpenAPI)
-Controllers are decorated TSOA classes. `npm run build:spec` runs `tsoa spec-and-routes` to generate `src/http/tsoa-routes.ts` and `build/swagger.json`, then `scripts/fix-tsoa-imports.ts` rewrites the generated relative imports to add `.js` extensions (TSOA emits extensionless imports, which break ESM at runtime). **Generated files are committed — regenerate with `build:spec` whenever you change a controller's routes, params, or DTO interfaces.** Config: [tsoa.json](tsoa.json). Auth integrates via `src/http/authentication.ts` (`expressAuthentication`), invoked by `@Security('jwt', [scopes])`.
+Controllers are decorated TSOA classes. `pnpm run build:spec` runs `tsoa spec-and-routes` to generate `src/http/tsoa-routes.ts` and `build/swagger.json`, then `scripts/fix-tsoa-imports.ts` rewrites the generated relative imports to add `.js` extensions (TSOA emits extensionless imports, which break ESM at runtime). **Generated files are committed — regenerate with `build:spec` whenever you change a controller's routes, params, or DTO interfaces.** Config: [tsoa.json](tsoa.json). Auth integrates via `src/http/authentication.ts` (`expressAuthentication`), invoked by `@Security('jwt', [scopes])`.
 
 ### 3. Transport selection (stdio vs HTTP)
 `src/index.ts` picks a transport using the pure, unit-tested helper `decideTransport()` in [src/transport-selection.ts](src/transport-selection.ts):

@@ -78,11 +78,11 @@ GitHub automation callers      ─┘                                  ├→ Gi
 ### Deploy (verified `deploy/render.yaml` + `Dockerfile`)
 
 - **Platform:** Render web service, `env: docker`, `plan: starter`, `branch: main`, `autoDeploy: true` → **every push to `main` triggers a production deploy.**
-- **Build command (render.yaml):** `npm ci && npm run build && npx prisma migrate deploy && npm run prisma:seed`
-  - `npm run build` = `prisma generate && tsoa spec-and-routes && tsc && build:seed`.
+- **Build command (render.yaml):** `corepack enable && pnpm install --frozen-lockfile && pnpm run build && pnpm exec prisma migrate deploy && pnpm run prisma:seed`
+  - `pnpm run build` = `prisma generate && tsoa spec-and-routes && tsc && build:seed`.
   - **Migrations run at deploy time** via `prisma migrate deploy`.
   - **Seed runs at deploy time** (`prisma:seed`) — see ADR-0008 (prevent runtime DB seed) for the guardrail context.
-- **Start:** `npm run start` → `node dist/index.js`.
+- **Start:** `pnpm run start` → `node dist/index.js`.
 - **Health check path:** `/healthz` (Render uses this to gate the deploy).
 - **Image:** multi-stage `node:20-alpine`; runtime installs prod deps only and copies the generated Prisma client.
 
@@ -94,7 +94,7 @@ GitHub automation callers      ─┘                                  ├→ Gi
 ### Gaps
 
 - **Gap — auto-deploy on `main` with no staging gate or smoke gate.** A bad push to `main` deploys straight to production. Canary checks in the runbook are **manual** (`curl /healthz`, `/api/playback`, `/metrics`).
-  - *Action:* Add a minimal CI gate (build + `npm test` + `npm run verify`) that must pass before Render deploys, or deploy from a release branch. Consider Render preview environments for risky changes.
+  - *Action:* Add a minimal CI gate (build + `pnpm test` + `pnpm run verify`) that must pass before Render deploys, or deploy from a release branch. Consider Render preview environments for risky changes.
 - **Gap — migrations + seed run inline in the deploy build with no automated pre-deploy backup.** A failed/destructive migration affects production directly (see §10).
   - *Action:* Snapshot the DB (or confirm Supabase PITR window) before running migrations on schema-changing deploys.
 
@@ -309,7 +309,7 @@ These are **informal, best-effort targets for a solo project** — *not* contrac
 | 2 | **High** | Error tracking may be inert (§5/§6) | Confirm/set `SENTRY_DSN` in Render; enable Sentry email alerts. |
 | 3 | **High** | Backup/restore unverified (§10) | Confirm Supabase backup/PITR window; document RPO; run one trial restore or `pg_dump`. |
 | 4 | **High** | `mcp-http.ts` logs normal flow at `error` → Sentry noise (§5) | Downgrade routine MCP request logs to `debug`/`info`. |
-| 5 | Medium | Auto-deploy on `main`, no CI gate (§3) | Require build + `npm test` + `npm run verify` to pass before deploy; consider preview env. |
+| 5 | Medium | Auto-deploy on `main`, no CI gate (§3) | Require build + `pnpm test` + `pnpm run verify` to pass before deploy; consider preview env. |
 | 6 | Medium | No pre-migration backup; forward-only migrations (§3/§10) | Snapshot DB before schema-changing deploys; add reverse SQL for risky migrations. |
 | 7 | Medium | RLS enforcement path unverified (§9) | Add `RUN_DB_INTEGRATION` test proving owner-isolation; confirm claim propagation on the app's DB session. |
 | 8 | Medium | Metrics exposed but not collected (§5) | Point a hosted scraper (Grafana Cloud free) at `/metrics`, or document them as point-in-time only. |

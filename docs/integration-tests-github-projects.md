@@ -22,7 +22,7 @@ Integration tests for the GitHub Projects V2 MCP tools that interact with real G
 ### Run all integration tests
 
 ```bash
-RUN_GITHUB_PROJECTS_INTEGRATION=true npm test -- github-projects.test.ts
+RUN_GITHUB_PROJECTS_INTEGRATION=true pnpm test -- github-projects.test.ts
 ```
 
 ### Configuration via Environment Variables
@@ -40,14 +40,14 @@ export GITHUB_TEST_PROJECT_NUMBER="3"
 export GITHUB_TEST_ISSUE_NUMBER="73"
 
 # Run tests
-RUN_GITHUB_PROJECTS_INTEGRATION=true npm test -- github-projects.test.ts
+RUN_GITHUB_PROJECTS_INTEGRATION=true pnpm test -- github-projects.test.ts
 ```
 
 ### PowerShell (Windows)
 
 ```powershell
 $env:RUN_GITHUB_PROJECTS_INTEGRATION = "true"
-npm test -- github-projects.test.ts
+pnpm test -- github-projects.test.ts
 ```
 
 ## What Gets Tested
@@ -174,7 +174,7 @@ To run integration tests in CI:
     GITHUB_TEST_REPO: mcp-server
     GITHUB_TEST_PROJECT_NUMBER: 2
     GITHUB_TEST_ISSUE_NUMBER: 73
-  run: npm test -- github-projects.test.ts
+  run: pnpm test -- github-projects.test.ts
 ```
 
 ## Development Notes

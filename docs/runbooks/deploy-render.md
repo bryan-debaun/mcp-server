@@ -45,8 +45,8 @@ Build & Start
 
 Render will detect `render.yaml` and build using Docker if present. The application build steps should be:
 
-- Build: `npm ci && npm run build`
-- Start: `npm run start` (this runs `node dist/index.js`)
+- Build: `pnpm install --frozen-lockfile && pnpm run build`
+- Start: `pnpm run start` (this runs `node dist/index.js`)
 
 Health & Readiness
 ------------------
@@ -120,7 +120,7 @@ Rollback Plan
 Troubleshooting
 ---------------
 
-- App not starting: Check `npm run build` and `npm run start` locally to reproduce build/start errors.
+- App not starting: Check `pnpm run build` and `pnpm run start` locally to reproduce build/start errors.
 - Health check failing: Inspect `/healthz` logic and logs; ensure necessary environment variables are set.
 - Token refresh failing: Confirm `SPOTIFY_CLIENT_SECRET` and `SPOTIFY_CLIENT_ID` are correct and that the `SPOTIFY_REDIRECT_URI` configured in the Spotify app matches the deployed redirect.
 

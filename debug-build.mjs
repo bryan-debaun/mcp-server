@@ -21,7 +21,7 @@ for (const file of checks) {
 try {
     const { execSync } = await import('child_process');
     console.log('\n=== TypeScript Check ===');
-    const result = execSync('npx tsc --noEmit --skipLibCheck', { encoding: 'utf8', timeout: 30000 });
+    const result = execSync('pnpm exec tsc --noEmit --skipLibCheck', { encoding: 'utf8', timeout: 30000 });
     console.log('TypeScript OK:', result.length === 0 ? 'No errors' : result);
 } catch (error) {
     console.log('TypeScript Error:', error.message);

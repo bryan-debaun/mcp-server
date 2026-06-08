@@ -3,7 +3,7 @@ Create a Supabase Auth user for a single local user and write the returned
 `id` into `users.external_id`.
 
 Usage:
-  npx tsx scripts/create-supabase-user-for-local.ts brn.dbn@gmail.com
+  pnpm exec tsx scripts/create-supabase-user-for-local.ts brn.dbn@gmail.com
 
 Requirements: PUBLIC_SUPABASE_URL (or SUPABASE_ISS) and SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY)
 */
@@ -25,7 +25,7 @@ import { initPrisma, prisma } from '../src/db/index.js'
 async function main() {
     const email = process.argv[2]
     if (!email) {
-        console.error('Usage: npx tsx scripts/create-supabase-user-for-local.ts <email>')
+        console.error('Usage: pnpm exec tsx scripts/create-supabase-user-for-local.ts <email>')
         process.exit(2)
     }
 

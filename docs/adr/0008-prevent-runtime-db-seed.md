@@ -16,7 +16,7 @@ The existing seed file is idempotent (uses `upsert`) but lacks a short-circuit p
 
 We will implement a small, fast seed-guard in `prisma/seed.ts` that performs a single presence check (e.g., `await prisma.role.findUnique({ where: { name: 'admin' } })`) and exits early with a clear log message when data already exists.
 
-We will also recommend and document running `npm run prisma:seed` as an explicit deploy step (CI or Render deploy hook) rather than invoking the seeding script automatically at runtime startup.
+We will also recommend and document running `pnpm run prisma:seed` as an explicit deploy step (CI or Render deploy hook) rather than invoking the seeding script automatically at runtime startup.
 
 This approach minimizes runtime complexity, requires no schema changes, and preserves idempotency and the ability to reseed manually.
 
@@ -34,7 +34,7 @@ if (adminRole) {
 
 - Keep `upsert` usage for item-level idempotency.
 - Add a small unit/integration test that covers: first-run seeds successfully; subsequent run returns early and does not perform the full seed.
-- Add a README section documenting how to run the seed manually and add an example GitHub Actions job or Render deploy hook that runs `npm run prisma:seed` after migrations.
+- Add a README section documenting how to run the seed manually and add an example GitHub Actions job or Render deploy hook that runs `pnpm run prisma:seed` after migrations.
 
 ## Alternatives considered
 

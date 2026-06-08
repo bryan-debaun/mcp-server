@@ -91,7 +91,7 @@ describe('production dependencies validation', () => {
                 `Found ${violations.length} violation(s):\n${violationDetails}\n\n` +
                 `To fix this:\n` +
                 `1. If these packages are needed at runtime, move them to dependencies:\n` +
-                `   npm install --save ${affectedPackages.join(' ')}\n` +
+                `   pnpm add ${affectedPackages.join(' ')}\n` +
                 `2. If they're only for development, make imports conditional:\n` +
                 `   if (process.env.NODE_ENV !== 'production') { await import('${affectedPackages[0]}') }\n` +
                 `3. Or refactor code to avoid the import entirely.`
