@@ -1,0 +1,17 @@
+# Dependencies and build outputs are produced inside the image, never copied from host
+node_modules
+dist
+build
+
+# VCS / local env / tooling noise
+.git
+.gitignore
+.env
+.env.*
+*.log
+coverage
+agent-artifacts
+.vscode
+.idea
+Dockerfile
+.dockerignore

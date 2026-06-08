@@ -2,10 +2,12 @@
 set -e
 
 echo "Running database migrations with direct connection..."
-env DATABASE_URL="${DATABASE_URL_DIRECT}" npx prisma migrate deploy
+# `pnpm dlx` fetches the prisma CLI on demand — the production image ships only
+# runtime deps (see Dockerfile `pnpm prune --prod`), so the CLI is not installed locally.
+env DATABASE_URL="${DATABASE_URL_DIRECT}" pnpm dlx prisma migrate deploy
 
 echo "Seeding database with pooled connection..."
-npm run prisma:seed
+pnpm run prisma:seed
 
 echo "Starting server with pooled connection..."
-npm run start
+pnpm run start
