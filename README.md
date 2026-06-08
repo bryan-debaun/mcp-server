@@ -150,7 +150,7 @@ Use this spec to generate client SDKs for any language using tools like [OpenAPI
 
 ## Prerequisites
 
-- **Node.js 20+**: Required runtime
+- **Node.js 24 (active LTS)**: The toolchain (Docker image, CI, `.nvmrc`) targets Node 24; 20+ is the supported minimum (`engines.node`)
 - **pnpm**: This project uses [pnpm](https://pnpm.io) as its package manager (pinned via the `packageManager` field in `package.json`). The easiest way to get the right version is Corepack, which ships with Node.js — run `corepack enable` once and pnpm commands will use the pinned version automatically.
 - **PostgreSQL Database**: Required for book/movie/game catalog features (optional for GitHub tools only)
 - **`GITHUB_TOKEN`**: A GitHub personal access token (PAT) or fine-grained token with `repo` and `project` scopes. Set via the `GITHUB_TOKEN` environment variable.
@@ -214,7 +214,7 @@ SENTRY_DSN=https://<key>@o<org>.ingest.sentry.io/<project>
          - uses: pnpm/action-setup@v4
          - uses: actions/setup-node@v4
            with:
-             node-version: 20
+             node-version: 24
              cache: 'pnpm'
          - run: pnpm install --frozen-lockfile
          - run: pnpm exec prisma migrate deploy

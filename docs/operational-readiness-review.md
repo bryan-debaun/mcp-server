@@ -84,7 +84,7 @@ GitHub automation callers      ─┘                                  ├→ Gi
   - **Seed runs at deploy time** (`prisma:seed`) — see ADR-0008 (prevent runtime DB seed) for the guardrail context.
 - **Start:** `pnpm run start` → `node dist/index.js`.
 - **Health check path:** `/healthz` (Render uses this to gate the deploy).
-- **Image:** multi-stage `node:20-alpine`; runtime installs prod deps only and copies the generated Prisma client.
+- **Image:** multi-stage `node:24-alpine`; runtime installs prod deps only and copies the generated Prisma client.
 
 ### Rollback (verified `docs/runbooks/deploy-render.md`)
 

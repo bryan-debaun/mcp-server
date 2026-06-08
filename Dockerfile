@@ -1,5 +1,5 @@
 # Production Dockerfile for MCP Server (pnpm — see issue #106)
-FROM node:20-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 
 # Enable pnpm via corepack (version pinned by package.json "packageManager")
@@ -28,7 +28,7 @@ RUN pnpm exec tsc prisma/seed.ts --outDir dist --module NodeNext --moduleResolut
 RUN pnpm prune --prod
 
 # Runtime image
-FROM node:20-alpine AS runtime
+FROM node:24-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 

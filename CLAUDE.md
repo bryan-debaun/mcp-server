@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 An extensible **Model Context Protocol (MCP) server** that exposes the same tool logic two ways: as **MCP tools** (for VS Code Copilot / MCP clients) and as a **REST API** (with auto-generated OpenAPI/Swagger). Tool categories: GitHub Issues (Octokit REST), GitHub Projects V2 (GraphQL), and a database-backed catalog (books, authors, ratings, movies, videogames, content-creators, users) over Postgres/Prisma. Also includes a Spotify read-only adapter and Supabase-JWT auth.
 
-ESM project (`"type": "module"`), Node 20+, TypeScript strict mode.
+ESM project (`"type": "module"`), Node 24 (active LTS; 20+ supported), TypeScript strict mode.
 
 ## Commands
 
