@@ -6,5 +6,6 @@
     "scripts/**/*.ts"
   ],
   "project": ["src/**/*.ts"],
+  "ignoreExportsUsedInFile": true,
   "ignoreDependencies": ["@tsoa/runtime"]
 }
