@@ -1,4 +1,6 @@
 import { describe } from 'vitest'
+import { initPrisma, prisma } from '../../src/db/index.js'
+import { ensureRlsTestRoleReady } from '../utils/db-utils.js'
 
 const RUN_DB_TESTS = process.env.RUN_DB_INTEGRATION === 'true'
 
