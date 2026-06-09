@@ -1,17 +1,32 @@
-import { Controller, Get, Post, Put, Delete, Query, Route, Tags, Response, SuccessResponse, Path, Body, Security, Request } from 'tsoa';
-import type { Request as ExpressRequest } from 'express';
-import { callTool } from '../../tools/local.js';
-import { isNotFound, httpError } from './_http-errors.js';
+import type { Request as ExpressRequest } from 'express'
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    Path,
+    Post,
+    Put,
+    Query,
+    Request,
+    Response,
+    Route,
+    Security,
+    SuccessResponse,
+    Tags,
+} from 'tsoa'
+import { callTool } from '../../tools/local.js'
+import { httpError, isNotFound } from './_http-errors.js'
 
 /**
  * Author representation
  */
 export interface Author {
-    id: number;
-    name: string;
-    bio?: string;
-    createdAt: string;
-    updatedAt: string;
+    id: number
+    name: string
+    bio?: string
+    createdAt: string
+    updatedAt: string
 }
 
 /**
@@ -19,35 +34,35 @@ export interface Author {
  */
 export interface AuthorWithBooks extends Author {
     books?: Array<{
-        id: number;
-        title: string;
-    }>;
+        id: number
+        title: string
+    }>
 }
 
 /**
  * List authors response
  */
 export interface ListAuthorsResponse {
-    authors: AuthorWithBooks[];
-    total: number;
+    authors: AuthorWithBooks[]
+    total: number
 }
 
 /**
  * Create author request
  */
 export interface CreateAuthorRequest {
-    name: string;
-    bio?: string;
-    website?: string;
+    name: string
+    bio?: string
+    website?: string
 }
 
 /**
  * Update author request
  */
 export interface UpdateAuthorRequest {
-    name?: string;
-    bio?: string;
-    website?: string;
+    name?: string
+    bio?: string
+    website?: string
 }
 
 /**
@@ -69,10 +84,10 @@ export class AuthorsController extends Controller {
     public async listAuthors(
         @Query() search?: string,
         @Query() limit?: number,
-        @Query() offset?: number
+        @Query() offset?: number,
     ): Promise<ListAuthorsResponse> {
-        const result = await callTool('list-authors', { search, limit, offset });
-        return result as ListAuthorsResponse;
+        const result = await callTool('list-authors', { search, limit, offset })
+        return result as ListAuthorsResponse
     }
 
     /**
@@ -86,11 +101,11 @@ export class AuthorsController extends Controller {
     @Response('400', 'Invalid author ID')
     public async getAuthor(@Path() id: number): Promise<AuthorWithBooks> {
         try {
-            const result = await callTool('get-author', { id });
-            return result as AuthorWithBooks;
+            const result = await callTool('get-author', { id })
+            return result as AuthorWithBooks
         } catch (err: any) {
-            if (isNotFound(err)) throw httpError(404, 'Author not found');
-            throw err;
+            if (isNotFound(err)) throw httpError(404, 'Author not found')
+            throw err
         }
     }
 
@@ -108,14 +123,16 @@ export class AuthorsController extends Controller {
     @Response('500', 'Internal server error')
     public async createAuthor(
         @Request() request: ExpressRequest,
-        @Body() body: CreateAuthorRequest
+        @Body() body: CreateAuthorRequest,
     ): Promise<Author> {
-        if (!body.name) throw httpError(400, 'name is required');
+        if (!body.name) throw httpError(400, 'name is required')
 
-        const createdBy = (request as any).user?.sub ? Number((request as any).user.sub) : undefined;
-        const result = await callTool('create-author', { ...body, createdBy });
-        this.setStatus(201);
-        return result as Author;
+        const createdBy = (request as any).user?.sub
+            ? Number((request as any).user.sub)
+            : undefined
+        const result = await callTool('create-author', { ...body, createdBy })
+        this.setStatus(201)
+        return result as Author
     }
 
     /**
@@ -133,14 +150,14 @@ export class AuthorsController extends Controller {
     @Response('500', 'Internal server error')
     public async updateAuthor(
         @Path() id: number,
-        @Body() body: UpdateAuthorRequest
+        @Body() body: UpdateAuthorRequest,
     ): Promise<Author> {
         try {
-            const result = await callTool('update-author', { id, ...body });
-            return result as Author;
+            const result = await callTool('update-author', { id, ...body })
+            return result as Author
         } catch (err: any) {
-            if (isNotFound(err)) throw httpError(404, 'Author not found');
-            throw err;
+            if (isNotFound(err)) throw httpError(404, 'Author not found')
+            throw err
         }
     }
 
@@ -156,13 +173,15 @@ export class AuthorsController extends Controller {
     @Response('401', 'Unauthorized')
     @Response('404', 'Author not found')
     @Response('500', 'Internal server error')
-    public async deleteAuthor(@Path() id: number): Promise<{ success: boolean }> {
+    public async deleteAuthor(
+        @Path() id: number,
+    ): Promise<{ success: boolean }> {
         try {
-            await callTool('delete-author', { id });
-            return { success: true };
+            await callTool('delete-author', { id })
+            return { success: true }
         } catch (err: any) {
-            if (isNotFound(err)) throw httpError(404, 'Author not found');
-            throw err;
+            if (isNotFound(err)) throw httpError(404, 'Author not found')
+            throw err
         }
     }
 }

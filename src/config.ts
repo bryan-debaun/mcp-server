@@ -9,13 +9,13 @@
 // environments (Render) inject vars directly. Safe to call multiple times.
 if (process.env.NODE_ENV !== 'production') {
     try {
-        await import('dotenv/config');
+        await import('dotenv/config')
     } catch {
         // dotenv not installed or not available; env vars provided by platform
     }
 }
 
-import { z } from 'zod';
+import { z } from 'zod'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -26,17 +26,22 @@ const csvArray = z
     .string()
     .optional()
     .transform((val) =>
-        val ? val.split(',').map((s) => s.trim()).filter(Boolean) : []
-    );
+        val
+            ? val
+                  .split(',')
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+            : [],
+    )
 
 /** Coerce a string boolean flag ('1', 'true', 'yes') to boolean. */
 const boolFlag = z
     .string()
     .optional()
     .transform((val) => {
-        const v = (val ?? '').toLowerCase();
-        return v === '1' || v === 'true' || v === 'yes';
-    });
+        const v = (val ?? '').toLowerCase()
+        return v === '1' || v === 'true' || v === 'yes'
+    })
 
 /** Coerce a string to a positive integer with a default fallback. */
 function posInt(defaultValue: number) {
@@ -44,9 +49,9 @@ function posInt(defaultValue: number) {
         .string()
         .optional()
         .transform((val) => {
-            const n = Number(val ?? defaultValue);
-            return Number.isFinite(n) && n > 0 ? n : defaultValue;
-        });
+            const n = Number(val ?? defaultValue)
+            return Number.isFinite(n) && n > 0 ? n : defaultValue
+        })
 }
 
 // ---------------------------------------------------------------------------
@@ -63,9 +68,12 @@ const envSchema = z.object({
         .string()
         .optional()
         .transform((val) => (val ? Number(val) : undefined))
-        .refine((val) => val === undefined || (Number.isFinite(val) && val > 0), {
-            message: 'PORT must be a positive integer',
-        }),
+        .refine(
+            (val) => val === undefined || (Number.isFinite(val) && val > 0),
+            {
+                message: 'PORT must be a positive integer',
+            },
+        ),
     HOST: z.string().optional(),
     MCP_TRANSPORT: z.enum(['stdio', 'http']).optional(),
     EARLY_START: boolFlag,
@@ -113,8 +121,8 @@ const envSchema = z.object({
         .string()
         .optional()
         .transform((val) => {
-            const n = Number(val ?? 0);
-            return Number.isFinite(n) && n >= 0 && n <= 1 ? n : 0;
+            const n = Number(val ?? 0)
+            return Number.isFinite(n) && n >= 0 && n <= 1 ? n : 0
         }),
 
     // ── Test / CI flags ───────────────────────────────────────────────────
@@ -124,23 +132,25 @@ const envSchema = z.object({
     GITHUB_TEST_REPO: z.string().optional(),
     GITHUB_TEST_PROJECT_NUMBER: posInt(0),
     GITHUB_TEST_ISSUE_NUMBER: posInt(0),
-});
+})
 
 // ---------------------------------------------------------------------------
 // Parse & exit-on-failure
 // ---------------------------------------------------------------------------
 
-const result = envSchema.safeParse(process.env);
+const result = envSchema.safeParse(process.env)
 
 if (!result.success) {
-    console.error('❌  Configuration error — fix the following env vars and restart:');
+    console.error(
+        '❌  Configuration error — fix the following env vars and restart:',
+    )
     for (const issue of result.error.issues) {
-        console.error(`  ${issue.path.join('.')}: ${issue.message}`);
+        console.error(`  ${issue.path.join('.')}: ${issue.message}`)
     }
-    process.exit(1);
+    process.exit(1)
 }
 
-const env = result.data;
+const env = result.data
 
 // ---------------------------------------------------------------------------
 // Derived / normalized values
@@ -151,24 +161,25 @@ const supabaseJwksUrl: string | undefined =
     env.SUPABASE_JWKS_URL ??
     (env.PUBLIC_SUPABASE_URL
         ? `${env.PUBLIC_SUPABASE_URL.replace(/\/$/, '')}/.well-known/jwks.json`
-        : undefined);
+        : undefined)
 
 /** Resolved issuer: explicit SUPABASE_ISS wins; fallback to PUBLIC_SUPABASE_URL. */
-const supabaseIss: string | undefined = env.SUPABASE_ISS ?? env.PUBLIC_SUPABASE_URL;
+const supabaseIss: string | undefined =
+    env.SUPABASE_ISS ?? env.PUBLIC_SUPABASE_URL
 
 /** Service role key: prefer the canonical name; accept legacy alias. */
 const supabaseServiceRoleKey: string | undefined =
-    env.SUPABASE_SERVICE_ROLE_KEY ?? env.SUPABASE_SECRET_KEY;
+    env.SUPABASE_SERVICE_ROLE_KEY ?? env.SUPABASE_SECRET_KEY
 
 /** Anon / publishable key: prefer the canonical name; accept legacy alias. */
 const supabaseAnonKey: string | undefined =
-    env.SUPABASE_ANON_KEY ?? env.PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    env.SUPABASE_ANON_KEY ?? env.PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
 /** Whether all three Spotify credentials are present. */
 const spotifyEnabled =
     Boolean(env.SPOTIFY_CLIENT_ID) &&
     Boolean(env.SPOTIFY_CLIENT_SECRET) &&
-    Boolean(env.SPOTIFY_REFRESH_TOKEN);
+    Boolean(env.SPOTIFY_REFRESH_TOKEN)
 
 // ---------------------------------------------------------------------------
 // Exported config object
@@ -183,7 +194,11 @@ export const config = {
     // dev, info in production.
     logLevel:
         env.LOG_LEVEL ??
-        (env.NODE_ENV === 'test' ? 'silent' : env.NODE_ENV === 'production' ? 'info' : 'debug'),
+        (env.NODE_ENV === 'test'
+            ? 'silent'
+            : env.NODE_ENV === 'production'
+              ? 'info'
+              : 'debug'),
 
     server: {
         port: env.PORT,
@@ -239,4 +254,4 @@ export const config = {
         githubTestProjectNumber: env.GITHUB_TEST_PROJECT_NUMBER,
         githubTestIssueNumber: env.GITHUB_TEST_ISSUE_NUMBER,
     },
-};
+}

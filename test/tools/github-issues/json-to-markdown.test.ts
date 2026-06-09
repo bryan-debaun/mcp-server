@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { jsonToMarkdown } from '../../../src/tools/github-issues/json-to-markdown.js'
 
 describe('jsonToMarkdown', () => {

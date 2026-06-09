@@ -1,14 +1,14 @@
-import { describe, it, expect } from 'vitest'
-import request from "supertest";
-import { createHttpApp } from "../../src/http/server";
+import request from 'supertest'
+import { describe, expect, it } from 'vitest'
+import { createHttpApp } from '../../src/http/server'
 
-describe("GET /metrics", () => {
-    it("returns prometheus metrics and includes key metrics", async () => {
-        const app = await createHttpApp();
+describe('GET /metrics', () => {
+    it('returns prometheus metrics and includes key metrics', async () => {
+        const app = await createHttpApp()
         // make a request so http_requests_total is present
-        await request(app).get("/healthz").expect(200);
-        const res = await request(app).get("/metrics").expect(200);
-        expect(res.text).toContain("http_requests_total");
-        expect(res.text).toContain("mcp_poll_success_total");
-    });
-});
+        await request(app).get('/healthz').expect(200)
+        const res = await request(app).get('/metrics').expect(200)
+        expect(res.text).toContain('http_requests_total')
+        expect(res.text).toContain('mcp_poll_success_total')
+    })
+})

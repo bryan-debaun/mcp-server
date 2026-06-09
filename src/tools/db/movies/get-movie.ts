@@ -1,31 +1,36 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerTool } from "../../registration.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { GetMovieInputSchema } from "./schemas.js";
-import { prisma } from "../../../db/index.js";
-import { createSuccessResult, createErrorResult } from "../../github-issues/results.js";
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
+import { prisma } from '../../../db/index.js'
+import {
+    createErrorResult,
+    createSuccessResult,
+} from '../../github-issues/results.js'
+import { registerTool } from '../../registration.js'
+import { GetMovieInputSchema } from './schemas.js'
 
-const name = "get-movie";
+const name = 'get-movie'
 const config = {
-    title: "Get Movie",
-    description: "Get a movie by ID (public)",
-    inputSchema: GetMovieInputSchema
-};
+    title: 'Get Movie',
+    description: 'Get a movie by ID (public)',
+    inputSchema: GetMovieInputSchema,
+}
 
 export function registerGetMovieTool(server: McpServer): void {
-    registerTool(server,
+    registerTool(
+        server,
         name,
         config,
         async (args: any): Promise<CallToolResult> => {
             try {
-                const { id } = args;
-                const movie = await prisma.movie.findUnique({ where: { id } });
-                if (!movie) return createErrorResult('Movie not found');
-                return createSuccessResult(movie);
+                const { id } = args
+                const movie = await prisma.movie.findUnique({ where: { id } })
+                if (!movie) return createErrorResult('Movie not found')
+                return createSuccessResult(movie)
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return createErrorResult(message);
+                const message =
+                    error instanceof Error ? error.message : String(error)
+                return createErrorResult(message)
             }
-        }
-    );
+        },
+    )
 }

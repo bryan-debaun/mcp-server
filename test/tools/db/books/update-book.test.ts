@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 // Mock prisma book.update - include authors relation
 vi.mock('../../../../src/db/index', () => ({
@@ -7,13 +7,15 @@ vi.mock('../../../../src/db/index', () => ({
             update: vi.fn(async (args: any) => ({
                 id: args.where.id,
                 ...args.data,
-                authors: args.data?.authors?.create ? args.data.authors.create.map((a: any, i: number) => ({
-                    authorId: a.authorId,
-                    author: { id: a.authorId, name: `Author ${i + 1}` }
-                })) : []
-            }))
-        }
-    }
+                authors: args.data?.authors?.create
+                    ? args.data.authors.create.map((a: any, i: number) => ({
+                          authorId: a.authorId,
+                          author: { id: a.authorId, name: `Author ${i + 1}` },
+                      }))
+                    : [],
+            })),
+        },
+    },
 }))
 
 import { registerUpdateBookTool } from '../../../../src/tools/db/books/update-book.js'
@@ -21,7 +23,9 @@ import { registerUpdateBookTool } from '../../../../src/tools/db/books/update-bo
 describe('db update-book tool', () => {
     it('normalizes flexible status input on update', async () => {
         const fake: any = {}
-        fake.registerTool = (_name: string, _cfg: any, handler: any) => { fake.handler = handler }
+        fake.registerTool = (_name: string, _cfg: any, handler: any) => {
+            fake.handler = handler
+        }
 
         registerUpdateBookTool(fake)
 

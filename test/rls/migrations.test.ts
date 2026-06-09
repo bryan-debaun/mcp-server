@@ -1,15 +1,17 @@
-import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync } from 'fs'
 import path from 'path'
+import { describe, expect, it } from 'vitest'
 
 describe('RLS migration lint', () => {
     it('all CREATE TABLEs have a matching ENABLE ROW LEVEL SECURITY statement somewhere in migrations', () => {
         const migrationsDir = path.resolve(__dirname, '../../prisma/migrations')
-        const dirs = readdirSync(migrationsDir).filter(d => d !== 'migration_lock.toml')
+        const dirs = readdirSync(migrationsDir).filter(
+            (d) => d !== 'migration_lock.toml',
+        )
 
         const migrationFiles = dirs
-            .map(d => path.join(migrationsDir, d, 'migration.sql'))
-            .filter(p => {
+            .map((d) => path.join(migrationsDir, d, 'migration.sql'))
+            .filter((p) => {
                 try {
                     return Boolean(readFileSync(p, 'utf8'))
                 } catch {
@@ -17,7 +19,9 @@ describe('RLS migration lint', () => {
                 }
             })
 
-        const allSql = migrationFiles.map(p => readFileSync(p, 'utf8')).join('\n')
+        const allSql = migrationFiles
+            .map((p) => readFileSync(p, 'utf8'))
+            .join('\n')
 
         const createTableRegex = /CREATE TABLE\s+"([^"]+)"/gi
         const createTables: string[] = []
@@ -27,13 +31,16 @@ describe('RLS migration lint', () => {
         }
 
         const enabledTables: Set<string> = new Set()
-        const enableRegex = /ALTER TABLE\s+(?:IF EXISTS\s+)?"([^"]+)"\s+ENABLE ROW LEVEL SECURITY/gi
+        const enableRegex =
+            /ALTER TABLE\s+(?:IF EXISTS\s+)?"([^"]+)"\s+ENABLE ROW LEVEL SECURITY/gi
         while ((m = enableRegex.exec(allSql))) {
             enabledTables.add(m[1])
         }
 
         // Filter out temporary tables (like Profile_new) and tables we explicitly disabled RLS on
-        const missing = createTables.filter(t => !enabledTables.has(t) && !t.endsWith('_new'))
+        const missing = createTables.filter(
+            (t) => !enabledTables.has(t) && !t.endsWith('_new'),
+        )
 
         expect(missing).toEqual([])
     })

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { prisma } from '../../../../src/db/index'
 
 import { registerListBooksTool } from '../../../../src/tools/db/books/list-books.js'
@@ -7,10 +7,12 @@ describe('db list-books tool', () => {
     it('normalizes status query and passes canonical value to prisma.findMany', async () => {
         // Spy on prisma.book.findMany
         const findManyMock = vi.fn(async (_args: any) => [])
-            ; (prisma as any).book = { findMany: findManyMock }
+        ;(prisma as any).book = { findMany: findManyMock }
 
         const fake: any = {}
-        fake.registerTool = (_name: string, _cfg: any, handler: any) => { fake.handler = handler }
+        fake.registerTool = (_name: string, _cfg: any, handler: any) => {
+            fake.handler = handler
+        }
 
         registerListBooksTool(fake)
 

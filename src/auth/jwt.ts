@@ -1,11 +1,13 @@
-import { Request, Response, NextFunction } from 'express'
-import { logger } from "../logger.js";
-import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose'
-import { prisma } from '../db/index.js'
+import { NextFunction, Request, Response } from 'express'
+import { createRemoteJWKSet, type JWTPayload, jwtVerify } from 'jose'
 import { config } from '../config.js'
+import { prisma } from '../db/index.js'
+import { logger } from '../logger.js'
 
 if (!config.auth.supabaseJwksUrl) {
-    logger.warn('SUPABASE_JWKS_URL not set; JWT middleware will not validate tokens')
+    logger.warn(
+        'SUPABASE_JWKS_URL not set; JWT middleware will not validate tokens',
+    )
 }
 
 export async function verifySupabaseJwt(token: string): Promise<JWTPayload> {
@@ -14,7 +16,8 @@ export async function verifySupabaseJwt(token: string): Promise<JWTPayload> {
     const _audience = config.auth.supabaseAud
 
     if (!_jwksUrl) throw new Error('JWKS URL not configured')
-    if (!_issuer || !_audience) throw new Error('SUPABASE_ISS and SUPABASE_AUD must be set')
+    if (!_issuer || !_audience)
+        throw new Error('SUPABASE_ISS and SUPABASE_AUD must be set')
 
     // Attempt to fetch the JWKS URL to validate it's reachable and returns 200 OK.
     try {
@@ -28,13 +31,36 @@ export async function verifySupabaseJwt(token: string): Promise<JWTPayload> {
                 if (res2.ok) {
                     _jwksUrl = fallback
                 } else {
-                    const text1 = typeof res.text === 'function' ? await res.text().catch(() => '') : (typeof res.json === 'function' ? JSON.stringify(await res.json().catch(() => ({}))) : '')
-                    const text2 = typeof res2.text === 'function' ? await res2.text().catch(() => '') : (typeof res2.json === 'function' ? JSON.stringify(await res2.json().catch(() => ({}))) : '')
-                    throw new Error(`JWKS fetch failed: primary ${res.status} ${res.statusText} (${text1}), fallback ${res2.status} ${res2.statusText} (${text2})`)
+                    const text1 =
+                        typeof res.text === 'function'
+                            ? await res.text().catch(() => '')
+                            : typeof res.json === 'function'
+                              ? JSON.stringify(
+                                    await res.json().catch(() => ({})),
+                                )
+                              : ''
+                    const text2 =
+                        typeof res2.text === 'function'
+                            ? await res2.text().catch(() => '')
+                            : typeof res2.json === 'function'
+                              ? JSON.stringify(
+                                    await res2.json().catch(() => ({})),
+                                )
+                              : ''
+                    throw new Error(
+                        `JWKS fetch failed: primary ${res.status} ${res.statusText} (${text1}), fallback ${res2.status} ${res2.statusText} (${text2})`,
+                    )
                 }
             } else {
-                const txt = typeof res.text === 'function' ? await res.text().catch(() => '') : (typeof res.json === 'function' ? JSON.stringify(await res.json().catch(() => ({}))) : '')
-                throw new Error(`JWKS fetch failed: ${res.status} ${res.statusText} (${txt})`)
+                const txt =
+                    typeof res.text === 'function'
+                        ? await res.text().catch(() => '')
+                        : typeof res.json === 'function'
+                          ? JSON.stringify(await res.json().catch(() => ({})))
+                          : ''
+                throw new Error(
+                    `JWKS fetch failed: ${res.status} ${res.statusText} (${txt})`,
+                )
             }
         }
     } catch (err: any) {
@@ -62,7 +88,9 @@ export async function verifySupabaseJwt(token: string): Promise<JWTPayload> {
  */
 function roleFromToken(payload: any): string | undefined {
     const appRole = payload?.app_metadata?.role ?? payload?.user_role
-    return typeof appRole === 'string' && appRole.length > 0 ? appRole : undefined
+    return typeof appRole === 'string' && appRole.length > 0
+        ? appRole
+        : undefined
 }
 
 /**
@@ -78,7 +106,8 @@ async function findLocalProfileBySub(sub: string, email?: string) {
         if (byId) return byId
     }
     const emailToTry = s.includes('@') ? s : email
-    if (emailToTry) return prisma.profile.findUnique({ where: { email: emailToTry } })
+    if (emailToTry)
+        return prisma.profile.findUnique({ where: { email: emailToTry } })
     return null
 }
 
@@ -97,20 +126,31 @@ export interface ResolvedAuthz {
 export async function resolveAppRole(payload: any): Promise<ResolvedAuthz> {
     const tokenRole = roleFromToken(payload)
     if (tokenRole) {
-        return { role: tokenRole, isAdmin: tokenRole === 'admin', localUserId: payload?.sub }
+        return {
+            role: tokenRole,
+            isAdmin: tokenRole === 'admin',
+            localUserId: payload?.sub,
+        }
     }
 
     const profile = await findLocalProfileBySub(
         payload?.sub ? String(payload.sub) : '',
-        typeof payload?.email === 'string' ? payload.email : undefined
+        typeof payload?.email === 'string' ? payload.email : undefined,
     )
     if (profile) {
-        return { role: profile.isAdmin ? 'admin' : 'user', isAdmin: Boolean(profile.isAdmin), localUserId: profile.id }
+        return {
+            role: profile.isAdmin ? 'admin' : 'user',
+            isAdmin: Boolean(profile.isAdmin),
+            localUserId: profile.id,
+        }
     }
 
     // No app role and no local profile: preserve the token's (Postgres) role
     // claim so non-admin authenticated users still pass non-admin guards.
-    return { role: typeof payload?.role === 'string' ? payload.role : 'user', isAdmin: false }
+    return {
+        role: typeof payload?.role === 'string' ? payload.role : 'user',
+        isAdmin: false,
+    }
 }
 
 /** Resolve authz for a request and mutate `req.user` in place. */
@@ -121,34 +161,46 @@ async function resolveUserAuthz(req: any, payload: any) {
     if (localUserId !== undefined) req.user.localUserId = localUserId
 }
 
-export async function jwtMiddleware(req: Request, res: Response, next: NextFunction) {
+export async function jwtMiddleware(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) {
     try {
         const auth = req.headers.authorization
         const serviceRoleKey = config.auth.supabaseServiceRoleKey
 
         if (auth) {
             // If Authorization header exists it must be a Bearer token
-            if (!auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Missing token' })
+            if (!auth.startsWith('Bearer '))
+                return res.status(401).json({ error: 'Missing token' })
 
             if (serviceRoleKey && auth === `Bearer ${serviceRoleKey}`) {
                 // Mark the request as coming from a service role. Authorization checks (header + IP allowlist)
                 // are enforced in the `requireAdmin` middleware which will reject with 403 if the request
                 // is not allowed. We avoid writing audit logs here to centralize auditing/metrics in one place.
-                (<any>req).user = { sub: 'service', role: 'admin', service: true }
+                ;(<any>req).user = {
+                    sub: 'service',
+                    role: 'admin',
+                    service: true,
+                }
                 return next()
             }
 
             const token = auth.slice('Bearer '.length)
-            const payload = await verifySupabaseJwt(token);
+            const payload = await verifySupabaseJwt(token)
 
             // attach a minimal user object (from token)
-            (<any>req).user = Object.assign({ sub: payload.sub }, payload);
+            ;(<any>req).user = Object.assign({ sub: payload.sub }, payload)
 
             // Resolve application role (token claim preferred, local Profile fallback)
             try {
                 await resolveUserAuthz(req as any, payload)
             } catch (err) {
-                logger.debug('jwtMiddleware: failed to resolve authz for token sub', err)
+                logger.debug(
+                    'jwtMiddleware: failed to resolve authz for token sub',
+                    err,
+                )
             }
 
             return next()

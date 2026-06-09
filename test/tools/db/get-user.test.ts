@@ -1,14 +1,22 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 // Mock prisma user.findUnique
-vi.mock('../../../src/db/index', () => ({ prisma: { profile: { findUnique: async () => ({ id: 2, email: 'found@example.com' }) } } }))
+vi.mock('../../../src/db/index', () => ({
+    prisma: {
+        profile: {
+            findUnique: async () => ({ id: 2, email: 'found@example.com' }),
+        },
+    },
+}))
 
 import { registerGetUserTool } from '../../../src/tools/db/get-user.js'
 
 describe('db get-user tool', () => {
     it('returns a user when id provided', async () => {
         const fake: any = {}
-        fake.registerTool = (_name: string, _cfg: any, handler: any) => { fake.handler = handler }
+        fake.registerTool = (_name: string, _cfg: any, handler: any) => {
+            fake.handler = handler
+        }
 
         registerGetUserTool(fake)
 
@@ -18,7 +26,9 @@ describe('db get-user tool', () => {
 
     it('errors when missing params', async () => {
         const fake: any = {}
-        fake.registerTool = (_name: string, _cfg: any, handler: any) => { fake.handler = handler }
+        fake.registerTool = (_name: string, _cfg: any, handler: any) => {
+            fake.handler = handler
+        }
 
         registerGetUserTool(fake)
 

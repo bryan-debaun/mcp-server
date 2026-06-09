@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import request from 'supertest'
-import { startHttpServer } from '../../src/http/server'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as db from '../../src/db/index'
 import { resetReady } from '../../src/http/readiness'
+import { startHttpServer } from '../../src/http/server'
 
 describe('startHttpServer readiness', () => {
     beforeEach(() => {
@@ -17,7 +17,11 @@ describe('startHttpServer readiness', () => {
     it('returns 503 on /readyz until db init completes', async () => {
         // Mock initPrisma to delay
         const wait = () => new Promise((r) => setTimeout(r, 150))
-        const initMock = vi.spyOn(db, 'initPrisma').mockImplementation(async () => { await wait(); })
+        const initMock = vi
+            .spyOn(db, 'initPrisma')
+            .mockImplementation(async () => {
+                await wait()
+            })
 
         // Start server with earlyStart to ensure it binds immediately while db init is delayed
         const srv = await startHttpServer(0, '127.0.0.1', { earlyStart: true })

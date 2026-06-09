@@ -1,14 +1,14 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import express from 'express'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock the spotify adapter module before importing server code
 const mockStart = vi.fn().mockResolvedValue(undefined)
 vi.mock('../../src/adapters/spotify/spotify-adapter', () => ({
-    startSpotifyAdapter: mockStart
+    startSpotifyAdapter: mockStart,
 }))
 
-import { registerDbDependentRoutes } from '../../src/http/server.js'
 import { config } from '../../src/config.js'
+import { registerDbDependentRoutes } from '../../src/http/server.js'
 
 describe('Spotify adapter auto-start', () => {
     const origEnabled = config.spotify.enabled
@@ -52,7 +52,7 @@ describe('Spotify adapter auto-start', () => {
         await registerDbDependentRoutes(app)
 
         // The Spotify auto-start is a fire-and-forget IIFE; flush microtasks so it completes
-        await new Promise(resolve => setTimeout(resolve, 0))
+        await new Promise((resolve) => setTimeout(resolve, 0))
 
         // IIFE in registerSpotifyRoute should import and call startSpotifyAdapter
         expect(mockStart).toHaveBeenCalled()

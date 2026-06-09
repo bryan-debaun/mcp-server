@@ -9,11 +9,11 @@
  * Run locally: RUN_TRANSPORT_INTEGRATION=true pnpm exec vitest run test/integration/http-stream.test.ts
  */
 
-import { describe, it, expect, afterEach } from 'vitest'
-import * as http from 'http'
 import express from 'express'
-import { registerMcpHttp } from '../../src/http/mcp-http.js'
+import * as http from 'http'
+import { afterEach, describe, expect, it } from 'vitest'
 import { config } from '../../src/config.js'
+import { registerMcpHttp } from '../../src/http/mcp-http.js'
 
 const RUN = process.env.RUN_TRANSPORT_INTEGRATION === 'true'
 
@@ -56,7 +56,13 @@ function mcpStreamSession(
         if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`
 
         const req = http.request(
-            { hostname: url.hostname, port: Number(url.port), method: 'POST', path: url.pathname, headers },
+            {
+                hostname: url.hostname,
+                port: Number(url.port),
+                method: 'POST',
+                path: url.pathname,
+                headers,
+            },
             (res) => {
                 if (res.statusCode !== 200) {
                     reject(new Error(`Unexpected status ${res.statusCode}`))
@@ -112,7 +118,7 @@ function mcpStreamSession(
 
 describe('HTTP Stream transport integration', () => {
     if (!RUN) {
-        it.skip('skipped — set RUN_TRANSPORT_INTEGRATION=true to run', () => { })
+        it.skip('skipped — set RUN_TRANSPORT_INTEGRATION=true to run', () => {})
         return
     }
 
@@ -126,7 +132,7 @@ describe('HTTP Stream transport integration', () => {
 
     it('responds to initialize with serverInfo and tool capabilities', async () => {
         config.security.mcpApiKey = undefined
-            ; ({ server } = await startServer())
+        ;({ server } = await startServer())
         const baseUrl = `http://127.0.0.1:${(server.address() as any).port}`
 
         const initMsg = {
@@ -153,7 +159,7 @@ describe('HTTP Stream transport integration', () => {
 
     it('lists tools after initialize and includes a known tool', async () => {
         config.security.mcpApiKey = undefined
-            ; ({ server } = await startServer())
+        ;({ server } = await startServer())
         const baseUrl = `http://127.0.0.1:${(server.address() as any).port}`
 
         const initMsg = {
@@ -166,34 +172,53 @@ describe('HTTP Stream transport integration', () => {
                 capabilities: {},
             },
         }
-        const notif = { jsonrpc: '2.0', method: 'notifications/initialized', params: {} }
-        const listMsg = { jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} }
+        const notif = {
+            jsonrpc: '2.0',
+            method: 'notifications/initialized',
+            params: {},
+        }
+        const listMsg = {
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'tools/list',
+            params: {},
+        }
 
         // Expect 2 responses: one for initialize (id:1), one for tools/list (id:2)
-        const lines = await mcpStreamSession(baseUrl, [initMsg, notif, listMsg], 2)
+        const lines = await mcpStreamSession(
+            baseUrl,
+            [initMsg, notif, listMsg],
+            2,
+        )
 
         const toolsReply = lines.find((l: any) => l.id === 2) as any
         expect(toolsReply).toBeDefined()
         expect(toolsReply.result?.tools).toBeInstanceOf(Array)
         expect(toolsReply.result.tools.length).toBeGreaterThan(0)
 
-        const toolNames: string[] = toolsReply.result.tools.map((t: any) => t.name)
+        const toolNames: string[] = toolsReply.result.tools.map(
+            (t: any) => t.name,
+        )
         expect(toolNames).toContain('create-issue')
     })
 
     it('returns 401 when MCP_API_KEY is set and auth header is missing', async () => {
         config.security.mcpApiKey = 'test-secret'
-            ; ({ server } = await startServer())
+        ;({ server } = await startServer())
         const baseUrl = `http://127.0.0.1:${(server.address() as any).port}`
 
         await expect(
-            mcpStreamSession(baseUrl, [{ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }], 1),
+            mcpStreamSession(
+                baseUrl,
+                [{ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }],
+                1,
+            ),
         ).rejects.toThrow('Unexpected status 401')
     })
 
     it('accepts a request when correct Bearer token is provided', async () => {
         config.security.mcpApiKey = 'test-secret'
-            ; ({ server } = await startServer())
+        ;({ server } = await startServer())
         const baseUrl = `http://127.0.0.1:${(server.address() as any).port}`
 
         const initMsg = {
@@ -207,7 +232,12 @@ describe('HTTP Stream transport integration', () => {
             },
         }
 
-        const lines = await mcpStreamSession(baseUrl, [initMsg], 1, 'test-secret')
+        const lines = await mcpStreamSession(
+            baseUrl,
+            [initMsg],
+            1,
+            'test-secret',
+        )
         const reply = lines[0] as any
         expect(reply.id).toBe(1)
         expect(reply.result).toBeDefined()

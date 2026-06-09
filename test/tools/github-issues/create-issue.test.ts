@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock octokit module before importing the tool
 vi.mock('../../../src/tools/github-issues/octokit.js', () => ({
@@ -7,10 +7,10 @@ vi.mock('../../../src/tools/github-issues/octokit.js', () => ({
     parseRepo: (repo: string) => {
         const [owner, repoName] = repo.split('/')
         return { owner, repo: repoName }
-    }
+    },
 }))
 vi.mock('../../../src/tools/github-issues/label-helper.js', () => ({
-    ensureLabelsExist: vi.fn().mockResolvedValue(undefined)
+    ensureLabelsExist: vi.fn().mockResolvedValue(undefined),
 }))
 
 import { registerCreateIssueTool } from '../../../src/tools/github-issues/create-issue.js'
@@ -31,18 +31,20 @@ describe('create-issue tool', () => {
                         data: {
                             number: 42,
                             html_url: 'https://github.com/owner/repo/issues/42',
-                            title: 'Test Issue'
-                        }
-                    })
-                }
-            }
+                            title: 'Test Issue',
+                        },
+                    }),
+                },
+            },
         }
-        vi.mocked(octokitModule.createOctokitClient).mockReturnValue(mockOctokit as any)
+        vi.mocked(octokitModule.createOctokitClient).mockReturnValue(
+            mockOctokit as any,
+        )
 
         mockServer = {
             registerTool: vi.fn((_name: string, _cfg: any, handler: any) => {
                 registeredHandler = handler
-            })
+            }),
         }
         registerCreateIssueTool(mockServer as McpServer)
     })
@@ -51,7 +53,7 @@ describe('create-issue tool', () => {
         expect(mockServer.registerTool).toHaveBeenCalledWith(
             'create-issue',
             expect.objectContaining({ title: 'Create Issue' }),
-            expect.any(Function)
+            expect.any(Function),
         )
     })
 
@@ -59,11 +61,16 @@ describe('create-issue tool', () => {
         const result = await registeredHandler({
             repo: 'owner/repo',
             title: 'Test Issue',
-            body: 'Some body'
+            body: 'Some body',
         })
 
         expect(mockOctokit.rest.issues.create).toHaveBeenCalledWith(
-            expect.objectContaining({ owner: 'owner', repo: 'repo', title: 'Test Issue', body: 'Some body' })
+            expect.objectContaining({
+                owner: 'owner',
+                repo: 'repo',
+                title: 'Test Issue',
+                body: 'Some body',
+            }),
         )
         const payload = JSON.parse(result.content[0].text)
         expect(payload.message).toContain('#42')
@@ -76,15 +83,15 @@ describe('create-issue tool', () => {
             title: 'With meta',
             labels: 'bug, enhancement',
             assignees: 'alice, bob',
-            milestone: 3
+            milestone: 3,
         })
 
         expect(mockOctokit.rest.issues.create).toHaveBeenCalledWith(
             expect.objectContaining({
                 labels: ['bug', 'enhancement'],
                 assignees: ['alice', 'bob'],
-                milestone: 3
-            })
+                milestone: 3,
+            }),
         )
     })
 
@@ -92,17 +99,21 @@ describe('create-issue tool', () => {
         const result = await registeredHandler({
             repo: 'owner/repo',
             title: 'JSON body',
-            bodyJson: { key: 'value' }
+            bodyJson: { key: 'value' },
         })
         const payload = JSON.parse(result.content[0].text)
         expect(payload.number).toBe(42)
     })
 
     it('returns error result if Octokit throws', async () => {
-        mockOctokit.rest.issues.create.mockRejectedValue(new Error('API rate limit'))
-        const result = await registeredHandler({ repo: 'owner/repo', title: 'Fail' })
+        mockOctokit.rest.issues.create.mockRejectedValue(
+            new Error('API rate limit'),
+        )
+        const result = await registeredHandler({
+            repo: 'owner/repo',
+            title: 'Fail',
+        })
         expect(result.isError).toBe(true)
         expect(result.content[0].text).toContain('API rate limit')
     })
 })
-

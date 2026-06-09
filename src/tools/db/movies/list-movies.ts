@@ -1,42 +1,67 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerTool } from "../../registration.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { ListMoviesInputSchema } from "./schemas.js";
-import { prisma } from "../../../db/index.js";
-import { createSuccessResult, createErrorResult } from "../../github-issues/results.js";
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
+import { prisma } from '../../../db/index.js'
+import {
+    createErrorResult,
+    createSuccessResult,
+} from '../../github-issues/results.js'
+import { registerTool } from '../../registration.js'
+import { ListMoviesInputSchema } from './schemas.js'
 
-const name = "list-movies";
+const name = 'list-movies'
 const config = {
-    title: "List Movies",
-    description: "List movies with optional filters (public)",
-    inputSchema: ListMoviesInputSchema
-};
+    title: 'List Movies',
+    description: 'List movies with optional filters (public)',
+    inputSchema: ListMoviesInputSchema,
+}
 
 export function registerListMoviesTool(server: McpServer): void {
-    registerTool(server,
+    registerTool(
+        server,
         name,
         config,
         async (args: any): Promise<CallToolResult> => {
             try {
-                const { minRating, search, status, limit = 50, offset = 0 } = args;
+                const {
+                    minRating,
+                    search,
+                    status,
+                    limit = 50,
+                    offset = 0,
+                } = args
 
-                const where: any = {};
-                if (status) where.status = status;
-                if (search) where.OR = [{ title: { contains: search, mode: 'insensitive' } }, { description: { contains: search, mode: 'insensitive' } }];
-                if (minRating !== undefined) where.rating = { gte: minRating };
+                const where: any = {}
+                if (status) where.status = status
+                if (search)
+                    where.OR = [
+                        { title: { contains: search, mode: 'insensitive' } },
+                        {
+                            description: {
+                                contains: search,
+                                mode: 'insensitive',
+                            },
+                        },
+                    ]
+                if (minRating !== undefined) where.rating = { gte: minRating }
 
                 const movies = await prisma.movie.findMany({
                     where,
                     take: limit,
                     skip: offset,
-                    orderBy: { createdAt: 'desc' }
-                });
+                    orderBy: { createdAt: 'desc' },
+                })
 
-                return createSuccessResult({ movies, total: movies.length, limit, offset });
+                return createSuccessResult({
+                    movies,
+                    total: movies.length,
+                    limit,
+                    offset,
+                })
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return createErrorResult(message);
+                const message =
+                    error instanceof Error ? error.message : String(error)
+                return createErrorResult(message)
             }
-        }
-    );
+        },
+    )
 }
