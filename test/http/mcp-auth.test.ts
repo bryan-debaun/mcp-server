@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import request from 'supertest'
 import express from 'express'
+import request from 'supertest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // /api/books is served by the TSOA controller (which no longer swallows DB
 // errors), so mock the tool layer to keep these auth-middleware tests
@@ -9,9 +9,9 @@ vi.mock('../../src/tools/local.js', () => ({
     callTool: vi.fn(async () => ({ books: [], total: 0 })),
 }))
 
-import { registerDbDependentRoutes } from '../../src/http/server.js'
-import { mcpAuthFailuresTotal } from '../../src/http/metrics-route.js'
 import { config } from '../../src/config.js'
+import { mcpAuthFailuresTotal } from '../../src/http/metrics-route.js'
+import { registerDbDependentRoutes } from '../../src/http/server.js'
 
 function getCounterValue(counter: any) {
     try {
@@ -24,7 +24,9 @@ function getCounterValue(counter: any) {
             const keys = Object.keys(hm)
             if (keys.length) return hm[keys[0]].value
         }
-    } catch { /* noop */ }
+    } catch {
+        /* noop */
+    }
     return 0
 }
 
@@ -65,7 +67,9 @@ describe('MCP auth middleware', () => {
         app.use(express.json())
         await registerDbDependentRoutes(app)
 
-        const res = await request(app).get('/api/books').set('Authorization', 'Bearer testkey')
+        const res = await request(app)
+            .get('/api/books')
+            .set('Authorization', 'Bearer testkey')
         expect(res.status).toBe(200)
     })
 
@@ -75,7 +79,9 @@ describe('MCP auth middleware', () => {
         app.use(express.json())
         await registerDbDependentRoutes(app)
 
-        const res = await request(app).get('/api/books').set('x-mcp-api-key', 'testkey')
+        const res = await request(app)
+            .get('/api/books')
+            .set('x-mcp-api-key', 'testkey')
         expect(res.status).toBe(200)
     })
 
@@ -85,7 +91,9 @@ describe('MCP auth middleware', () => {
         app.use(express.json())
         await registerDbDependentRoutes(app)
 
-        const res = await request(app).get('/api/books').set('x-mcp-api-key', 'wrong')
+        const res = await request(app)
+            .get('/api/books')
+            .set('x-mcp-api-key', 'wrong')
         expect(res.status).toBe(401)
     })
 

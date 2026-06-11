@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { config } from '../../src/config.js'
 
 describe('config module', () => {
@@ -14,7 +14,9 @@ describe('config module', () => {
         })
 
         it('nodeEnv is one of the allowed enum values', () => {
-            expect(['development', 'production', 'test']).toContain(config.nodeEnv)
+            expect(['development', 'production', 'test']).toContain(
+                config.nodeEnv,
+            )
         })
 
         it('isProduction and isTest are mutually exclusive booleans', () => {
@@ -89,8 +91,13 @@ describe('config module', () => {
         })
 
         it('auth.supabaseJwksUrl is derived from PUBLIC_SUPABASE_URL when SUPABASE_JWKS_URL absent', () => {
-            if (!process.env.SUPABASE_JWKS_URL && process.env.PUBLIC_SUPABASE_URL) {
-                expect(config.auth.supabaseJwksUrl).toContain('.well-known/jwks.json')
+            if (
+                !process.env.SUPABASE_JWKS_URL &&
+                process.env.PUBLIC_SUPABASE_URL
+            ) {
+                expect(config.auth.supabaseJwksUrl).toContain(
+                    '.well-known/jwks.json',
+                )
             }
         })
 
@@ -99,6 +106,5 @@ describe('config module', () => {
                 expect(typeof config.auth.supabaseServiceRoleKey).toBe('string')
             }
         })
-
     })
 })

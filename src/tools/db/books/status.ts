@@ -2,7 +2,11 @@ export type ItemStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'
 
 export function normalizeStatusInput(input?: string): ItemStatus | undefined {
     if (!input && input !== '') return undefined
-    const s = (input ?? '').trim().toUpperCase().replace(/\s+/g, '_').replace(/-+/g, '_')
+    const s = (input ?? '')
+        .trim()
+        .toUpperCase()
+        .replace(/\s+/g, '_')
+        .replace(/-+/g, '_')
     switch (s) {
         case 'NOT_STARTED':
         case 'NOTSTARTED':

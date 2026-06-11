@@ -1,19 +1,19 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import type { ZodRawShape } from "zod";
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
+import type { ZodRawShape } from 'zod'
 
 /**
  * Configuration for an MCP tool — mirrors the shape the SDK's `registerTool`
  * accepts. `inputSchema` is a Zod raw shape (a plain object of Zod types).
  */
 export interface ToolDefinition {
-    title?: string;
-    description: string;
-    inputSchema?: ZodRawShape;
+    title?: string
+    description: string
+    inputSchema?: ZodRawShape
 }
 
 /** A tool handler: takes validated args, returns an MCP tool result. */
-export type ToolHandler = (args: any) => Promise<CallToolResult>;
+export type ToolHandler = (args: any) => Promise<CallToolResult>
 
 /**
  * Typed wrapper over `McpServer.registerTool`.
@@ -30,5 +30,5 @@ export function registerTool(
     config: ToolDefinition,
     handler: ToolHandler,
 ): void {
-    (server as any).registerTool(name, config, handler);
+    ;(server as any).registerTool(name, config, handler)
 }

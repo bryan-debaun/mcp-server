@@ -1,21 +1,22 @@
-import * as Sentry from '@sentry/node';
-import { config } from './config.js';
-import { logger, setErrorReporter } from './logger.js';
+import * as Sentry from '@sentry/node'
+import { config } from './config.js'
+import { logger, setErrorReporter } from './logger.js'
 
-let initialized = false;
+let initialized = false
 
 /** Keys whose values must never be sent to Sentry. */
-const SENSITIVE_KEY = /(authorization|cookie|token|secret|password|api[-_]?key|jwt|dsn)/i;
+const SENSITIVE_KEY =
+    /(authorization|cookie|token|secret|password|api[-_]?key|jwt|dsn)/i
 
 /** Recursively redact sensitive-looking keys from an object before sending. */
 function scrub(value: unknown): unknown {
-    if (!value || typeof value !== 'object') return value;
-    if (Array.isArray(value)) return value.map(scrub);
-    const out: Record<string, unknown> = {};
+    if (!value || typeof value !== 'object') return value
+    if (Array.isArray(value)) return value.map(scrub)
+    const out: Record<string, unknown> = {}
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-        out[k] = SENSITIVE_KEY.test(k) ? '[redacted]' : scrub(v);
+        out[k] = SENSITIVE_KEY.test(k) ? '[redacted]' : scrub(v)
     }
-    return out;
+    return out
 }
 
 /**
@@ -25,7 +26,7 @@ function scrub(value: unknown): unknown {
  * capture uncaught exceptions / unhandled rejections at the process level).
  */
 export function initSentry(): void {
-    if (initialized || !config.sentry.dsn) return;
+    if (initialized || !config.sentry.dsn) return
 
     Sentry.init({
         dsn: config.sentry.dsn,
@@ -35,33 +36,38 @@ export function initSentry(): void {
         // Don't attach request bodies / headers / cookies automatically.
         sendDefaultPii: false,
         beforeSend(event) {
-            if (event.extra) event.extra = scrub(event.extra) as Record<string, unknown>;
+            if (event.extra)
+                event.extra = scrub(event.extra) as Record<string, unknown>
             if (event.request) {
-                delete event.request.headers;
-                delete event.request.cookies;
+                delete event.request.headers
+                delete event.request.cookies
             }
-            return event;
+            return event
         },
-    });
-    initialized = true;
+    })
+    initialized = true
 
     // Bridge: forward every logger.error to Sentry (Error → exception, else message).
     setErrorReporter((err, context, message) => {
         if (err instanceof Error) {
-            Sentry.captureException(err, { extra: scrub(context) as Record<string, unknown> });
+            Sentry.captureException(err, {
+                extra: scrub(context) as Record<string, unknown>,
+            })
         } else {
-            Sentry.captureMessage(message || 'error', 'error');
+            Sentry.captureMessage(message || 'error', 'error')
         }
-    });
+    })
 
-    logger.info('Sentry error reporting initialized', { environment: config.sentry.environment });
+    logger.info('Sentry error reporting initialized', {
+        environment: config.sentry.environment,
+    })
 }
 
 /** Flush buffered events — call before an intentional process exit. */
 export async function flushSentry(timeoutMs = 2000): Promise<void> {
-    if (!initialized) return;
+    if (!initialized) return
     try {
-        await Sentry.flush(timeoutMs);
+        await Sentry.flush(timeoutMs)
     } catch {
         /* noop */
     }

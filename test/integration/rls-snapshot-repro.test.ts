@@ -1,4 +1,6 @@
 import { describe } from 'vitest'
+import { initPrisma, prisma } from '../../src/db/index.js'
+import { ensureRlsTestRoleReady } from '../utils/db-utils.js'
 
 const RUN_DB_TESTS = process.env.RUN_DB_INTEGRATION === 'true'
 
@@ -6,7 +8,7 @@ const RUN_DB_TESTS = process.env.RUN_DB_INTEGRATION === 'true'
 // which has been removed in the simplified single-user schema. Skip for now.
 describe.skip('RLS snapshot-visibility repro (local reproduction for CI flake)', () => {
     if (!RUN_DB_TESTS) {
-        it.skip('skipped - requires RUN_DB_INTEGRATION=true', () => { })
+        it.skip('skipped - requires RUN_DB_INTEGRATION=true', () => {})
         return
     }
 
@@ -28,20 +30,30 @@ describe.skip('RLS snapshot-visibility repro (local reproduction for CI flake)',
             // execute a simple read to establish the snapshot in REPEATABLE READ mode
             await obs.query('SELECT 1')
             const txObsBefore = await obs.query('SELECT txid_current() AS txid')
-            console.error('OBS tx before (repeatable-read):', txObsBefore.rows[0])
+            console.error(
+                'OBS tx before (repeatable-read):',
+                txObsBefore.rows[0],
+            )
 
             // put observer into rls_test_role + set the email GUC (session-level)
             await obs.query('SET ROLE rls_test_role')
-            await obs.query(`SELECT set_config('request.jwt.claims.email', '${email}', false)`)
+            await obs.query(
+                `SELECT set_config('request.jwt.claims.email', '${email}', false)`,
+            )
 
             // 2) Create the Profile via Prisma (superuser/committed)
-            const created = await prisma.profile.create({ data: { email, name: 'Repro' } })
+            const created = await prisma.profile.create({
+                data: { email, name: 'Repro' },
+            })
             console.error('PRISMA created profile id:', created.id)
-            const txPrisma = await prisma.$queryRaw`SELECT txid_current() AS txid`
+            const txPrisma =
+                await prisma.$queryRaw`SELECT txid_current() AS txid`
             console.error('PRISMA txid (after create):', txPrisma)
 
             // 3) Observer (still inside BEGIN snapshot) should NOT see the newly created Profile
-            const resInTxn = await obs.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+            const resInTxn = await obs.query(
+                `SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`,
+            )
             console.error('OBS select while in txn, rows:', resInTxn.rows)
             expect(resInTxn.rows.length).toBe(0)
 
@@ -53,10 +65,16 @@ describe.skip('RLS snapshot-visibility repro (local reproduction for CI flake)',
             await obs.connect()
             // re-apply role/GUC on the fresh connection
             await obs.query('SET ROLE rls_test_role')
-            await obs.query(`SELECT set_config('request.jwt.claims.email', '${email}', false)`)
-            const txObsAfter = await obs.query('SELECT txid_current() AS txid, txid_current_snapshot() AS snapshot')
+            await obs.query(
+                `SELECT set_config('request.jwt.claims.email', '${email}', false)`,
+            )
+            const txObsAfter = await obs.query(
+                'SELECT txid_current() AS txid, txid_current_snapshot() AS snapshot',
+            )
             console.error('OBS tx after reconnect:', txObsAfter.rows[0])
-            const resAfter = await obs.query(`SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`)
+            const resAfter = await obs.query(
+                `SELECT id FROM "Profile" WHERE email = current_setting('request.jwt.claims.email', true)`,
+            )
             console.error('OBS select after reconnect, rows:', resAfter.rows)
             expect(resAfter.rows.length).toBeGreaterThan(0)
             expect(resAfter.rows[0].id).toBe(created.id)

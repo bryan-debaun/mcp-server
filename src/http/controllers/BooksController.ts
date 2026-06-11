@@ -1,26 +1,41 @@
-import { Controller, Get, Post, Put, Delete, Query, Route, Tags, Response, SuccessResponse, Path, Body, Security, Request } from 'tsoa';
-import type { Request as ExpressRequest } from 'express';
-import type { ItemStatus } from '../../tools/db/books/status';
-import { callTool } from '../../tools/local.js';
-import { isNotFound, isUniqueViolation, httpError } from './_http-errors.js';
+import type { Request as ExpressRequest } from 'express'
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    Path,
+    Post,
+    Put,
+    Query,
+    Request,
+    Response,
+    Route,
+    Security,
+    SuccessResponse,
+    Tags,
+} from 'tsoa'
+import type { ItemStatus } from '../../tools/db/books/status'
+import { callTool } from '../../tools/local.js'
+import { httpError, isNotFound, isUniqueViolation } from './_http-errors.js'
 
 /**
  * Book representation - force TSOA refresh
  */
 export interface Book {
-    id: number;
-    title: string;
-    description?: string;
-    isbn?: string;
-    publishedAt?: string;
-    status: ItemStatus;
-    createdAt: string;
-    updatedAt: string;
+    id: number
+    title: string
+    description?: string
+    isbn?: string
+    publishedAt?: string
+    status: ItemStatus
+    createdAt: string
+    updatedAt: string
 
     // Embedded rating fields
-    rating?: number | null;
-    review?: string | null;
-    ratedAt?: string | null;
+    rating?: number | null
+    review?: string | null
+    ratedAt?: string | null
 }
 
 /**
@@ -28,41 +43,41 @@ export interface Book {
  */
 export interface BookWithAuthors extends Book {
     authors?: Array<{
-        id: number;
-        name: string;
-    }>;
+        id: number
+        name: string
+    }>
 }
 
 /**
  * List books response
  */
 export interface ListBooksResponse {
-    books: BookWithAuthors[];
-    total: number;
+    books: BookWithAuthors[]
+    total: number
 }
 
 /**
  * Create book request
  */
 export interface CreateBookRequest {
-    title: string;
-    status?: ItemStatus;
-    description?: string;
-    isbn?: string;
-    publishedAt?: string;
-    authorIds?: number[];
+    title: string
+    status?: ItemStatus
+    description?: string
+    isbn?: string
+    publishedAt?: string
+    authorIds?: number[]
 }
 
 /**
  * Update book request
  */
 export interface UpdateBookRequest {
-    title?: string;
-    status?: ItemStatus;
-    description?: string;
-    isbn?: string;
-    publishedAt?: string;
-    authorIds?: number[];
+    title?: string
+    status?: ItemStatus
+    description?: string
+    isbn?: string
+    publishedAt?: string
+    authorIds?: number[]
 }
 
 /**
@@ -89,12 +104,19 @@ export class BooksController extends Controller {
         @Query() search?: string,
         @Query() status?: ItemStatus,
         @Query() limit?: number,
-        @Query() offset?: number
+        @Query() offset?: number,
     ): Promise<ListBooksResponse> {
         // Let failures surface as 5xx via the global error handler — an empty
         // result must mean "no books", never "the database is down".
-        const result = await callTool('list-books', { authorId, minRating, search, status, limit, offset });
-        return result as ListBooksResponse;
+        const result = await callTool('list-books', {
+            authorId,
+            minRating,
+            search,
+            status,
+            limit,
+            offset,
+        })
+        return result as ListBooksResponse
     }
 
     /**
@@ -108,11 +130,11 @@ export class BooksController extends Controller {
     @Response('400', 'Invalid book ID')
     public async getBook(@Path() id: number): Promise<BookWithAuthors> {
         try {
-            const result = await callTool('get-book', { id });
-            return result as BookWithAuthors;
+            const result = await callTool('get-book', { id })
+            return result as BookWithAuthors
         } catch (err: any) {
-            if (isNotFound(err)) throw httpError(404, 'Book not found');
-            throw err;
+            if (isNotFound(err)) throw httpError(404, 'Book not found')
+            throw err
         }
     }
 
@@ -130,18 +152,21 @@ export class BooksController extends Controller {
     @Response('500', 'Internal server error')
     public async createBook(
         @Request() request: ExpressRequest,
-        @Body() body: CreateBookRequest
+        @Body() body: CreateBookRequest,
     ): Promise<Book> {
-        if (!body.title) throw httpError(400, 'title is required');
+        if (!body.title) throw httpError(400, 'title is required')
 
         try {
-            const createdBy = (request as any).user?.sub ? Number((request as any).user.sub) : undefined;
-            const result = await callTool('create-book', { ...body, createdBy });
-            this.setStatus(201);
-            return result as Book;
+            const createdBy = (request as any).user?.sub
+                ? Number((request as any).user.sub)
+                : undefined
+            const result = await callTool('create-book', { ...body, createdBy })
+            this.setStatus(201)
+            return result as Book
         } catch (err: any) {
-            if (isUniqueViolation(err)) throw httpError(400, 'ISBN already exists');
-            throw err;
+            if (isUniqueViolation(err))
+                throw httpError(400, 'ISBN already exists')
+            throw err
         }
     }
 
@@ -160,15 +185,16 @@ export class BooksController extends Controller {
     @Response('500', 'Internal server error')
     public async updateBook(
         @Path() id: number,
-        @Body() body: UpdateBookRequest
+        @Body() body: UpdateBookRequest,
     ): Promise<Book> {
         try {
-            const result = await callTool('update-book', { id, ...body });
-            return result as Book;
+            const result = await callTool('update-book', { id, ...body })
+            return result as Book
         } catch (err: any) {
-            if (isNotFound(err)) throw httpError(404, 'Book not found');
-            if (isUniqueViolation(err)) throw httpError(400, 'ISBN already exists');
-            throw err;
+            if (isNotFound(err)) throw httpError(404, 'Book not found')
+            if (isUniqueViolation(err))
+                throw httpError(400, 'ISBN already exists')
+            throw err
         }
     }
 
@@ -186,11 +212,11 @@ export class BooksController extends Controller {
     @Response('500', 'Internal server error')
     public async deleteBook(@Path() id: number): Promise<{ success: boolean }> {
         try {
-            await callTool('delete-book', { id });
-            return { success: true };
+            await callTool('delete-book', { id })
+            return { success: true }
         } catch (err: any) {
-            if (isNotFound(err)) throw httpError(404, 'Book not found');
-            throw err;
+            if (isNotFound(err)) throw httpError(404, 'Book not found')
+            throw err
         }
     }
 }

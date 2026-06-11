@@ -24,7 +24,13 @@ export function parseSqlStatements(sql: string): string[] {
         const ch = sql[i]
 
         // handle line comments
-        if (!inSingle && !inDouble && !dollarTag && !inBlockComment && startsWith('--')) {
+        if (
+            !inSingle &&
+            !inDouble &&
+            !dollarTag &&
+            !inBlockComment &&
+            startsWith('--')
+        ) {
             inLineComment = true
             // consume until newline
             while (i < len && sql[i] !== '\n') {
@@ -37,7 +43,13 @@ export function parseSqlStatements(sql: string): string[] {
         }
 
         // handle block comments
-        if (!inSingle && !inDouble && !dollarTag && !inLineComment && startsWith('/*')) {
+        if (
+            !inSingle &&
+            !inDouble &&
+            !dollarTag &&
+            !inLineComment &&
+            startsWith('/*')
+        ) {
             inBlockComment = true
             i += 2
             while (i < len && !startsWith('*/')) i++
@@ -113,7 +125,14 @@ export function parseSqlStatements(sql: string): string[] {
         }
 
         // statement separator (semicolon) when not inside any quote/comment
-        if (ch === ';' && !inSingle && !inDouble && !dollarTag && !inBlockComment && !inLineComment) {
+        if (
+            ch === ';' &&
+            !inSingle &&
+            !inDouble &&
+            !dollarTag &&
+            !inBlockComment &&
+            !inLineComment
+        ) {
             const stmt = cur.trim()
             if (stmt) parts.push(stmt)
             cur = ''
@@ -133,7 +152,11 @@ export function parseSqlStatements(sql: string): string[] {
     return parts
 }
 
-export async function executeStatements(connectionString: string, statements: string[], onStatement?: (index: number, sql: string) => void) {
+export async function executeStatements(
+    connectionString: string,
+    statements: string[],
+    onStatement?: (index: number, sql: string) => void,
+) {
     const client = new Client({ connectionString })
     await client.connect()
     try {

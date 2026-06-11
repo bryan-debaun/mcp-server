@@ -1,13 +1,17 @@
-import { describe, it, expect } from 'vitest'
-import request from 'supertest'
 import express from 'express'
-import { registerMcpHttp } from '../../src/http/mcp-http.js'
+import request from 'supertest'
+import { describe, expect, it } from 'vitest'
 import { config } from '../../src/config.js'
+import { registerMcpHttp } from '../../src/http/mcp-http.js'
 
 describe('MCP HTTP endpoints', () => {
     const origMcpApiKey = config.security.mcpApiKey
-    beforeEach(() => { config.security.mcpApiKey = undefined })
-    afterEach(() => { config.security.mcpApiKey = origMcpApiKey })
+    beforeEach(() => {
+        config.security.mcpApiKey = undefined
+    })
+    afterEach(() => {
+        config.security.mcpApiKey = origMcpApiKey
+    })
 
     it('should reject POST /mcp without auth when MCP_API_KEY set', async () => {
         config.security.mcpApiKey = 'testkey'
@@ -32,11 +36,18 @@ describe('MCP HTTP endpoints', () => {
         const http = await import('http')
 
         await new Promise<void>((resolve, reject) => {
-            const opts = { method: 'GET', port, path: '/mcp', headers: { Authorization: 'Bearer testkey' } }
+            const opts = {
+                method: 'GET',
+                port,
+                path: '/mcp',
+                headers: { Authorization: 'Bearer testkey' },
+            }
             const req = http.request(opts, (res: any) => {
                 try {
                     expect(res.statusCode).toBe(200)
-                    expect(res.headers['content-type']).toMatch(/text\/event-stream/)
+                    expect(res.headers['content-type']).toMatch(
+                        /text\/event-stream/,
+                    )
 
                     let got = ''
                     res.on('data', (chunk: any) => {
@@ -72,7 +83,10 @@ describe('MCP HTTP endpoints', () => {
         expect(res1.status).toBe(401)
 
         // With auth but missing conn id
-        const res2 = await request(app).post('/mcp/events').set('Authorization', 'Bearer testkey').send({})
+        const res2 = await request(app)
+            .post('/mcp/events')
+            .set('Authorization', 'Bearer testkey')
+            .send({})
         expect(res2.status).toBe(400)
         expect(res2.body.error).toBe('missing conn id')
     })

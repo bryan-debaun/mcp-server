@@ -1,26 +1,31 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerTool } from "../../registration.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { CreateMovieInputSchema } from "./schemas.js";
-import { prisma } from "../../../db/index.js";
-import { normalizeStatusInput, statusLabel } from "../books/status.js";
-import { createSuccessResult, createErrorResult } from "../../github-issues/results.js";
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
+import { prisma } from '../../../db/index.js'
+import {
+    createErrorResult,
+    createSuccessResult,
+} from '../../github-issues/results.js'
+import { registerTool } from '../../registration.js'
+import { normalizeStatusInput, statusLabel } from '../books/status.js'
+import { CreateMovieInputSchema } from './schemas.js'
 
-const name = "create-movie";
+const name = 'create-movie'
 const config = {
-    title: "Create Movie",
-    description: "Create a new movie (admin only)",
-    inputSchema: CreateMovieInputSchema
-};
+    title: 'Create Movie',
+    description: 'Create a new movie (admin only)',
+    inputSchema: CreateMovieInputSchema,
+}
 
 export function registerCreateMovieTool(server: McpServer): void {
-    registerTool(server,
+    registerTool(
+        server,
         name,
         config,
         async (args: any): Promise<CallToolResult> => {
             try {
-                const { title, description, iasn, imdbId, releasedAt, status } = args;
-                const normalizedStatus = normalizeStatusInput(status);
+                const { title, description, iasn, imdbId, releasedAt, status } =
+                    args
+                const normalizedStatus = normalizeStatusInput(status)
 
                 const movie = await prisma.movie.create({
                     data: {
@@ -29,15 +34,19 @@ export function registerCreateMovieTool(server: McpServer): void {
                         iasn,
                         imdbId,
                         releasedAt: releasedAt ? new Date(releasedAt) : null,
-                        status: normalizedStatus
-                    }
-                });
+                        status: normalizedStatus,
+                    },
+                })
 
-                return createSuccessResult({ ...movie, statusLabel: statusLabel(movie.status) });
+                return createSuccessResult({
+                    ...movie,
+                    statusLabel: statusLabel(movie.status),
+                })
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return createErrorResult(message);
+                const message =
+                    error instanceof Error ? error.message : String(error)
+                return createErrorResult(message)
             }
-        }
-    );
+        },
+    )
 }

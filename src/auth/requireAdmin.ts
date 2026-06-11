@@ -1,8 +1,8 @@
-import { Request, Response, NextFunction } from 'express'
-import { logger } from "../logger.js";
+import { NextFunction, Request, Response } from 'express'
+import { config } from '../config.js'
 import { prisma } from '../db/index.js'
 import { serviceRoleBypassTotal } from '../http/metrics-route.js'
-import { config } from '../config.js'
+import { logger } from '../logger.js'
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     const user = (req as any).user
@@ -12,26 +12,55 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     if (user && user.service) {
         const internalKey = config.security.internalAdminKey
         const allowlist = config.security.adminIpAllowlist
-        const clientIp = ((req.headers['x-forwarded-for'] || req.ip) as string).toString().split(',')[0].trim()
+        const clientIp = ((req.headers['x-forwarded-for'] || req.ip) as string)
+            .toString()
+            .split(',')[0]
+            .trim()
 
-        const headerOk = internalKey ? req.headers['x-internal-key'] === internalKey : false
+        const headerOk = internalKey
+            ? req.headers['x-internal-key'] === internalKey
+            : false
         const ipOk = allowlist.length > 0 ? allowlist.includes(clientIp) : false
 
         if (!(headerOk && ipOk)) {
-            logger.warn('Service role access denied: missing internal header or IP not allowlisted', { ip: clientIp })
+            logger.warn(
+                'Service role access denied: missing internal header or IP not allowlisted',
+                { ip: clientIp },
+            )
             return res.status(403).json({ error: 'forbidden' })
         }
 
         // Audit and metrics for service role bypass
         try {
-            if (prisma && prisma.auditLog && typeof prisma.auditLog.create === 'function') {
-                prisma.auditLog.create({ data: { action: 'service-role-bypass', metadata: { ip: clientIp, path: req.path, method: req.method } } }).catch(() => { /* noop */ })
+            if (
+                prisma &&
+                prisma.auditLog &&
+                typeof prisma.auditLog.create === 'function'
+            ) {
+                prisma.auditLog
+                    .create({
+                        data: {
+                            action: 'service-role-bypass',
+                            metadata: {
+                                ip: clientIp,
+                                path: req.path,
+                                method: req.method,
+                            },
+                        },
+                    })
+                    .catch(() => {
+                        /* noop */
+                    })
             }
         } catch (e) {
             logger.error('failed to write audit log for service-role-bypass', e)
         }
 
-        try { serviceRoleBypassTotal.inc() } catch { /* noop */ }
+        try {
+            serviceRoleBypassTotal.inc()
+        } catch {
+            /* noop */
+        }
 
         return next()
     }

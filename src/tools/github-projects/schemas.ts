@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod'
 
 /**
  * Common schema for owner/repo format
@@ -6,7 +6,7 @@ import { z } from "zod";
 export const OwnerSchema = z
     .string()
     .min(1)
-    .describe("GitHub username or organization name");
+    .describe('GitHub username or organization name')
 
 /**
  * Common schema for project number
@@ -15,22 +15,22 @@ export const ProjectNumberSchema = z
     .number()
     .int()
     .positive()
-    .describe("Project number (e.g., 2 for Project #2)");
+    .describe('Project number (e.g., 2 for Project #2)')
 
 /**
  * Schema for project field types
  */
 export const ProjectFieldTypeSchema = z
-    .enum(["TEXT", "NUMBER", "DATE", "SINGLE_SELECT", "ITERATION"])
-    .describe("Field type: TEXT, NUMBER, DATE, SINGLE_SELECT, or ITERATION");
+    .enum(['TEXT', 'NUMBER', 'DATE', 'SINGLE_SELECT', 'ITERATION'])
+    .describe('Field type: TEXT, NUMBER, DATE, SINGLE_SELECT, or ITERATION')
 
 /**
  * Schema for get-project-fields tool input
  */
 export const GetProjectFieldsInputSchema = {
     owner: OwnerSchema,
-    projectNumber: ProjectNumberSchema
-};
+    projectNumber: ProjectNumberSchema,
+}
 
 /**
  * Schema for create-project-field tool input
@@ -38,13 +38,15 @@ export const GetProjectFieldsInputSchema = {
 export const CreateProjectFieldInputSchema = {
     owner: OwnerSchema,
     projectNumber: ProjectNumberSchema,
-    name: z.string().min(1).describe("Field name"),
+    name: z.string().min(1).describe('Field name'),
     dataType: ProjectFieldTypeSchema,
     options: z
         .array(z.string())
         .optional()
-        .describe("Options for SINGLE_SELECT field (required if dataType is SINGLE_SELECT)")
-};
+        .describe(
+            'Options for SINGLE_SELECT field (required if dataType is SINGLE_SELECT)',
+        ),
+}
 
 /**
  * Schema for update-project-field tool input
@@ -52,17 +54,17 @@ export const CreateProjectFieldInputSchema = {
 export const UpdateProjectFieldInputSchema = {
     owner: OwnerSchema,
     projectNumber: ProjectNumberSchema,
-    fieldName: z.string().min(1).describe("Current field name to update"),
-    newName: z.string().min(1).optional().describe("New field name"),
+    fieldName: z.string().min(1).describe('Current field name to update'),
+    newName: z.string().min(1).optional().describe('New field name'),
     addOptions: z
         .array(z.string())
         .optional()
-        .describe("Options to add (for SINGLE_SELECT fields)"),
+        .describe('Options to add (for SINGLE_SELECT fields)'),
     removeOptions: z
         .array(z.string())
         .optional()
-        .describe("Options to remove (for SINGLE_SELECT fields)")
-};
+        .describe('Options to remove (for SINGLE_SELECT fields)'),
+}
 
 /**
  * Schema for delete-project-field tool input
@@ -70,66 +72,89 @@ export const UpdateProjectFieldInputSchema = {
 export const DeleteProjectFieldInputSchema = {
     owner: OwnerSchema,
     projectNumber: ProjectNumberSchema,
-    fieldName: z.string().min(1).describe("Field name to delete")
-};
+    fieldName: z.string().min(1).describe('Field name to delete'),
+}
 
 /**
  * Schema for set-project-field-value tool input
  */
 export const SetProjectFieldValueInputSchema = {
     owner: OwnerSchema,
-    repo: z.string().min(1).describe("Repository name (just the name, not owner/repo)"),
+    repo: z
+        .string()
+        .min(1)
+        .describe('Repository name (just the name, not owner/repo)'),
     projectNumber: ProjectNumberSchema,
-    issueNumber: z.number().int().positive().describe("Issue number"),
-    fieldName: z.string().min(1).describe("Field name"),
-    value: z.union([z.string(), z.number()]).describe("Field value (string or number)")
-};
+    issueNumber: z.number().int().positive().describe('Issue number'),
+    fieldName: z.string().min(1).describe('Field name'),
+    value: z
+        .union([z.string(), z.number()])
+        .describe('Field value (string or number)'),
+}
 
 /**
  * Schema for bulk-set-project-field-values tool input
  */
 export const BulkSetProjectFieldValuesInputSchema = {
     owner: OwnerSchema,
-    repo: z.string().min(1).describe("Repository name (just the name, not owner/repo)"),
+    repo: z
+        .string()
+        .min(1)
+        .describe('Repository name (just the name, not owner/repo)'),
     projectNumber: ProjectNumberSchema,
     updates: z
         .array(
             z.object({
-                issueNumber: z.number().int().positive().describe("Issue number"),
+                issueNumber: z
+                    .number()
+                    .int()
+                    .positive()
+                    .describe('Issue number'),
                 fields: z
                     .record(z.union([z.string(), z.number()]))
-                    .describe("Map of field names to values")
-            })
+                    .describe('Map of field names to values'),
+            }),
         )
         .min(1)
-        .describe("Array of updates, each with issueNumber and fields")
-};
+        .describe('Array of updates, each with issueNumber and fields'),
+}
 
 /**
  * Schema for list-project-items tool input
  */
 export const ListProjectItemsInputSchema = {
     owner: OwnerSchema,
-    projectNumber: ProjectNumberSchema
-};
+    projectNumber: ProjectNumberSchema,
+}
 
 /**
  * Schema for get-project-status-options tool input
  */
 export const GetProjectStatusOptionsInputSchema = {
     owner: OwnerSchema,
-    projectNumber: ProjectNumberSchema
-};
+    projectNumber: ProjectNumberSchema,
+}
 
 /**
  * Schema for create-issue-in-project tool input
  */
 export const CreateIssueInProjectInputSchema = {
     owner: OwnerSchema,
-    repo: z.string().min(1).describe("Repository name (just the repo name, not owner/repo)"),
+    repo: z
+        .string()
+        .min(1)
+        .describe('Repository name (just the repo name, not owner/repo)'),
     projectNumber: ProjectNumberSchema,
-    title: z.string().min(1).describe("Issue title"),
-    body: z.string().optional().describe("Issue body (Markdown allowed)"),
-    labels: z.string().optional().describe("Comma-separated labels to add to the issue"),
-    status: z.string().optional().describe("Status column name to place the issue in (e.g. 'Todo', 'In Progress')")
-};
+    title: z.string().min(1).describe('Issue title'),
+    body: z.string().optional().describe('Issue body (Markdown allowed)'),
+    labels: z
+        .string()
+        .optional()
+        .describe('Comma-separated labels to add to the issue'),
+    status: z
+        .string()
+        .optional()
+        .describe(
+            "Status column name to place the issue in (e.g. 'Todo', 'In Progress')",
+        ),
+}

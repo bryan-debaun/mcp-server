@@ -1,114 +1,143 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
-import type { Server } from 'http';
+import type { Server } from 'http'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 // Mock the tool layer so these controller-wiring tests are deterministic and
 // independent of database availability. (Previously they relied on the
 // controllers/routes swallowing DB errors into an empty 200 — that masking is gone.)
 vi.mock('../../src/tools/local.js', () => ({
     callTool: vi.fn(async (name: string) => {
-        if (name === 'list-books') return { books: [], total: 0 };
-        if (name === 'list-authors') return { authors: [], total: 0 };
-        if (name === 'get-book') throw new Error('Book not found');
-        if (name === 'get-author') throw new Error('Author not found');
-        return {};
+        if (name === 'list-books') return { books: [], total: 0 }
+        if (name === 'list-authors') return { authors: [], total: 0 }
+        if (name === 'get-book') throw new Error('Book not found')
+        if (name === 'get-author') throw new Error('Author not found')
+        return {}
     }),
-}));
+}))
 
-import { startHttpServer } from '../../src/http/server.js';
+import { startHttpServer } from '../../src/http/server.js'
 
 describe('tsoa books controller', () => {
-    let server: Server;
-    let baseUrl: string;
+    let server: Server
+    let baseUrl: string
 
     beforeAll(async () => {
-        server = await startHttpServer(0, '127.0.0.1');
-        const address = server.address();
-        const port = typeof address === 'object' && address !== null ? address.port : 0;
-        baseUrl = `http://127.0.0.1:${port}`;
-    });
+        server = await startHttpServer(0, '127.0.0.1')
+        const address = server.address()
+        const port =
+            typeof address === 'object' && address !== null ? address.port : 0
+        baseUrl = `http://127.0.0.1:${port}`
+    })
 
-    const authHeaders: HeadersInit | undefined = process.env.MCP_API_KEY ? { Authorization: `Bearer ${process.env.MCP_API_KEY}` } : undefined;
-
+    const authHeaders: HeadersInit | undefined = process.env.MCP_API_KEY
+        ? { Authorization: `Bearer ${process.env.MCP_API_KEY}` }
+        : undefined
 
     afterAll(async () => {
-        await new Promise<void>((resolve) => server.close(() => resolve()));
-    });
+        await new Promise<void>((resolve) => server.close(() => resolve()))
+    })
 
     it('should return books via tsoa controller GET /api/books', async () => {
-        const response = await fetch(`${baseUrl}/api/books`, { headers: authHeaders });
-        expect(response.status).toBe(200);
+        const response = await fetch(`${baseUrl}/api/books`, {
+            headers: authHeaders,
+        })
+        expect(response.status).toBe(200)
 
-        const data = await response.json();
-        expect(data).toHaveProperty('books');
-        expect(data).toHaveProperty('total');
-        expect(Array.isArray(data.books)).toBe(true);
-    });
+        const data = await response.json()
+        expect(data).toHaveProperty('books')
+        expect(data).toHaveProperty('total')
+        expect(Array.isArray(data.books)).toBe(true)
+    })
 
     it('should accept query parameters for GET /api/books', async () => {
-        const response = await fetch(`${baseUrl}/api/books?limit=10&offset=0`, { headers: authHeaders });
-        expect(response.status).toBe(200);
+        const response = await fetch(`${baseUrl}/api/books?limit=10&offset=0`, {
+            headers: authHeaders,
+        })
+        expect(response.status).toBe(200)
 
-        const data = await response.json();
-        expect(data).toHaveProperty('books');
-        expect(data).toHaveProperty('total');
-    });
+        const data = await response.json()
+        expect(data).toHaveProperty('books')
+        expect(data).toHaveProperty('total')
+    })
 
     it('should accept a valid status query parameter for GET /api/books', async () => {
-        const response = await fetch(`${baseUrl}/api/books?status=NOT_STARTED`, { headers: authHeaders });
-        expect(response.status).toBe(200);
+        const response = await fetch(
+            `${baseUrl}/api/books?status=NOT_STARTED`,
+            { headers: authHeaders },
+        )
+        expect(response.status).toBe(200)
 
-        const data = await response.json();
-        expect(data).toHaveProperty('books');
-        expect(data).toHaveProperty('total');
-    });
+        const data = await response.json()
+        expect(data).toHaveProperty('books')
+        expect(data).toHaveProperty('total')
+    })
 
     it('should reject an invalid status query parameter for GET /api/books', async () => {
         // TSOA validates against the ItemStatus enum (NOT_STARTED|IN_PROGRESS|COMPLETED).
-        const response = await fetch(`${baseUrl}/api/books?status=Not%20started`, { headers: authHeaders });
-        expect(response.status).toBe(400);
-    });
+        const response = await fetch(
+            `${baseUrl}/api/books?status=Not%20started`,
+            { headers: authHeaders },
+        )
+        expect(response.status).toBe(400)
+    })
 
     it('should serve swagger spec at /docs/swagger.json', async () => {
-        const response = await fetch(`${baseUrl}/docs/swagger.json`, { headers: authHeaders });
-        expect(response.status).toBe(200);
+        const response = await fetch(`${baseUrl}/docs/swagger.json`, {
+            headers: authHeaders,
+        })
+        expect(response.status).toBe(200)
 
-        const spec = await response.json();
-        expect(spec).toHaveProperty('openapi');
-        expect(spec.openapi).toBe('3.0.0');
-        expect(spec).toHaveProperty('paths');
-        expect(spec.paths).toHaveProperty('/api/books');
-        expect(spec.paths).toHaveProperty('/api/books/{id}');
-        expect(spec.paths).toHaveProperty('/api/authors');
-        expect(spec.paths).toHaveProperty('/api/authors/{id}');
+        const spec = await response.json()
+        expect(spec).toHaveProperty('openapi')
+        expect(spec.openapi).toBe('3.0.0')
+        expect(spec).toHaveProperty('paths')
+        expect(spec.paths).toHaveProperty('/api/books')
+        expect(spec.paths).toHaveProperty('/api/books/{id}')
+        expect(spec.paths).toHaveProperty('/api/authors')
+        expect(spec.paths).toHaveProperty('/api/authors/{id}')
 
         // ItemStatus enum should be present and referenced by Book
-        expect(spec).toHaveProperty('components');
-        expect(spec.components).toHaveProperty('schemas');
-        expect(spec.components.schemas).toHaveProperty('ItemStatus');
-        expect(Array.isArray(spec.components.schemas.ItemStatus.enum)).toBe(true);
-        expect(spec.components.schemas.ItemStatus.enum).toEqual(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED']);
-        expect(spec.components.schemas.Book.properties.status.$ref).toBe('#/components/schemas/ItemStatus');
-        expect(spec.components.schemas.CreateBookRequest.properties.status.$ref).toBe('#/components/schemas/ItemStatus');
-
-    });
+        expect(spec).toHaveProperty('components')
+        expect(spec.components).toHaveProperty('schemas')
+        expect(spec.components.schemas).toHaveProperty('ItemStatus')
+        expect(Array.isArray(spec.components.schemas.ItemStatus.enum)).toBe(
+            true,
+        )
+        expect(spec.components.schemas.ItemStatus.enum).toEqual([
+            'NOT_STARTED',
+            'IN_PROGRESS',
+            'COMPLETED',
+        ])
+        expect(spec.components.schemas.Book.properties.status.$ref).toBe(
+            '#/components/schemas/ItemStatus',
+        )
+        expect(
+            spec.components.schemas.CreateBookRequest.properties.status.$ref,
+        ).toBe('#/components/schemas/ItemStatus')
+    })
 
     it('should return 404 for a missing book via GET /api/books/:id', async () => {
-        const response = await fetch(`${baseUrl}/api/books/1`, { headers: authHeaders });
-        expect(response.status).toBe(404);
-    });
+        const response = await fetch(`${baseUrl}/api/books/1`, {
+            headers: authHeaders,
+        })
+        expect(response.status).toBe(404)
+    })
 
     it('should return authors via tsoa controller GET /api/authors', async () => {
-        const response = await fetch(`${baseUrl}/api/authors`, { headers: authHeaders });
-        expect(response.status).toBe(200);
+        const response = await fetch(`${baseUrl}/api/authors`, {
+            headers: authHeaders,
+        })
+        expect(response.status).toBe(200)
 
-        const data = await response.json();
-        expect(data).toHaveProperty('authors');
-        expect(data).toHaveProperty('total');
-        expect(Array.isArray(data.authors)).toBe(true);
-    });
+        const data = await response.json()
+        expect(data).toHaveProperty('authors')
+        expect(data).toHaveProperty('total')
+        expect(Array.isArray(data.authors)).toBe(true)
+    })
 
     it('should return 404 for a missing author via GET /api/authors/:id', async () => {
-        const response = await fetch(`${baseUrl}/api/authors/1`, { headers: authHeaders });
-        expect(response.status).toBe(404);
-    });
-});
+        const response = await fetch(`${baseUrl}/api/authors/1`, {
+            headers: authHeaders,
+        })
+        expect(response.status).toBe(404)
+    })
+})

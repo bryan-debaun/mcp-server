@@ -1,5 +1,5 @@
 import { config } from '../config.js'
-import { logger } from "../logger.js";
+import { logger } from '../logger.js'
 
 // `prisma` is captured by reference by importers. `initPrisma()` populates it
 // with either a real PrismaClient (model accessors + raw helpers forwarded) or,
@@ -18,8 +18,16 @@ let prismaReadyPromise: Promise<void> | null = null
  * users tools and admin audit logging.)
  */
 const MODEL_NAMES = [
-    'user', 'profile', 'role', 'auditLog',
-    'author', 'book', 'bookAuthor', 'movie', 'videoGame', 'contentCreator',
+    'user',
+    'profile',
+    'role',
+    'auditLog',
+    'author',
+    'book',
+    'bookAuthor',
+    'movie',
+    'videoGame',
+    'contentCreator',
     'rating',
 ] as const
 
@@ -42,18 +50,25 @@ function makeStubModel(fail: () => never) {
  * when the Prisma client fails to load; `reason` is the error thrown by writes.
  */
 function applyStubs(reason: string) {
-    const fail = (): never => { throw new Error(reason) }
+    const fail = (): never => {
+        throw new Error(reason)
+    }
 
     prisma.$queryRaw = async () => fail()
     prisma.$executeRaw = async () => fail()
     prisma.$transaction = async () => fail()
-    prisma.$disconnect = async () => { /* noop */ }
+    prisma.$disconnect = async () => {
+        /* noop */
+    }
 
     for (const name of MODEL_NAMES) prisma[name] = makeStubModel(fail)
 
     // A couple of stubs intentionally return values rather than throwing so
     // best-effort callers (role provisioning, audit logging) don't crash sans DB.
-    prisma.role = { findUnique: async () => null, create: async () => ({ id: 1, name: 'user' }) }
+    prisma.role = {
+        findUnique: async () => null,
+        create: async () => ({ id: 1, name: 'user' }),
+    }
     prisma.auditLog = { create: async () => ({ id: 1 }) }
 }
 
@@ -71,8 +86,8 @@ export async function initPrisma() {
 
     prismaReadyPromise = (async () => {
         try {
-            const { PrismaClient } = await import('@prisma/client') as any
-            const { PrismaPg } = await import('@prisma/adapter-pg') as any
+            const { PrismaClient } = (await import('@prisma/client')) as any
+            const { PrismaPg } = (await import('@prisma/adapter-pg')) as any
             const adapter = new PrismaPg({ connectionString: dbUrl })
             const real = new PrismaClient({ adapter })
 
@@ -81,7 +96,8 @@ export async function initPrisma() {
             prisma.$queryRaw = (...args: any[]) => real.$queryRaw(...args)
             prisma.$executeRaw = (...args: any[]) => real.$executeRaw(...args)
             prisma.$transaction = (...args: any[]) => real.$transaction(...args)
-            prisma.$disconnect = () => (real.$disconnect ? real.$disconnect() : Promise.resolve())
+            prisma.$disconnect = () =>
+                real.$disconnect ? real.$disconnect() : Promise.resolve()
 
             for (const name of MODEL_NAMES) {
                 if (name in real) prisma[name] = (real as any)[name]
@@ -89,7 +105,10 @@ export async function initPrisma() {
 
             logger.info('PrismaClient initialized successfully')
         } catch (err) {
-            logger.error('failed to initialize PrismaClient dynamically; falling back to stub', err)
+            logger.error(
+                'failed to initialize PrismaClient dynamically; falling back to stub',
+                err,
+            )
             applyStubs('PrismaClient not initialized')
         }
     })()
@@ -115,7 +134,10 @@ export async function testConnection() {
             return res
         } catch (err) {
             lastErr = err
-            logger.warn(`testConnection attempt ${attempt} failed:`, (err as any)?.message ?? err)
+            logger.warn(
+                `testConnection attempt ${attempt} failed:`,
+                (err as any)?.message ?? err,
+            )
             if (attempt < maxAttempts) {
                 await new Promise((r) => setTimeout(r, delayMs))
                 continue
