@@ -156,16 +156,22 @@ const env = result.data
 // Derived / normalized values
 // ---------------------------------------------------------------------------
 
-/** Resolved JWKS URL: explicit var wins; derived from PUBLIC_SUPABASE_URL otherwise. */
+// Supabase's GoTrue auth service lives under `/auth/v1`, so both the issuer and
+// the JWKS endpoint are derived from `PUBLIC_SUPABASE_URL + /auth/v1` — NOT the
+// project root. (The token's `iss` is `https://<ref>.supabase.co/auth/v1` and the
+// JWKS lives at `<iss>/.well-known/jwks.json`; deriving from the bare root yields
+// a 404 JWKS and an issuer mismatch — both surface as opaque 401s.)
+const supabaseAuthBase: string | undefined = env.PUBLIC_SUPABASE_URL
+    ? `${env.PUBLIC_SUPABASE_URL.replace(/\/$/, '')}/auth/v1`
+    : undefined
+
+/** Resolved JWKS URL: explicit var wins; derived from `<supabase>/auth/v1` otherwise. */
 const supabaseJwksUrl: string | undefined =
     env.SUPABASE_JWKS_URL ??
-    (env.PUBLIC_SUPABASE_URL
-        ? `${env.PUBLIC_SUPABASE_URL.replace(/\/$/, '')}/.well-known/jwks.json`
-        : undefined)
+    (supabaseAuthBase ? `${supabaseAuthBase}/.well-known/jwks.json` : undefined)
 
-/** Resolved issuer: explicit SUPABASE_ISS wins; fallback to PUBLIC_SUPABASE_URL. */
-const supabaseIss: string | undefined =
-    env.SUPABASE_ISS ?? env.PUBLIC_SUPABASE_URL
+/** Resolved issuer: explicit SUPABASE_ISS wins; fallback to `<supabase>/auth/v1`. */
+const supabaseIss: string | undefined = env.SUPABASE_ISS ?? supabaseAuthBase
 
 /** Service role key: prefer the canonical name; accept legacy alias. */
 const supabaseServiceRoleKey: string | undefined =
@@ -219,9 +225,20 @@ export const config = {
     },
 
     auth: {
+        // Derived (or explicit) JWKS URL / issuer — used as the fallback when
+        // OpenID discovery is unavailable. The `*FromEnv` flags let the auth layer
+        // know whether the operator pinned these explicitly (in which case they win
+        // over discovery).
         supabaseJwksUrl,
         supabaseIss,
-        supabaseAud: env.SUPABASE_AUD,
+        supabaseJwksUrlFromEnv: Boolean(env.SUPABASE_JWKS_URL),
+        supabaseIssFromEnv: Boolean(env.SUPABASE_ISS),
+        // `<project>/auth/v1` — the GoTrue base; OpenID discovery and the derived
+        // JWKS/issuer all hang off this.
+        supabaseAuthBase,
+        // Supabase access tokens carry `aud: 'authenticated'` by default; allow an
+        // explicit override but don't require operators to set it.
+        supabaseAud: env.SUPABASE_AUD ?? 'authenticated',
         supabaseServiceRoleKey,
         supabaseAnonKey,
     },

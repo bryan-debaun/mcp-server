@@ -1,6 +1,11 @@
 import { Request } from 'express'
 import { resolveAppRole, verifySupabaseJwt } from '../auth/jwt.js'
 
+/** Build an error carrying an HTTP status so the global handler emits a clean 4xx. */
+function authError(message: string, status: number): Error {
+    return Object.assign(new Error(message), { status })
+}
+
 /**
  * Tsoa authentication handler for JWT bearer tokens
  * This function is called by tsoa when a route requires @Security('jwt')
@@ -14,10 +19,18 @@ export async function expressAuthentication(
         const token = request.headers.authorization?.replace('Bearer ', '')
 
         if (!token) {
-            throw new Error('No token provided')
+            throw authError('No token provided', 401)
         }
 
-        const decoded = await verifySupabaseJwt(token)
+        let decoded
+        try {
+            decoded = await verifySupabaseJwt(token)
+        } catch {
+            // verifySupabaseJwt logs the underlying cause (bad signature, JWKS
+            // fetch, expired, etc.). Surface a clean 401 instead of letting a jose
+            // throw fall through to the generic 'internal error' handler (#117).
+            throw authError('Invalid or expired token', 401)
+        }
 
         // Resolve the application role the same way as the Express middleware:
         // a token-baked app role (app_metadata.role) wins, otherwise the local
@@ -30,7 +43,7 @@ export async function expressAuthentication(
             const hasRequiredScope =
                 isAdmin || scopes.some((scope) => scope === role)
             if (!hasRequiredScope) {
-                throw new Error('Insufficient permissions')
+                throw authError('Insufficient permissions', 403)
             }
         }
         // Attach the resolved user to the request so controllers can read it.

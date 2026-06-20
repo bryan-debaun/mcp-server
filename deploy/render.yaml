@@ -1,15 +1,36 @@
+# Render Blueprint for the MCP server.
+#
+# This is a Docker service: the image is built from ./Dockerfile, which already
+# runs `pnpm run build` (prisma generate -> tsoa routes -> tsc -> seed compile)
+# and ships a pruned, production-only node_modules. For Docker services Render
+# IGNORES `buildCommand`/`startCommand` — the Dockerfile drives the build and its
+# `CMD ["node","dist/index.js"]` is the start command. (A stale dashboard Start
+# Command pointing at the removed `scripts/start-production.sh` is what caused the
+# status-2 crash loop; do not reintroduce it.)
+#
+# MIGRATIONS are intentionally NOT run automatically here:
+#   - Render's Pre-Deploy Command (the natural home for `migrate deploy`) requires
+#     a paid instance type, so it isn't available on this plan.
+#   - Running `migrate deploy` at container boot would defeat this server's
+#     fast-cold-start design (src/http/server.ts binds the port early and inits
+#     Prisma lazily), and the pruned prod image has no Prisma CLI.
+# For this single-user app with infrequent schema changes, apply migrations
+# out-of-band against a DIRECT (non-pooled, port 5432) connection — Supabase's
+# pooled/pgbouncer endpoint can't take the advisory locks `migrate deploy` needs:
+#   DATABASE_URL="<direct-url>" pnpm exec prisma migrate deploy
+# If this service is ever upgraded to a paid plan, prefer a Pre-Deploy Command:
+#   env DATABASE_URL="${DIRECT_DATABASE_URL:-$DATABASE_URL}" pnpm dlx prisma@7 migrate deploy
 services:
   - type: web
     name: mcp-server
-    env: docker
+    runtime: docker
     plan: starter
     branch: main
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm run build && pnpm exec prisma migrate deploy && pnpm run prisma:seed
-    startCommand: pnpm run start
+    dockerfilePath: ./Dockerfile
     autoDeploy: true
+    healthCheckPath: /healthz
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: "8080"
-    healthCheckPath: /healthz

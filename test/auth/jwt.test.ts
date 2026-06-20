@@ -10,7 +10,11 @@ import {
     it,
     vi,
 } from 'vitest'
-import { jwtMiddleware, verifySupabaseJwt } from '../../src/auth/jwt'
+import {
+    __resetAuthCaches,
+    jwtMiddleware,
+    verifySupabaseJwt,
+} from '../../src/auth/jwt'
 import { requireAdmin } from '../../src/auth/requireAdmin'
 import { config } from '../../src/config.js'
 
@@ -25,6 +29,8 @@ let origIss: string | undefined
 let origAud: string | undefined
 let origSvcKey: string | undefined
 let origAnonKey: string | undefined
+let origJwksFromEnv: boolean
+let origIssFromEnv: boolean
 let origAdminIpAllowlist: string[]
 let origInternalAdminKey: string | undefined
 
@@ -35,6 +41,8 @@ beforeAll(async () => {
     origAud = config.auth.supabaseAud
     origSvcKey = config.auth.supabaseServiceRoleKey
     origAnonKey = config.auth.supabaseAnonKey
+    origJwksFromEnv = config.auth.supabaseJwksUrlFromEnv
+    origIssFromEnv = config.auth.supabaseIssFromEnv
     origAdminIpAllowlist = config.security.adminIpAllowlist
     origInternalAdminKey = config.security.internalAdminKey
 
@@ -56,10 +64,14 @@ beforeAll(async () => {
         return { ok: false, status: 404 }
     })
 
-    // Set config values used by middleware (replaces process.env.* reads)
+    // Set config values used by middleware (replaces process.env.* reads). Pin the
+    // JWKS/issuer as explicit env overrides so verification uses them directly
+    // (discovery is exercised separately below).
     config.auth.supabaseJwksUrl = jwksUrl
     config.auth.supabaseIss = issuer
     config.auth.supabaseAud = audience
+    config.auth.supabaseJwksUrlFromEnv = true
+    config.auth.supabaseIssFromEnv = true
 })
 
 afterAll(() => {
@@ -68,8 +80,11 @@ afterAll(() => {
     config.auth.supabaseAud = origAud
     config.auth.supabaseServiceRoleKey = origSvcKey
     config.auth.supabaseAnonKey = origAnonKey
+    config.auth.supabaseJwksUrlFromEnv = origJwksFromEnv
+    config.auth.supabaseIssFromEnv = origIssFromEnv
     config.security.adminIpAllowlist = origAdminIpAllowlist
     config.security.internalAdminKey = origInternalAdminKey
+    __resetAuthCaches()
     vi.unstubAllGlobals()
 })
 
@@ -77,8 +92,14 @@ afterEach(() => {
     // Restore per-test mutations between tests
     config.auth.supabaseServiceRoleKey = origSvcKey
     config.auth.supabaseAnonKey = origAnonKey
+    config.auth.supabaseJwksUrl = jwksUrl
+    config.auth.supabaseIss = issuer
+    config.auth.supabaseJwksUrlFromEnv = true
+    config.auth.supabaseIssFromEnv = true
     config.security.adminIpAllowlist = origAdminIpAllowlist
     config.security.internalAdminKey = origInternalAdminKey
+    // Clear memoized auth config + JWKS so the next test re-resolves from config.
+    __resetAuthCaches()
 })
 
 describe('JWT middleware', () => {
@@ -133,19 +154,26 @@ describe('JWT middleware', () => {
         await expect(verifySupabaseJwt(token)).rejects.toThrow()
     })
 
-    it('falls back to anon/publishable-key endpoint when primary JWKS URL returns non-200 (supports PUBLIC_SUPABASE_PUBLISHABLE_KEY)', async () => {
-        // preserve and replace global.fetch for this test only
+    it('resolves jwks_uri and issuer from the OpenID discovery document when not pinned via env', async () => {
+        const discoBase = 'https://disco.local/auth/v1'
+        const discoJwks = `${discoBase}/.well-known/jwks.json`
+        const discoIssuer = discoBase
+
         const prevFetch = (global as any).fetch
+        const prevAuthBase = config.auth.supabaseAuthBase
         vi.stubGlobal('fetch', async (url: string) => {
-            if (url.toString().startsWith('https://primary.local')) {
+            const u = url.toString()
+            if (u === `${discoBase}/.well-known/openid-configuration`) {
                 return {
-                    ok: false,
-                    status: 401,
-                    statusText: 'Unauthorized',
-                    text: async () => 'nope',
+                    ok: true,
+                    status: 200,
+                    json: async () => ({
+                        jwks_uri: discoJwks,
+                        issuer: discoIssuer,
+                    }),
                 }
             }
-            if (url.toString().includes('/auth/v1/keys')) {
+            if (u.startsWith(discoJwks)) {
                 return {
                     ok: true,
                     status: 200,
@@ -155,60 +183,27 @@ describe('JWT middleware', () => {
             return { ok: false, status: 404 }
         })
 
-        const prevConfigJwksUrl = config.auth.supabaseJwksUrl
-        const prevConfigAnonKey = config.auth.supabaseAnonKey
-        config.auth.supabaseJwksUrl = 'https://primary.local/jwks'
-        config.auth.supabaseAnonKey = 'publishable-key'
-
-        const sig = await new SignJWT({ role: 'authenticated' })
-            .setProtectedHeader({ alg: 'RS256', kid: publicJwk.kid })
-            .setIssuer(issuer)
-            .setAudience(audience)
-            .setSubject('user-3')
-            .setIssuedAt()
-            .setExpirationTime('2h')
-            .sign(privateKey as any)
-
-        const payload = await verifySupabaseJwt(sig)
-        if (!payload || String((payload as any).sub) !== 'user-3') {
-            throw new Error(
-                `unexpected payload from verifySupabaseJwt: ${JSON.stringify(payload)}`,
-            )
-        }
-        // cleanup - restore previous fetch and config
-        ;(global as any).fetch = prevFetch
-        config.auth.supabaseJwksUrl = prevConfigJwksUrl
-        config.auth.supabaseAnonKey = prevConfigAnonKey
-    })
-
-    it('throws helpful error when JWKS primary and fallback fail', async () => {
-        const prevFetch = (global as any).fetch
-        vi.stubGlobal('fetch', async (_url: string) => {
-            return {
-                ok: false,
-                status: 404,
-                statusText: 'Not Found',
-                text: async () => 'notfound',
-            }
-        })
-
-        const prevConfigJwksUrl2 = config.auth.supabaseJwksUrl
-        config.auth.supabaseJwksUrl = 'https://primary.local/jwks'
+        // Force the discovery path: no explicit env pin, drive off the auth base.
+        config.auth.supabaseJwksUrlFromEnv = false
+        config.auth.supabaseIssFromEnv = false
+        config.auth.supabaseAuthBase = discoBase
+        __resetAuthCaches()
 
         const token = await new SignJWT({ role: 'authenticated' })
             .setProtectedHeader({ alg: 'RS256', kid: publicJwk.kid })
-            .setIssuer(issuer)
+            .setIssuer(discoIssuer)
             .setAudience(audience)
-            .setSubject('user-4')
+            .setSubject('user-disco')
             .setIssuedAt()
             .setExpirationTime('2h')
             .sign(privateKey as any)
 
-        await expect(verifySupabaseJwt(token)).rejects.toThrow(
-            /JWKS fetch failed/,
-        )
+        const payload = await verifySupabaseJwt(token)
+        expect(String((payload as any).sub)).toBe('user-disco')
+
+        // restore (afterEach also re-pins env + resets caches)
         ;(global as any).fetch = prevFetch
-        config.auth.supabaseJwksUrl = prevConfigJwksUrl2
+        config.auth.supabaseAuthBase = prevAuthBase
     })
 
     it('rejects service role key when not allowed by header or IP allowlist', async () => {

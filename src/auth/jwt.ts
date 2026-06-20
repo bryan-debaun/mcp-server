@@ -10,69 +10,119 @@ if (!config.auth.supabaseJwksUrl) {
     )
 }
 
-export async function verifySupabaseJwt(token: string): Promise<JWTPayload> {
-    let _jwksUrl = config.auth.supabaseJwksUrl
-    const _issuer = config.auth.supabaseIss
-    const _audience = config.auth.supabaseAud
+/** Resolved Supabase JWT verification parameters. */
+interface AuthVerifyConfig {
+    jwksUrl: string
+    issuer: string
+    audience: string
+}
 
-    if (!_jwksUrl) throw new Error('JWKS URL not configured')
-    if (!_issuer || !_audience)
-        throw new Error('SUPABASE_ISS and SUPABASE_AUD must be set')
+// Memoize the resolved auth config (one discovery fetch per process) and the
+// remote JWKS set (jose fetches + caches keys, with rotation, behind this).
+let _authConfigPromise: Promise<AuthVerifyConfig> | null = null
+let _jwks:
+    | { url: string; set: ReturnType<typeof createRemoteJWKSet> }
+    | undefined
 
-    // Attempt to fetch the JWKS URL to validate it's reachable and returns 200 OK.
-    try {
-        const res = await fetch(_jwksUrl, { method: 'GET' })
-        if (!res.ok) {
-            // Try fallback using publishable key (PUBLIC_SUPABASE_PUBLISHABLE_KEY) or legacy SUPABASE_ANON_KEY
-            const publishable = config.auth.supabaseAnonKey
-            if (publishable) {
-                const fallback = `${_issuer.replace(/\/$/, '')}/auth/v1/keys?apikey=${publishable}`
-                const res2 = await fetch(fallback, { method: 'GET' })
-                if (res2.ok) {
-                    _jwksUrl = fallback
-                } else {
-                    const text1 =
-                        typeof res.text === 'function'
-                            ? await res.text().catch(() => '')
-                            : typeof res.json === 'function'
-                              ? JSON.stringify(
-                                    await res.json().catch(() => ({})),
-                                )
-                              : ''
-                    const text2 =
-                        typeof res2.text === 'function'
-                            ? await res2.text().catch(() => '')
-                            : typeof res2.json === 'function'
-                              ? JSON.stringify(
-                                    await res2.json().catch(() => ({})),
-                                )
-                              : ''
-                    throw new Error(
-                        `JWKS fetch failed: primary ${res.status} ${res.statusText} (${text1}), fallback ${res2.status} ${res2.statusText} (${text2})`,
-                    )
-                }
-            } else {
-                const txt =
-                    typeof res.text === 'function'
-                        ? await res.text().catch(() => '')
-                        : typeof res.json === 'function'
-                          ? JSON.stringify(await res.json().catch(() => ({})))
-                          : ''
-                throw new Error(
-                    `JWKS fetch failed: ${res.status} ${res.statusText} (${txt})`,
-                )
-            }
+/** Test-only: clear memoized discovery + JWKS so config changes take effect. */
+export function __resetAuthCaches(): void {
+    _authConfigPromise = null
+    _jwks = undefined
+}
+
+function getJwks(url: string) {
+    if (!_jwks || _jwks.url !== url) {
+        _jwks = { url, set: createRemoteJWKSet(new URL(url)) }
+    }
+    return _jwks.set
+}
+
+/**
+ * Resolve the JWKS URL + issuer to verify against, in priority order:
+ *   1. Explicit env overrides (SUPABASE_JWKS_URL + SUPABASE_ISS) — operator escape hatch.
+ *   2. OpenID discovery (`<supabase>/auth/v1/.well-known/openid-configuration`) — the
+ *      authoritative source for `jwks_uri`/`issuer`, so we track Supabase path changes
+ *      automatically rather than hardcoding them.
+ *   3. Values derived from PUBLIC_SUPABASE_URL under `/auth/v1` — used if discovery is
+ *      unreachable.
+ */
+async function resolveAuthConfig(): Promise<AuthVerifyConfig> {
+    const audience = config.auth.supabaseAud
+    if (!audience) throw new Error('SUPABASE_AUD must be set')
+
+    if (
+        config.auth.supabaseJwksUrlFromEnv &&
+        config.auth.supabaseIssFromEnv &&
+        config.auth.supabaseJwksUrl &&
+        config.auth.supabaseIss
+    ) {
+        return {
+            jwksUrl: config.auth.supabaseJwksUrl,
+            issuer: config.auth.supabaseIss,
+            audience,
         }
-    } catch (err: any) {
-        // Propagate meaningful message
-        throw new Error(err?.message ?? String(err))
     }
 
-    const jwks = createRemoteJWKSet(new URL(_jwksUrl))
+    const base = config.auth.supabaseAuthBase
+    if (base) {
+        try {
+            const res = await fetch(`${base}/.well-known/openid-configuration`)
+            if (res.ok) {
+                const doc = (await res.json()) as {
+                    jwks_uri?: string
+                    issuer?: string
+                }
+                if (doc.jwks_uri && doc.issuer) {
+                    return {
+                        jwksUrl: doc.jwks_uri,
+                        issuer: doc.issuer,
+                        audience,
+                    }
+                }
+                logger.warn(
+                    'OpenID discovery doc missing jwks_uri/issuer; using derived config',
+                )
+            } else {
+                logger.warn(
+                    `OpenID discovery returned ${res.status}; using derived config`,
+                )
+            }
+        } catch (err: any) {
+            logger.warn(
+                'OpenID discovery fetch failed; using derived config',
+                err?.message ?? err,
+            )
+        }
+    }
 
-    const { payload } = await jwtVerify(token, jwks, {
-        issuer: _issuer,
-        audience: _audience,
+    if (config.auth.supabaseJwksUrl && config.auth.supabaseIss) {
+        return {
+            jwksUrl: config.auth.supabaseJwksUrl,
+            issuer: config.auth.supabaseIss,
+            audience,
+        }
+    }
+    throw new Error(
+        'Supabase auth not configured: set PUBLIC_SUPABASE_URL or SUPABASE_JWKS_URL/SUPABASE_ISS',
+    )
+}
+
+function getAuthConfig(): Promise<AuthVerifyConfig> {
+    // Don't cache a rejection — a transient discovery failure shouldn't wedge auth forever.
+    if (!_authConfigPromise) {
+        _authConfigPromise = resolveAuthConfig().catch((err) => {
+            _authConfigPromise = null
+            throw err
+        })
+    }
+    return _authConfigPromise
+}
+
+export async function verifySupabaseJwt(token: string): Promise<JWTPayload> {
+    const { jwksUrl, issuer, audience } = await getAuthConfig()
+    const { payload } = await jwtVerify(token, getJwks(jwksUrl), {
+        issuer,
+        audience,
     })
     return payload
 }
