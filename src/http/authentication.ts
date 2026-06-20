@@ -1,9 +1,31 @@
 import { Request } from 'express'
 import { resolveAppRole, verifySupabaseJwt } from '../auth/jwt.js'
+import { config } from '../config.js'
 
 /** Build an error carrying an HTTP status so the global handler emits a clean 4xx. */
 function authError(message: string, status: number): Error {
     return Object.assign(new Error(message), { status })
+}
+
+/**
+ * Validate the MCP gateway key the same two ways `mcpAuthMiddleware` accepts it:
+ * `Authorization: Bearer <MCP_API_KEY>` or the `X-Mcp-Api-Key` header. When
+ * `MCP_API_KEY` is unset the gate is a no-op (mirrors the middleware), so CI /
+ * no-DB startups stay open. Declaring this as a TSOA security scheme makes the
+ * OpenAPI contract honest: read endpoints advertise the key requirement that the
+ * deployment already enforces (#117).
+ */
+function authenticateApiKey(request: Request): { apiKey: true } | undefined {
+    const mcpKey = config.security.mcpApiKey
+    if (!mcpKey) return undefined // not configured → open, like the middleware
+
+    const auth = (request.headers.authorization || '').toString()
+    if (auth === `Bearer ${mcpKey}`) return { apiKey: true }
+
+    const headerKey = (request.headers['x-mcp-api-key'] || '').toString()
+    if (headerKey && headerKey === mcpKey) return { apiKey: true }
+
+    throw authError('Unauthorized', 401)
 }
 
 /**
@@ -15,6 +37,10 @@ export async function expressAuthentication(
     securityName: string,
     scopes?: string[],
 ): Promise<any> {
+    if (securityName === 'api_key') {
+        return authenticateApiKey(request)
+    }
+
     if (securityName === 'jwt') {
         const token = request.headers.authorization?.replace('Bearer ', '')
 

@@ -79,6 +79,7 @@ export class AuthorsController extends Controller {
      * @param offset Number of results to skip (default 0)
      */
     @Get()
+    @Security('api_key')
     @SuccessResponse('200', 'Authors retrieved successfully')
     @Response('500', 'Internal server error')
     public async listAuthors(
@@ -96,6 +97,7 @@ export class AuthorsController extends Controller {
      * @param id Author ID
      */
     @Get('{id}')
+    @Security('api_key')
     @SuccessResponse('200', 'Author retrieved successfully')
     @Response('404', 'Author not found')
     @Response('400', 'Invalid author ID')

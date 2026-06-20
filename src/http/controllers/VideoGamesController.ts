@@ -61,6 +61,7 @@ export interface UpdateVideoGameRequest {
 @Tags('VideoGames')
 export class VideoGamesController extends Controller {
     @Get()
+    @Security('api_key')
     @SuccessResponse('200', 'Video games retrieved successfully')
     public async listVideoGames(
         @Query() platform?: string,
@@ -78,6 +79,7 @@ export class VideoGamesController extends Controller {
     }
 
     @Get('{id}')
+    @Security('api_key')
     @SuccessResponse('200', 'Video game retrieved successfully')
     @Response('404', 'Video game not found')
     public async getVideoGame(@Path() id: number): Promise<VideoGame> {

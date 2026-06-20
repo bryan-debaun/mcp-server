@@ -20,6 +20,12 @@
                 "type": "http",
                 "scheme": "bearer",
                 "bearerFormat": "JWT"
+            },
+            "api_key": {
+                "type": "apiKey",
+                "name": "X-Mcp-Api-Key",
+                "in": "header",
+                "description": "MCP gateway key. Required on DB-backed routes when MCP_API_KEY is configured. May also be presented as 'Authorization: Bearer <MCP_API_KEY>' by pure MCP clients."
             }
         }
     },

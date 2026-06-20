@@ -47,6 +47,7 @@ export interface UpdateContentCreatorRequest {
 @Tags('ContentCreators')
 export class ContentCreatorsController extends Controller {
     @Get()
+    @Security('api_key')
     @SuccessResponse('200', 'Content creators retrieved successfully')
     public async listContentCreators(
         @Query() search?: string,
@@ -62,6 +63,7 @@ export class ContentCreatorsController extends Controller {
     }
 
     @Get('{id}')
+    @Security('api_key')
     @SuccessResponse('200', 'Content creator retrieved successfully')
     @Response('404', 'Content creator not found')
     public async getContentCreator(
