@@ -90,14 +90,28 @@ describe('config module', () => {
             }
         })
 
-        it('auth.supabaseJwksUrl is derived from PUBLIC_SUPABASE_URL when SUPABASE_JWKS_URL absent', () => {
+        it('auth.supabaseJwksUrl is derived under /auth/v1 from PUBLIC_SUPABASE_URL when SUPABASE_JWKS_URL absent', () => {
             if (
                 !process.env.SUPABASE_JWKS_URL &&
                 process.env.PUBLIC_SUPABASE_URL
             ) {
+                // Supabase serves JWKS under the GoTrue path, not the project root.
                 expect(config.auth.supabaseJwksUrl).toContain(
-                    '.well-known/jwks.json',
+                    '/auth/v1/.well-known/jwks.json',
                 )
+            }
+        })
+
+        it('auth.supabaseIss is derived under /auth/v1 from PUBLIC_SUPABASE_URL when SUPABASE_ISS absent', () => {
+            if (!process.env.SUPABASE_ISS && process.env.PUBLIC_SUPABASE_URL) {
+                // Token `iss` is `https://<ref>.supabase.co/auth/v1`, not the bare root.
+                expect(config.auth.supabaseIss).toMatch(/\/auth\/v1$/)
+            }
+        })
+
+        it('auth.supabaseAud defaults to "authenticated" when SUPABASE_AUD is unset', () => {
+            if (!process.env.SUPABASE_AUD) {
+                expect(config.auth.supabaseAud).toBe('authenticated')
             }
         })
 

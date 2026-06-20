@@ -85,9 +85,15 @@ export async function createHttpApp(): Promise<express.Application> {
                 res.statusCode && res.statusCode >= 400
                     ? res.statusCode
                     : err?.status || 500
-            const message = config.isProduction
-                ? 'internal error'
-                : (err?.message ?? 'internal error')
+            // Client errors (4xx) carry caller-facing messages (e.g. auth rejections,
+            // validation) and are safe to expose; server errors (5xx) are masked in
+            // production to avoid leaking internals.
+            const isClientError = status >= 400 && status < 500
+            const message = isClientError
+                ? (err?.message ?? 'error')
+                : config.isProduction
+                  ? 'internal error'
+                  : (err?.message ?? 'internal error')
             res.status(status).json({ error: message })
         },
     )
@@ -212,9 +218,15 @@ export async function registerDbDependentRoutes(app: any) {
                 res.statusCode && res.statusCode >= 400
                     ? res.statusCode
                     : err?.status || 500
-            const message = config.isProduction
-                ? 'internal error'
-                : (err?.message ?? 'internal error')
+            // Client errors (4xx) carry caller-facing messages (e.g. auth rejections,
+            // validation) and are safe to expose; server errors (5xx) are masked in
+            // production to avoid leaking internals.
+            const isClientError = status >= 400 && status < 500
+            const message = isClientError
+                ? (err?.message ?? 'error')
+                : config.isProduction
+                  ? 'internal error'
+                  : (err?.message ?? 'internal error')
             res.status(status).json({ error: message })
         },
     )
