@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest'
-import { readFileSync, readdirSync, statSync } from 'fs'
+import { readdirSync, readFileSync, statSync } from 'fs'
 import { join, relative } from 'path'
+import { describe, expect, it } from 'vitest'
 
 /**
  * Test to prevent deployment failures caused by production code importing devDependencies.
@@ -10,21 +10,27 @@ describe('production dependencies validation', () => {
     it('should not import devDependencies in production code', () => {
         // Known safe conditional imports that check NODE_ENV before importing
         const allowedConditionalImports = new Set([
-            'src/db/index.ts:dotenv' // Conditional import checked with NODE_ENV !== 'production'
+            'src/db/index.ts:dotenv', // Conditional import checked with NODE_ENV !== 'production'
         ])
 
         // Read package.json to get devDependencies
         const packageJson = JSON.parse(
-            readFileSync(join(process.cwd(), 'package.json'), 'utf-8')
+            readFileSync(join(process.cwd(), 'package.json'), 'utf-8'),
         )
         const devDeps = Object.keys(packageJson.devDependencies || {})
 
         // Filter out @types/* packages - these are type-only and fine in devDependencies
-        const runtimeDevDeps = devDeps.filter(dep => !dep.startsWith('@types/'))
+        const runtimeDevDeps = devDeps.filter(
+            (dep) => !dep.startsWith('@types/'),
+        )
 
         // Scan all TypeScript files in src/ for imports
         const srcDir = join(process.cwd(), 'src')
-        const violations: Array<{ file: string; line: number; imported: string }> = []
+        const violations: Array<{
+            file: string
+            line: number
+            imported: string
+        }> = []
 
         function scanDirectory(dir: string) {
             const entries = readdirSync(dir)
@@ -43,8 +49,10 @@ describe('production dependencies validation', () => {
                         // Match import statements: import 'pkg', import { x } from 'pkg', import * as x from 'pkg'
                         // Also match dynamic imports: import('pkg')
                         const importMatches = [
-                            ...line.matchAll(/import\s+(?:[\w\s{},*]+\s+from\s+)?['"]([^'"]+)['"]/g),
-                            ...line.matchAll(/import\s*\(['"]([^'"]+)['"]\)/g)
+                            ...line.matchAll(
+                                /import\s+(?:[\w\s{},*]+\s+from\s+)?['"]([^'"]+)['"]/g,
+                            ),
+                            ...line.matchAll(/import\s*\(['"]([^'"]+)['"]\)/g),
                         ]
 
                         for (const match of importMatches) {
@@ -58,15 +66,20 @@ describe('production dependencies validation', () => {
 
                             // Check if this is a devDependency
                             if (runtimeDevDeps.includes(packageName)) {
-                                const relPath = relative(process.cwd(), fullPath).replace(/\\/g, '/')
+                                const relPath = relative(
+                                    process.cwd(),
+                                    fullPath,
+                                ).replace(/\\/g, '/')
                                 const allowedKey = `${relPath}:${packageName}`
 
                                 // Skip if this is a known safe conditional import
-                                if (!allowedConditionalImports.has(allowedKey)) {
+                                if (
+                                    !allowedConditionalImports.has(allowedKey)
+                                ) {
                                     violations.push({
                                         file: relPath,
                                         line: index + 1,
-                                        imported: packageName
+                                        imported: packageName,
                                     })
                                 }
                             }
@@ -81,20 +94,22 @@ describe('production dependencies validation', () => {
         // Report violations with helpful error message
         if (violations.length > 0) {
             const violationDetails = violations
-                .map(v => `  - ${v.file}:${v.line} imports '${v.imported}'`)
+                .map((v) => `  - ${v.file}:${v.line} imports '${v.imported}'`)
                 .join('\n')
 
-            const affectedPackages = [...new Set(violations.map(v => v.imported))]
+            const affectedPackages = [
+                ...new Set(violations.map((v) => v.imported)),
+            ]
 
             throw new Error(
                 `Production code (src/) must not import packages from devDependencies.\n\n` +
-                `Found ${violations.length} violation(s):\n${violationDetails}\n\n` +
-                `To fix this:\n` +
-                `1. If these packages are needed at runtime, move them to dependencies:\n` +
-                `   pnpm add ${affectedPackages.join(' ')}\n` +
-                `2. If they're only for development, make imports conditional:\n` +
-                `   if (process.env.NODE_ENV !== 'production') { await import('${affectedPackages[0]}') }\n` +
-                `3. Or refactor code to avoid the import entirely.`
+                    `Found ${violations.length} violation(s):\n${violationDetails}\n\n` +
+                    `To fix this:\n` +
+                    `1. If these packages are needed at runtime, move them to dependencies:\n` +
+                    `   pnpm add ${affectedPackages.join(' ')}\n` +
+                    `2. If they're only for development, make imports conditional:\n` +
+                    `   if (process.env.NODE_ENV !== 'production') { await import('${affectedPackages[0]}') }\n` +
+                    `3. Or refactor code to avoid the import entirely.`,
             )
         }
 
@@ -110,8 +125,8 @@ describe('production dependencies validation', () => {
                 package: 'dotenv',
                 file: 'src/db/index.ts',
                 condition: 'NODE_ENV !== production',
-                reason: 'Development only - production environments provide variables directly via platform'
-            }
+                reason: 'Development only - production environments provide variables directly via platform',
+            },
         ]
 
         // This serves as documentation for engineers debugging environment-specific behavior

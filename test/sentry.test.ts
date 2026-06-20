@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { config } from '../src/config.js'
 import { logger, setErrorReporter } from '../src/logger.js'
 import { initSentry } from '../src/sentry.js'

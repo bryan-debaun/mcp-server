@@ -1,55 +1,72 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerTool } from "../../registration.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { ListBooksInputSchema } from "./schemas.js";
-import { prisma } from "../../../db/index.js";
-import { normalizeStatusInput, statusLabel } from "./status.js";
-import { createSuccessResult, createErrorResult } from "../../github-issues/results.js";
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
+import { prisma } from '../../../db/index.js'
+import {
+    createErrorResult,
+    createSuccessResult,
+} from '../../github-issues/results.js'
+import { registerTool } from '../../registration.js'
+import { ListBooksInputSchema } from './schemas.js'
+import { normalizeStatusInput, statusLabel } from './status.js'
 
-const name = "list-books";
+const name = 'list-books'
 const config = {
-    title: "List Books",
-    description: "List books with optional filters (author, rating, search) (public)",
-    inputSchema: ListBooksInputSchema
-};
+    title: 'List Books',
+    description:
+        'List books with optional filters (author, rating, search) (public)',
+    inputSchema: ListBooksInputSchema,
+}
 
 export function registerListBooksTool(server: McpServer): void {
-    registerTool(server,
+    registerTool(
+        server,
         name,
         config,
         async (args: any): Promise<CallToolResult> => {
             try {
-                const { authorId, minRating, search, status, limit = 50, offset = 0 } = args;
+                const {
+                    authorId,
+                    minRating,
+                    search,
+                    status,
+                    limit = 50,
+                    offset = 0,
+                } = args
 
                 // Build where clause
-                const where: any = {};
+                const where: any = {}
 
                 if (authorId) {
                     where.authors = {
                         some: {
-                            authorId
-                        }
-                    };
+                            authorId,
+                        },
+                    }
                 }
 
                 if (search) {
                     where.OR = [
                         { title: { contains: search, mode: 'insensitive' } },
-                        { description: { contains: search, mode: 'insensitive' } }
-                    ];
+                        {
+                            description: {
+                                contains: search,
+                                mode: 'insensitive',
+                            },
+                        },
+                    ]
                 }
 
                 // Filter by status if provided
                 if (status !== undefined) {
-                    const normalized = normalizeStatusInput(status);
+                    const normalized = normalizeStatusInput(status)
                     if (normalized !== undefined) {
-                        where.status = normalized;
+                        where.status = normalized
                     }
                 }
 
                 // Filter by minimum rating (embedded column)
                 if (minRating !== undefined) {
-                    where.rating = { gte: minRating };
+                    where.rating = { gte: minRating }
                 }
 
                 const books = await prisma.book.findMany({
@@ -59,32 +76,33 @@ export function registerListBooksTool(server: McpServer): void {
                     include: {
                         authors: {
                             include: {
-                                author: true
-                            }
-                        }
+                                author: true,
+                            },
+                        },
                     },
                     orderBy: {
-                        createdAt: 'desc'
-                    }
-                });
+                        createdAt: 'desc',
+                    },
+                })
 
                 // Map results with embedded rating fields
                 const results = books.map((book: any) => ({
                     ...book,
                     authors: book.authors.map((ba: any) => ba.author),
-                    statusLabel: statusLabel(book.status)
-                }));
+                    statusLabel: statusLabel(book.status),
+                }))
 
                 return createSuccessResult({
                     books: results,
                     total: results.length,
                     limit,
-                    offset
-                });
+                    offset,
+                })
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return createErrorResult(message);
+                const message =
+                    error instanceof Error ? error.message : String(error)
+                return createErrorResult(message)
             }
-        }
-    );
+        },
+    )
 }

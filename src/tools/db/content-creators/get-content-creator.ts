@@ -1,31 +1,38 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerTool } from "../../registration.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { GetContentCreatorInputSchema } from "./schemas.js";
-import { prisma } from "../../../db/index.js";
-import { createSuccessResult, createErrorResult } from "../../github-issues/results.js";
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
+import { prisma } from '../../../db/index.js'
+import {
+    createErrorResult,
+    createSuccessResult,
+} from '../../github-issues/results.js'
+import { registerTool } from '../../registration.js'
+import { GetContentCreatorInputSchema } from './schemas.js'
 
-const name = "get-content-creator";
+const name = 'get-content-creator'
 const config = {
-    title: "Get ContentCreator",
-    description: "Get a content creator by ID (public)",
-    inputSchema: GetContentCreatorInputSchema
-};
+    title: 'Get ContentCreator',
+    description: 'Get a content creator by ID (public)',
+    inputSchema: GetContentCreatorInputSchema,
+}
 
 export function registerGetContentCreatorTool(server: McpServer): void {
-    registerTool(server,
+    registerTool(
+        server,
         name,
         config,
         async (args: any): Promise<CallToolResult> => {
             try {
-                const { id } = args;
-                const cc = await prisma.contentCreator.findUnique({ where: { id } });
-                if (!cc) return createErrorResult('ContentCreator not found');
-                return createSuccessResult(cc);
+                const { id } = args
+                const cc = await prisma.contentCreator.findUnique({
+                    where: { id },
+                })
+                if (!cc) return createErrorResult('ContentCreator not found')
+                return createSuccessResult(cc)
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return createErrorResult(message);
+                const message =
+                    error instanceof Error ? error.message : String(error)
+                return createErrorResult(message)
             }
-        }
-    );
+        },
+    )
 }

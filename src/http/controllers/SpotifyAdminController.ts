@@ -1,8 +1,16 @@
-import { Controller, Post, Route, Tags, Body, SuccessResponse, Response } from 'tsoa'
-import { logger } from "../../logger.js";
 import fs from 'fs'
 import path from 'path'
+import {
+    Body,
+    Controller,
+    Post,
+    Response,
+    Route,
+    SuccessResponse,
+    Tags,
+} from 'tsoa'
 import { config } from '../../config.js'
+import { logger } from '../../logger.js'
 
 interface SeedRequest {
     code?: string
@@ -31,12 +39,19 @@ export class SpotifyAdminController extends Controller {
     @SuccessResponse('200', 'Refresh token seeded')
     @Response('400', 'Invalid request')
     @Response('500', 'Server error')
-    public async seedRefreshToken(@Body() body: SeedRequest): Promise<SeedResponse> {
+    public async seedRefreshToken(
+        @Body() body: SeedRequest,
+    ): Promise<SeedResponse> {
         // Validate early so validation errors escape the function (TSOA will map status correctly)
         if (!body || (!body.code && !body.refreshToken)) {
-            logger.error('spotify-admin: validation failed - missing code or refreshToken', { body })
+            logger.error(
+                'spotify-admin: validation failed - missing code or refreshToken',
+                { body },
+            )
             this.setStatus(400)
-            const err: any = new Error('Either `code` or `refreshToken` must be provided')
+            const err: any = new Error(
+                'Either `code` or `refreshToken` must be provided',
+            )
             err.status = 400
             throw err
         }
@@ -51,30 +66,44 @@ export class SpotifyAdminController extends Controller {
                 const redirectUri = config.spotify.redirectUri
                 if (!clientId || !clientSecret || !redirectUri) {
                     this.setStatus(400)
-                    const err: any = new Error('SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET / SPOTIFY_REDIRECT_URI must be configured to exchange code')
+                    const err: any = new Error(
+                        'SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET / SPOTIFY_REDIRECT_URI must be configured to exchange code',
+                    )
                     err.status = 400
                     throw err
                 }
 
-                const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
-                const params = new URLSearchParams({ grant_type: 'authorization_code', code: body.code, redirect_uri: redirectUri })
-                const res = await fetch('https://accounts.spotify.com/api/token', {
-                    method: 'POST',
-                    headers: {
-                        Authorization: `Basic ${auth}`,
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body: params.toString()
+                const auth = Buffer.from(
+                    `${clientId}:${clientSecret}`,
+                ).toString('base64')
+                const params = new URLSearchParams({
+                    grant_type: 'authorization_code',
+                    code: body.code,
+                    redirect_uri: redirectUri,
                 })
+                const res = await fetch(
+                    'https://accounts.spotify.com/api/token',
+                    {
+                        method: 'POST',
+                        headers: {
+                            Authorization: `Basic ${auth}`,
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: params.toString(),
+                    },
+                )
 
                 if (!res.ok) {
                     const txt = await res.text()
-                    throw new Error(`Failed to exchange code: ${res.status} ${txt}`)
+                    throw new Error(
+                        `Failed to exchange code: ${res.status} ${txt}`,
+                    )
                 }
 
                 const json: any = await res.json()
                 refreshToken = json.refresh_token
-                if (!refreshToken) throw new Error('Spotify did not return a refresh_token')
+                if (!refreshToken)
+                    throw new Error('Spotify did not return a refresh_token')
             }
 
             if (!refreshToken) {
@@ -86,7 +115,9 @@ export class SpotifyAdminController extends Controller {
 
             // Seed the token into the adapter in-process so it's used immediately
             // (the adapter reads its own override, not process.env).
-            const adapter = await import('../../adapters/spotify/spotify-adapter.js')
+            const adapter = await import(
+                '../../adapters/spotify/spotify-adapter.js'
+            )
             adapter.setSpotifyRefreshToken(refreshToken)
 
             // Persist to .env.local in development for convenience (do NOT persist in test/prod)
@@ -95,11 +126,18 @@ export class SpotifyAdminController extends Controller {
                 try {
                     const envPath = path.resolve(process.cwd(), '.env.local')
                     let content = ''
-                    try { content = fs.readFileSync(envPath, { encoding: 'utf8' }) } catch { content = '' }
+                    try {
+                        content = fs.readFileSync(envPath, { encoding: 'utf8' })
+                    } catch {
+                        content = ''
+                    }
                     const key = 'SPOTIFY_REFRESH_TOKEN'
                     const regex = new RegExp(`^${key}=.*$`, 'm')
                     if (regex.test(content)) {
-                        content = content.replace(regex, `${key}=${refreshToken}`)
+                        content = content.replace(
+                            regex,
+                            `${key}=${refreshToken}`,
+                        )
                     } else {
                         if (content && !content.endsWith('\n')) content += '\n'
                         content += `${key}=${refreshToken}\n`
@@ -108,7 +146,10 @@ export class SpotifyAdminController extends Controller {
                     persisted = true
                 } catch (err) {
                     // non-fatal — continue but report not persisted
-                    logger.error('spotify-admin: failed to persist .env.local', err)
+                    logger.error(
+                        'spotify-admin: failed to persist .env.local',
+                        err,
+                    )
                 }
             }
 
@@ -117,14 +158,20 @@ export class SpotifyAdminController extends Controller {
             try {
                 await adapter.startSpotifyAdapter()
             } catch (err) {
-                logger.error('spotify-admin: failed to start adapter after seeding token', err)
+                logger.error(
+                    'spotify-admin: failed to start adapter after seeding token',
+                    err,
+                )
             }
 
             return { success: true, persistedToEnvFile: persisted }
         } catch (err: any) {
             logger.error('spotify-admin: seedRefreshToken failed', err)
             // Preserve validation status if already set
-            if (this.getStatus && this.getStatus() === 400) { this.setStatus(400); throw err }
+            if (this.getStatus && this.getStatus() === 400) {
+                this.setStatus(400)
+                throw err
+            }
             this.setStatus(500)
             throw new Error(err?.message ?? 'Failed to seed refresh token')
         }

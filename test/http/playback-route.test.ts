@@ -1,13 +1,13 @@
-import request from "supertest";
-import { describe, it, expect } from 'vitest'
-import { createHttpApp } from "../../src/http/server";
+import request from 'supertest'
+import { describe, expect, it } from 'vitest'
+import { createHttpApp } from '../../src/http/server'
 
-describe("GET /api/playback", () => {
-    it("returns playback JSON with expected fields", async () => {
-        const app = await createHttpApp();
-        const res = await request(app).get("/api/playback").expect(200);
-        expect(res.body).toHaveProperty("source", "spotify");
-        expect(res.body).toHaveProperty("timestamp");
-        expect(typeof res.body.is_playing).toBe("boolean");
-    });
-});
+describe('GET /api/playback', () => {
+    it('returns playback JSON with expected fields', async () => {
+        const app = await createHttpApp()
+        const res = await request(app).get('/api/playback').expect(200)
+        expect(res.body).toHaveProperty('source', 'spotify')
+        expect(res.body).toHaveProperty('timestamp')
+        expect(typeof res.body.is_playing).toBe('boolean')
+    })
+})

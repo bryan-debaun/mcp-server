@@ -1,30 +1,44 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerTool } from "../../registration.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { CreateBookInputSchema } from "./schemas.js";
-import { prisma } from "../../../db/index.js";
-import { normalizeStatusInput, statusLabel } from "./status.js";
-import { createSuccessResult, createErrorResult } from "../../github-issues/results.js";
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
+import { prisma } from '../../../db/index.js'
+import {
+    createErrorResult,
+    createSuccessResult,
+} from '../../github-issues/results.js'
+import { registerTool } from '../../registration.js'
+import { CreateBookInputSchema } from './schemas.js'
+import { normalizeStatusInput, statusLabel } from './status.js'
 
-const name = "create-book";
+const name = 'create-book'
 const config = {
-    title: "Create Book",
-    description: "Create a new book with optional author associations (admin only)",
-    inputSchema: CreateBookInputSchema
-};
+    title: 'Create Book',
+    description:
+        'Create a new book with optional author associations (admin only)',
+    inputSchema: CreateBookInputSchema,
+}
 
 export function registerCreateBookTool(server: McpServer): void {
-    registerTool(server,
+    registerTool(
+        server,
         name,
         config,
         async (args: any): Promise<CallToolResult> => {
             try {
-                const { title, description, isbn, publishedAt, authorIds, status, rating, review } = args;
-                const normalizedStatus = normalizeStatusInput(status);
+                const {
+                    title,
+                    description,
+                    isbn,
+                    publishedAt,
+                    authorIds,
+                    status,
+                    rating,
+                    review,
+                } = args
+                const normalizedStatus = normalizeStatusInput(status)
 
                 // Validate rating if provided
                 if (rating !== undefined && (rating < 1 || rating > 10)) {
-                    return createErrorResult("Rating must be between 1 and 10");
+                    return createErrorResult('Rating must be between 1 and 10')
                 }
 
                 const book = await prisma.book.create({
@@ -37,30 +51,33 @@ export function registerCreateBookTool(server: McpServer): void {
                         rating: rating !== undefined ? rating : null,
                         review: review || null,
                         ratedAt: rating !== undefined ? new Date() : null,
-                        authors: authorIds ? {
-                            create: authorIds.map((authorId: number) => ({
-                                authorId
-                            }))
-                        } : undefined
+                        authors: authorIds
+                            ? {
+                                  create: authorIds.map((authorId: number) => ({
+                                      authorId,
+                                  })),
+                              }
+                            : undefined,
                     },
                     include: {
                         authors: {
                             include: {
-                                author: true
-                            }
-                        }
-                    }
-                });
+                                author: true,
+                            },
+                        },
+                    },
+                })
 
                 return createSuccessResult({
                     ...book,
                     authors: book.authors.map((ba: any) => ba.author),
-                    statusLabel: statusLabel(book.status)
-                });
+                    statusLabel: statusLabel(book.status),
+                })
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return createErrorResult(message);
+                const message =
+                    error instanceof Error ? error.message : String(error)
+                return createErrorResult(message)
             }
-        }
-    );
+        },
+    )
 }

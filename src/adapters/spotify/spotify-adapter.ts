@@ -1,29 +1,35 @@
-import { setPlayback } from '../../http/playback-store.js';
-import { logger } from "../../logger.js";
-import { config } from '../../config.js';
+import { config } from '../../config.js'
+import { setPlayback } from '../../http/playback-store.js'
+import { logger } from '../../logger.js'
 
-const TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
-const API_BASE = 'https://api.spotify.com/v1';
+const TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token'
+const API_BASE = 'https://api.spotify.com/v1'
 
-let cachedAccessToken: string | null = null;
-let tokenExpiresAt = 0; // epoch ms
-let pollHandle: NodeJS.Timeout | null = null;
+let cachedAccessToken: string | null = null
+let tokenExpiresAt = 0 // epoch ms
+let pollHandle: NodeJS.Timeout | null = null
 
 // Runtime override for the refresh token (e.g. seeded via the admin OAuth
 // callback after startup). When set it takes precedence over the startup
 // config value, so a freshly-seeded token is used without a restart.
-let refreshTokenOverride: string | null = null;
+let refreshTokenOverride: string | null = null
 
-function nowMs() { return Date.now(); }
+function nowMs() {
+    return Date.now()
+}
 
 /** The active refresh token: a runtime override wins over the startup config. */
 function currentRefreshToken(): string | undefined {
-    return refreshTokenOverride ?? config.spotify.refreshToken;
+    return refreshTokenOverride ?? config.spotify.refreshToken
 }
 
 /** Whether the adapter has all credentials it needs to run (override-aware). */
 export function isSpotifyConfigured(): boolean {
-    return Boolean(config.spotify.clientId && config.spotify.clientSecret && currentRefreshToken());
+    return Boolean(
+        config.spotify.clientId &&
+            config.spotify.clientSecret &&
+            currentRefreshToken(),
+    )
 }
 
 /**
@@ -33,126 +39,149 @@ export function isSpotifyConfigured(): boolean {
  * never reads).
  */
 export function setSpotifyRefreshToken(token: string): void {
-    refreshTokenOverride = token;
-    cachedAccessToken = null;
-    tokenExpiresAt = 0;
+    refreshTokenOverride = token
+    cachedAccessToken = null
+    tokenExpiresAt = 0
 }
 
 async function refreshAccessToken(): Promise<string> {
-    const clientId = config.spotify.clientId;
-    const clientSecret = config.spotify.clientSecret;
-    const refreshToken = currentRefreshToken();
+    const clientId = config.spotify.clientId
+    const clientSecret = config.spotify.clientSecret
+    const refreshToken = currentRefreshToken()
 
-    if (!clientId || !clientSecret || !refreshToken) throw new Error('Spotify credentials not configured');
+    if (!clientId || !clientSecret || !refreshToken)
+        throw new Error('Spotify credentials not configured')
 
-    const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-    const body = new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken });
+    const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+    const body = new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+    })
 
     const res = await fetch(TOKEN_ENDPOINT, {
         method: 'POST',
         headers: {
             Authorization: `Basic ${auth}`,
-            'Content-Type': 'application/x-www-form-urlencoded'
+            'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: body.toString()
-    });
+        body: body.toString(),
+    })
 
     if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Spotify token refresh failed: ${res.status} ${txt}`);
+        const txt = await res.text()
+        throw new Error(`Spotify token refresh failed: ${res.status} ${txt}`)
     }
 
-    const json: any = await res.json();
-    cachedAccessToken = json.access_token;
-    const expiresIn = Number(json.expires_in || 3600);
-    tokenExpiresAt = nowMs() + (expiresIn - 30) * 1000; // refresh a bit early
-    return cachedAccessToken as string;
+    const json: any = await res.json()
+    cachedAccessToken = json.access_token
+    const expiresIn = Number(json.expires_in || 3600)
+    tokenExpiresAt = nowMs() + (expiresIn - 30) * 1000 // refresh a bit early
+    return cachedAccessToken as string
 }
 
 async function getAccessToken(): Promise<string> {
-    if (cachedAccessToken && nowMs() < tokenExpiresAt) return cachedAccessToken;
-    return await refreshAccessToken();
+    if (cachedAccessToken && nowMs() < tokenExpiresAt) return cachedAccessToken
+    return await refreshAccessToken()
 }
 
 async function fetchSpotifyApi(path: string, opts: RequestInit = {}) {
-    const token = await getAccessToken();
+    const token = await getAccessToken()
     const res = await fetch(`${API_BASE}${path}`, {
         ...opts,
         headers: {
             ...(opts.headers || {}),
-            Authorization: `Bearer ${token}`
-        }
-    });
-    return res;
+            Authorization: `Bearer ${token}`,
+        },
+    })
+    return res
 }
 
 async function fetchCurrentlyPlaying(): Promise<void> {
     try {
-        const res = await fetchSpotifyApi('/me/player/currently-playing');
+        const res = await fetchSpotifyApi('/me/player/currently-playing')
         if (res.status === 204) {
             // no content — not playing
-            setPlayback({ is_playing: false, track: null });
-            return;
+            setPlayback({ is_playing: false, track: null })
+            return
         }
         if (!res.ok) {
-            throw new Error(`spotify currently-playing ${res.status}`);
+            throw new Error(`spotify currently-playing ${res.status}`)
         }
-        const j: any = await res.json();
+        const j: any = await res.json()
         // Map Spotify response to PlaybackState partial
-        const item = j.item;
-        const track = item ? {
-            id: item.id,
-            title: item.name,
-            artists: item.artists.map((a: any) => a.name),
-            album: item.album?.name ?? null,
-            duration_ms: item.duration_ms
-        } : null;
+        const item = j.item
+        const track = item
+            ? {
+                  id: item.id,
+                  title: item.name,
+                  artists: item.artists.map((a: any) => a.name),
+                  album: item.album?.name ?? null,
+                  duration_ms: item.duration_ms,
+              }
+            : null
 
-        const device = j.device ? { id: j.device.id, name: j.device.name, volume_percent: j.device.volume_percent } : null;
+        const device = j.device
+            ? {
+                  id: j.device.id,
+                  name: j.device.name,
+                  volume_percent: j.device.volume_percent,
+              }
+            : null
 
-        setPlayback({ is_playing: j.is_playing, progress_ms: j.progress_ms ?? null, track, device, repeat_state: j.repeat_state ?? null, shuffle_state: j.shuffle_state ?? null });
+        setPlayback({
+            is_playing: j.is_playing,
+            progress_ms: j.progress_ms ?? null,
+            track,
+            device,
+            repeat_state: j.repeat_state ?? null,
+            shuffle_state: j.shuffle_state ?? null,
+        })
     } catch (err) {
-        logger.error('spotify-adapter: failed to fetch currently-playing', err);
+        logger.error('spotify-adapter: failed to fetch currently-playing', err)
     }
 }
 
 export async function getLikedTracks(limit = 20, offset = 0): Promise<any> {
-    const res = await fetchSpotifyApi(`/me/tracks?limit=${limit}&offset=${offset}`);
+    const res = await fetchSpotifyApi(
+        `/me/tracks?limit=${limit}&offset=${offset}`,
+    )
     if (!res.ok) {
-        throw new Error(`spotify liked tracks failed: ${res.status}`);
+        throw new Error(`spotify liked tracks failed: ${res.status}`)
     }
-    return res.json();
+    return res.json()
 }
 
 export async function getPlaylists(limit = 20, offset = 0): Promise<any> {
-    const res = await fetchSpotifyApi(`/me/playlists?limit=${limit}&offset=${offset}`);
+    const res = await fetchSpotifyApi(
+        `/me/playlists?limit=${limit}&offset=${offset}`,
+    )
     if (!res.ok) {
-        throw new Error(`spotify playlists failed: ${res.status}`);
+        throw new Error(`spotify playlists failed: ${res.status}`)
     }
-    return res.json();
+    return res.json()
 }
 
 export async function startSpotifyAdapter() {
-    if (!isSpotifyConfigured()) return;
+    if (!isSpotifyConfigured()) return
 
     // Prime a token so errors are visible on startup
     try {
-        await getAccessToken();
+        await getAccessToken()
     } catch (err) {
-        logger.error('spotify-adapter: failed to refresh token on startup', err);
+        logger.error('spotify-adapter: failed to refresh token on startup', err)
     }
 
-    const intervalMs = config.spotify.pollIntervalMs;
-    if (pollHandle) clearInterval(pollHandle);
+    const intervalMs = config.spotify.pollIntervalMs
+    if (pollHandle) clearInterval(pollHandle)
     // Immediately fetch once, then poll
-    await fetchCurrentlyPlaying();
-    pollHandle = setInterval(fetchCurrentlyPlaying, intervalMs);
-    logger.info('spotify-adapter: started polling (interval ms)', intervalMs);
+    await fetchCurrentlyPlaying()
+    pollHandle = setInterval(fetchCurrentlyPlaying, intervalMs)
+    logger.info('spotify-adapter: started polling (interval ms)', intervalMs)
 }
 
 export async function stopSpotifyAdapter() {
     if (pollHandle) {
-        clearInterval(pollHandle);
-        pollHandle = null;
+        clearInterval(pollHandle)
+        pollHandle = null
     }
 }

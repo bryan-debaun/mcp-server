@@ -1,14 +1,13 @@
-import { describe, it, expect, afterAll } from 'vitest'
-import { prisma, testConnection, initPrisma } from '../../src/db'
+import { afterAll, describe, expect, it } from 'vitest'
+import { initPrisma, prisma, testConnection } from '../../src/db'
 
 const RUN_DB_TESTS = process.env.RUN_DB_INTEGRATION === 'true'
 
 describe('DB integration', () => {
     if (!RUN_DB_TESTS) {
-        it.skip('skipped - requires RUN_DB_INTEGRATION=true', () => { })
+        it.skip('skipped - requires RUN_DB_INTEGRATION=true', () => {})
         return
     }
-
 
     afterAll(async () => {
         await initPrisma()

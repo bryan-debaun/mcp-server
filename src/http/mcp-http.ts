@@ -1,320 +1,396 @@
-import { Application, Request, Response } from "express";
-import { logger } from "../logger.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { config } from "../config.js";
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
+import { Application, Request, Response } from 'express'
+import { config } from '../config.js'
+import { logger } from '../logger.js'
 
 // Simple newline-delimited JSON HTTP stream transport
 export class HttpStreamTransport {
-    private req: Request;
-    private res: Response;
-    private readBuffer = "";
+    private req: Request
+    private res: Response
+    private readBuffer = ''
 
     // Internals for safe message delivery when messages arrive before the server attaches a handler
-    private _onmessage?: (msg: any) => void;
-    private pendingMessages: any[] = [];
+    private _onmessage?: (msg: any) => void
+    private pendingMessages: any[] = []
 
-    onerror?: (err: any) => void;
-    onclose?: () => void;
+    onerror?: (err: any) => void
+    onclose?: () => void
 
     // Use a property accessor so we can flush pending messages when the handler is attached
     set onmessage(fn: ((msg: any) => void) | undefined) {
-        this._onmessage = fn;
+        this._onmessage = fn
         if (this._onmessage && this.pendingMessages.length) {
             for (const m of this.pendingMessages) {
-                try { this._onmessage(m); } catch { /* noop */ }
+                try {
+                    this._onmessage(m)
+                } catch {
+                    /* noop */
+                }
             }
-            this.pendingMessages = [];
+            this.pendingMessages = []
         }
     }
-    get onmessage() { return this._onmessage; }
+    get onmessage() {
+        return this._onmessage
+    }
 
     constructor(req: Request, res: Response) {
-        this.req = req;
-        this.res = res;
+        this.req = req
+        this.res = res
 
         // keep response open for streaming
-        res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
-        res.setHeader("Transfer-Encoding", "chunked");
+        res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8')
+        res.setHeader('Transfer-Encoding', 'chunked')
 
         // Basic keepalive: send newline every 15s to avoid proxies closing
         const keepalive = setInterval(() => {
-            try { res.write("\n"); } catch (e) { void e; }
-        }, 15000);
+            try {
+                res.write('\n')
+            } catch (e) {
+                void e
+            }
+        }, 15000)
 
-        req.on("data", (chunk: any) => this.handleData(chunk));
-        req.on("end", () => {
-            clearInterval(keepalive);
-            this.onclose?.();
-        });
-        req.on("error", (err) => this.onerror?.(err));
+        req.on('data', (chunk: any) => this.handleData(chunk))
+        req.on('end', () => {
+            clearInterval(keepalive)
+            this.onclose?.()
+        })
+        req.on('error', (err) => this.onerror?.(err))
     }
 
     async start(): Promise<void> {
         // no-op; connection established by handler
-        return;
+        return
     }
 
     async close(): Promise<void> {
         try {
-            this.res.end();
+            this.res.end()
         } catch (e) {
-            void e;
+            void e
         }
-        this.onclose?.();
+        this.onclose?.()
     }
 
     async send(message: any): Promise<void> {
-        const json = JSON.stringify(message) + "\n";
+        const json = JSON.stringify(message) + '\n'
         return new Promise((resolve, reject) => {
             try {
-                this.res.write(json, (err: any) => (err ? reject(err) : resolve()));
+                this.res.write(json, (err: any) =>
+                    err ? reject(err) : resolve(),
+                )
             } catch (e) {
-                reject(e);
+                reject(e)
             }
-        });
+        })
     }
 
     private handleData(chunk: any) {
         try {
-            const txt = typeof chunk === "string" ? chunk : chunk.toString();
-            this.readBuffer += txt;
-            let idx: number;
-            while ((idx = this.readBuffer.indexOf("\n")) !== -1) {
-                const line = this.readBuffer.slice(0, idx).replace(/\r$/, "");
-                this.readBuffer = this.readBuffer.slice(idx + 1);
-                if (!line.trim()) continue;
+            const txt = typeof chunk === 'string' ? chunk : chunk.toString()
+            this.readBuffer += txt
+            let idx: number
+            while ((idx = this.readBuffer.indexOf('\n')) !== -1) {
+                const line = this.readBuffer.slice(0, idx).replace(/\r$/, '')
+                this.readBuffer = this.readBuffer.slice(idx + 1)
+                if (!line.trim()) continue
                 try {
-                    const parsed = JSON.parse(line);
+                    const parsed = JSON.parse(line)
                     if (this._onmessage) {
-                        this._onmessage(parsed);
+                        this._onmessage(parsed)
                     } else {
-                        this.pendingMessages.push(parsed);
+                        this.pendingMessages.push(parsed)
                     }
                 } catch (err) {
-                    this.onerror?.(err as any);
+                    this.onerror?.(err as any)
                 }
             }
         } catch (err) {
-            this.onerror?.(err as any);
+            this.onerror?.(err as any)
         }
     }
 }
 
 // SSE transport: server -> client (clients can POST events to /mcp/events)
 export class SseServerTransport {
-    private res: Response;
-    private connId: string;
+    private res: Response
+    private connId: string
 
     // Buffer incoming messages until the server attaches a handler
-    private _onmessage?: (msg: any) => void; // we support incoming messages via a separate POST endpoint
-    private pendingMessages: any[] = [];
+    private _onmessage?: (msg: any) => void // we support incoming messages via a separate POST endpoint
+    private pendingMessages: any[] = []
 
-    onerror?: (err: any) => void;
-    onclose?: () => void;
+    onerror?: (err: any) => void
+    onclose?: () => void
 
     set onmessage(fn: ((msg: any) => void) | undefined) {
-        this._onmessage = fn;
+        this._onmessage = fn
         if (this._onmessage && this.pendingMessages.length) {
             for (const m of this.pendingMessages) {
-                try { this._onmessage(m); } catch { /* noop */ }
+                try {
+                    this._onmessage(m)
+                } catch {
+                    /* noop */
+                }
             }
-            this.pendingMessages = [];
+            this.pendingMessages = []
         }
     }
-    get onmessage() { return this._onmessage; }
+    get onmessage() {
+        return this._onmessage
+    }
 
     constructor(res: Response, connId: string) {
-        this.res = res;
-        this.connId = connId;
-        res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-        res.setHeader("Cache-Control", "no-cache");
-        res.setHeader("Connection", "keep-alive");
-        res.flushHeaders?.();
+        this.res = res
+        this.connId = connId
+        res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
+        res.setHeader('Cache-Control', 'no-cache')
+        res.setHeader('Connection', 'keep-alive')
+        res.flushHeaders?.()
 
         // Send initial connected event with connId
-        this.sendEvent({ type: "connected", connId });
+        this.sendEvent({ type: 'connected', connId })
 
         // keepalive comment every 15s
         this._ka = setInterval(() => {
-            try { res.write(": keepalive\n\n"); } catch (e) { void e; }
-        }, 15000);
+            try {
+                res.write(': keepalive\n\n')
+            } catch (e) {
+                void e
+            }
+        }, 15000)
 
         // When the client closes the connection, Express will emit 'close' on the response
-        (res as any).on?.("close", () => this.close());
+        ;(res as any).on?.('close', () => this.close())
     }
 
-    private _ka?: ReturnType<typeof setInterval>;
+    private _ka?: ReturnType<typeof setInterval>
 
-    async start(): Promise<void> { return; }
+    async start(): Promise<void> {
+        return
+    }
 
     async send(message: any): Promise<void> {
-        this.sendEvent(message);
+        this.sendEvent(message)
     }
 
     // Called by /mcp/events to deliver messages from SSE clients
     receiveMessage(msg: any) {
         if (this._onmessage) {
-            try { this._onmessage(msg); } catch (e) { this.onerror?.(e as any); }
+            try {
+                this._onmessage(msg)
+            } catch (e) {
+                this.onerror?.(e as any)
+            }
         } else {
-            this.pendingMessages.push(msg);
+            this.pendingMessages.push(msg)
         }
     }
 
     private sendEvent(payload: any) {
         try {
-            const data = JSON.stringify(payload);
-            this.res.write(`data: ${data}\n\n`);
+            const data = JSON.stringify(payload)
+            this.res.write(`data: ${data}\n\n`)
         } catch (e) {
-            this.onerror?.(e as any);
+            this.onerror?.(e as any)
         }
     }
 
     async close(): Promise<void> {
-        try { clearInterval(this._ka); } catch (e) { void e; }
-        try { this.res.end(); } catch (e) { void e; }
-        this.onclose?.();
+        try {
+            clearInterval(this._ka)
+        } catch (e) {
+            void e
+        }
+        try {
+            this.res.end()
+        } catch (e) {
+            void e
+        }
+        this.onclose?.()
     }
 }
 
 // Register endpoints on the Express app
 export function registerMcpHttp(app: Application): void {
-    const base = "/mcp";
+    const base = '/mcp'
 
     // POST /mcp -> MCP Streamable HTTP transport (bidirectional JSON-RPC over HTTP)
     app.post(base, async (req: Request, res: Response) => {
         try {
-            logger.error(`mcp-http: POST /mcp called authPresent=${!!req.headers.authorization}`);
-            const mcpKey = config.security.mcpApiKey;
+            logger.error(
+                `mcp-http: POST /mcp called authPresent=${!!req.headers.authorization}`,
+            )
+            const mcpKey = config.security.mcpApiKey
             if (mcpKey) {
-                const auth = (req.headers.authorization || '').toString();
+                const auth = (req.headers.authorization || '').toString()
                 if (auth !== `Bearer ${mcpKey}`) {
-                    logger.error('mcp-http: POST /mcp auth failed', { got: auth });
-                    res.status(401).json({ error: 'unauthorized' });
-                    return;
+                    logger.error('mcp-http: POST /mcp auth failed', {
+                        got: auth,
+                    })
+                    res.status(401).json({ error: 'unauthorized' })
+                    return
                 }
             }
 
-            const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-            logger.error('mcp-http: POST /mcp created StreamableHTTPServerTransport');
+            const transport = new StreamableHTTPServerTransport({
+                sessionIdGenerator: undefined,
+            })
+            logger.error(
+                'mcp-http: POST /mcp created StreamableHTTPServerTransport',
+            )
 
-            const mod = await import("../server.js");
-            const { registerTools } = await import("../tools/index.js");
-            const serverInstance: McpServer = mod.createServer();
-            registerTools(serverInstance);
-            logger.error('mcp-http: POST /mcp registering tools and connecting');
+            const mod = await import('../server.js')
+            const { registerTools } = await import('../tools/index.js')
+            const serverInstance: McpServer = mod.createServer()
+            registerTools(serverInstance)
+            logger.error('mcp-http: POST /mcp registering tools and connecting')
             try {
-                await serverInstance.connect(transport as any);
-                await transport.handleRequest(req as any, res as any, req.body);
-                logger.error('mcp-http: mcp http request handled');
+                await serverInstance.connect(transport as any)
+                await transport.handleRequest(req as any, res as any, req.body)
+                logger.error('mcp-http: mcp http request handled')
             } catch (err) {
-                logger.error('mcp-http: mcp http connect/handle failed', err);
-                try { res.status(500).end(); } catch (e) { void e; }
+                logger.error('mcp-http: mcp http connect/handle failed', err)
+                try {
+                    res.status(500).end()
+                } catch (e) {
+                    void e
+                }
             }
         } catch (err) {
-            logger.error('mcp-http: error handling /mcp post', err);
-            try { res.status(500).end(); } catch (e) { void e; }
+            logger.error('mcp-http: error handling /mcp post', err)
+            try {
+                res.status(500).end()
+            } catch (e) {
+                void e
+            }
         }
-    });
+    })
 
     // GET /mcp -> SSE fallback (server -> client only)
     // Clients should POST events to /mcp/events with header X-MCP-Conn-Id to send messages back
-    const sseMap = new Map<string, SseServerTransport>();
+    const sseMap = new Map<string, SseServerTransport>()
 
     app.get(base, async (req: Request, res: Response) => {
         try {
-            logger.error(`mcp-http: GET /mcp called authPresent=${!!req.headers.authorization}`);
-            const mcpKey = config.security.mcpApiKey;
+            logger.error(
+                `mcp-http: GET /mcp called authPresent=${!!req.headers.authorization}`,
+            )
+            const mcpKey = config.security.mcpApiKey
             if (mcpKey) {
-                const auth = (req.headers.authorization || '').toString();
+                const auth = (req.headers.authorization || '').toString()
                 if (auth !== `Bearer ${mcpKey}`) {
-                    logger.error('mcp-http: GET /mcp auth failed', { got: auth });
-                    res.status(401).json({ error: 'unauthorized' });
-                    return;
+                    logger.error('mcp-http: GET /mcp auth failed', {
+                        got: auth,
+                    })
+                    res.status(401).json({ error: 'unauthorized' })
+                    return
                 }
             }
 
-            const connId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-            const transport = new SseServerTransport(res, connId);
-            logger.error('mcp-http: GET /mcp created SseServerTransport', { connId });
-            sseMap.set(connId, transport);
+            const connId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+            const transport = new SseServerTransport(res, connId)
+            logger.error('mcp-http: GET /mcp created SseServerTransport', {
+                connId,
+            })
+            sseMap.set(connId, transport)
 
             // Wire it to an MCP server instance
             try {
-                const mod = await import("../server.js");
-                const { registerTools } = await import("../tools/index.js");
-                const serverInstance: McpServer = mod.createServer();
-                registerTools(serverInstance);
-                logger.error('mcp-http: GET /mcp registering tools and connecting');
+                const mod = await import('../server.js')
+                const { registerTools } = await import('../tools/index.js')
+                const serverInstance: McpServer = mod.createServer()
+                registerTools(serverInstance)
+                logger.error(
+                    'mcp-http: GET /mcp registering tools and connecting',
+                )
                 try {
-                    await serverInstance.connect(transport as any);
-                    logger.error('mcp-http: mcp sse connected', { connId });
+                    await serverInstance.connect(transport as any)
+                    logger.error('mcp-http: mcp sse connected', { connId })
                 } catch (err) {
-                    logger.error('mcp-http: mcp sse connect failed', err);
-                    transport.close();
-                    sseMap.delete(connId);
-                    return;
+                    logger.error('mcp-http: mcp sse connect failed', err)
+                    transport.close()
+                    sseMap.delete(connId)
+                    return
                 }
             } catch (err) {
-                logger.error('mcp-http: error creating mcp server for sse', err);
-                transport.close();
-                sseMap.delete(connId);
-                return;
+                logger.error('mcp-http: error creating mcp server for sse', err)
+                transport.close()
+                sseMap.delete(connId)
+                return
             }
-
             // Clean up on close
-            (res as any).on?.("close", () => {
-                sseMap.delete(connId);
-            });
+            ;(res as any).on?.('close', () => {
+                sseMap.delete(connId)
+            })
         } catch (err) {
-            logger.error('mcp-http: unexpected error in GET /mcp', err);
-            try { res.status(500).end(); } catch { /* noop */ }
+            logger.error('mcp-http: unexpected error in GET /mcp', err)
+            try {
+                res.status(500).end()
+            } catch {
+                /* noop */
+            }
         }
-    });
+    })
 
     // POST /mcp/events -> used by SSE clients to send messages back to server
     app.post(`${base}/events`, async (req: Request, res: Response) => {
         try {
-            logger.error('mcp-http: POST /mcp/events called', { connIdHeader: req.headers['x-mcp-conn-id'] });
-            const mcpKey = config.security.mcpApiKey;
+            logger.error('mcp-http: POST /mcp/events called', {
+                connIdHeader: req.headers['x-mcp-conn-id'],
+            })
+            const mcpKey = config.security.mcpApiKey
             if (mcpKey) {
-                const auth = (req.headers.authorization || '').toString();
+                const auth = (req.headers.authorization || '').toString()
                 if (auth !== `Bearer ${mcpKey}`) {
-                    logger.error('mcp-http: POST /mcp/events auth failed', { got: auth });
-                    res.status(401).json({ error: 'unauthorized' });
-                    return;
+                    logger.error('mcp-http: POST /mcp/events auth failed', {
+                        got: auth,
+                    })
+                    res.status(401).json({ error: 'unauthorized' })
+                    return
                 }
             }
 
-            const connId = req.headers['x-mcp-conn-id']?.toString() || '';
+            const connId = req.headers['x-mcp-conn-id']?.toString() || ''
             if (!connId) {
-                logger.error('mcp-http: missing conn id for /mcp/events');
-                return res.status(400).json({ error: 'missing conn id' });
+                logger.error('mcp-http: missing conn id for /mcp/events')
+                return res.status(400).json({ error: 'missing conn id' })
             }
-            const transport = sseMap.get(connId);
+            const transport = sseMap.get(connId)
             if (!transport) {
-                logger.error('mcp-http: connection not found for connId', connId);
-                return res.status(404).json({ error: 'connection not found' });
+                logger.error(
+                    'mcp-http: connection not found for connId',
+                    connId,
+                )
+                return res.status(404).json({ error: 'connection not found' })
             }
 
             // Accept newline-delimited JSON body
             try {
-                const body = (req as any).body;
-                logger.error('mcp-http: /mcp/events received body', { bodyType: Array.isArray(body) ? 'array' : typeof body });
+                const body = (req as any).body
+                logger.error('mcp-http: /mcp/events received body', {
+                    bodyType: Array.isArray(body) ? 'array' : typeof body,
+                })
                 // Support both single object and arrays
                 if (Array.isArray(body)) {
-                    for (const msg of body) transport.receiveMessage(msg);
+                    for (const msg of body) transport.receiveMessage(msg)
                 } else {
-                    transport.receiveMessage(body);
+                    transport.receiveMessage(body)
                 }
-                res.status(204).end();
+                res.status(204).end()
             } catch (err) {
-                logger.error('mcp-http: invalid payload for /mcp/events', err);
-                res.status(400).json({ error: 'invalid payload' });
+                logger.error('mcp-http: invalid payload for /mcp/events', err)
+                res.status(400).json({ error: 'invalid payload' })
             }
         } catch (err) {
-            logger.error('mcp-http: unexpected error in POST /mcp/events', err);
-            try { res.status(500).end(); } catch { /* noop */ }
+            logger.error('mcp-http: unexpected error in POST /mcp/events', err)
+            try {
+                res.status(500).end()
+            } catch {
+                /* noop */
+            }
         }
-    });
+    })
 }

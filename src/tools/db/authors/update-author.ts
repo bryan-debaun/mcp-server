@@ -1,29 +1,33 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerTool } from "../../registration.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { UpdateAuthorInputSchema } from "./schemas.js";
-import { prisma } from "../../../db/index.js";
-import { createSuccessResult, createErrorResult } from "../../github-issues/results.js";
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
+import { prisma } from '../../../db/index.js'
+import {
+    createErrorResult,
+    createSuccessResult,
+} from '../../github-issues/results.js'
+import { registerTool } from '../../registration.js'
+import { UpdateAuthorInputSchema } from './schemas.js'
 
-const name = "update-author";
+const name = 'update-author'
 const config = {
-    title: "Update Author",
+    title: 'Update Author',
     description: "Update an existing author's details (admin only)",
-    inputSchema: UpdateAuthorInputSchema
-};
+    inputSchema: UpdateAuthorInputSchema,
+}
 
 export function registerUpdateAuthorTool(server: McpServer): void {
-    registerTool(server,
+    registerTool(
+        server,
         name,
         config,
         async (args: any): Promise<CallToolResult> => {
             try {
-                const { id, name, bio, website } = args;
+                const { id, name, bio, website } = args
 
-                const updateData: any = {};
-                if (name !== undefined) updateData.name = name;
-                if (bio !== undefined) updateData.bio = bio;
-                if (website !== undefined) updateData.website = website;
+                const updateData: any = {}
+                if (name !== undefined) updateData.name = name
+                if (bio !== undefined) updateData.bio = bio
+                if (website !== undefined) updateData.website = website
 
                 const author = await prisma.author.update({
                     where: { id },
@@ -31,17 +35,18 @@ export function registerUpdateAuthorTool(server: McpServer): void {
                     include: {
                         books: {
                             include: {
-                                book: true
-                            }
-                        }
-                    }
-                });
+                                book: true,
+                            },
+                        },
+                    },
+                })
 
-                return createSuccessResult(author);
+                return createSuccessResult(author)
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return createErrorResult(message);
+                const message =
+                    error instanceof Error ? error.message : String(error)
+                return createErrorResult(message)
             }
-        }
-    );
+        },
+    )
 }

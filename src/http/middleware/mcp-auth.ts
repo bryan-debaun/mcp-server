@@ -1,12 +1,16 @@
-import type { Request, Response, NextFunction } from 'express';
-import { logger } from "../../logger.js";
-import { mcpAuthFailuresTotal } from '../metrics-route.js';
-import { config } from '../../config.js';
+import type { NextFunction, Request, Response } from 'express'
+import { config } from '../../config.js'
+import { logger } from '../../logger.js'
+import { mcpAuthFailuresTotal } from '../metrics-route.js'
 
-export function mcpAuthMiddleware(req: Request, res: Response, next: NextFunction) {
-    const mcpKey = config.security.mcpApiKey;
+export function mcpAuthMiddleware(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) {
+    const mcpKey = config.security.mcpApiKey
     // No-op when key not set
-    if (!mcpKey) return next();
+    if (!mcpKey) return next()
 
     try {
         // The MCP gateway key may be presented two supported ways:
@@ -15,20 +19,28 @@ export function mcpAuthMiddleware(req: Request, res: Response, next: NextFunctio
         //   2. `X-Mcp-Api-Key: <MCP_API_KEY>` — first-class second factor for
         //      callers (e.g. the website) whose Authorization header already
         //      carries a Supabase user JWT for jwtMiddleware/TSOA admin auth.
-        const auth = (req.headers.authorization || '').toString();
-        if (auth === `Bearer ${mcpKey}`) return next();
+        const auth = (req.headers.authorization || '').toString()
+        if (auth === `Bearer ${mcpKey}`) return next()
 
-        const apiKeyHeader = (req.headers['x-mcp-api-key'] || '').toString();
-        if (apiKeyHeader && apiKeyHeader === mcpKey) return next();
+        const apiKeyHeader = (req.headers['x-mcp-api-key'] || '').toString()
+        if (apiKeyHeader && apiKeyHeader === mcpKey) return next()
 
         // Auth failed — never log the presented credential value.
-        logger.error('mcp-auth: auth failed', { path: req.path, ip: req.ip });
-        try { mcpAuthFailuresTotal.inc(); } catch { /* noop */ }
-        return res.status(401).json({ error: 'Unauthorized' });
+        logger.error('mcp-auth: auth failed', { path: req.path, ip: req.ip })
+        try {
+            mcpAuthFailuresTotal.inc()
+        } catch {
+            /* noop */
+        }
+        return res.status(401).json({ error: 'Unauthorized' })
     } catch (err) {
-        logger.error('mcp-auth: unexpected error', err);
+        logger.error('mcp-auth: unexpected error', err)
         // Fail closed: treat as unauthorized
-        try { mcpAuthFailuresTotal.inc(); } catch { /* noop */ }
-        return res.status(401).json({ error: 'Unauthorized' });
+        try {
+            mcpAuthFailuresTotal.inc()
+        } catch {
+            /* noop */
+        }
+        return res.status(401).json({ error: 'Unauthorized' })
     }
 }

@@ -1,25 +1,25 @@
-import { graphql } from "@octokit/graphql";
+import { graphql } from '@octokit/graphql'
+import { config } from '../../config.js'
 import type {
+    AddProjectItemResponse,
+    IssueNodeIdResponse,
     ProjectField,
     ProjectMetadata,
     ProjectQueryResponse,
-    IssueNodeIdResponse,
-    AddProjectItemResponse,
-    UpdateFieldValueResponse
-} from "./types.js";
-import { config } from "../../config.js";
+    UpdateFieldValueResponse,
+} from './types.js'
 
 /**
  * In-memory cache for project metadata
  * Key: "owner/projectNumber"
  * Value: ProjectMetadata with timestamp
  */
-const projectCache = new Map<string, ProjectMetadata>();
+const projectCache = new Map<string, ProjectMetadata>()
 
 /**
  * Cache TTL in milliseconds (5 minutes)
  */
-const CACHE_TTL = 5 * 60 * 1000;
+const CACHE_TTL = 5 * 60 * 1000
 
 /**
  * Get GitHub token from environment or gh CLI
@@ -27,28 +27,28 @@ const CACHE_TTL = 5 * 60 * 1000;
 function getGitHubToken(): string {
     // First try environment variable (for CI/staging)
     if (config.github.token) {
-        return config.github.token;
+        return config.github.token
     }
 
     // Fall back to gh CLI auth (for local development)
     // Note: @octokit/graphql will use gh CLI auth automatically if no token provided
-    return "";
+    return ''
 }
 
 /**
  * Create authenticated graphql client
  */
 function createGraphqlClient() {
-    const token = getGitHubToken();
+    const token = getGitHubToken()
     if (token) {
         return graphql.defaults({
             headers: {
-                authorization: `token ${token}`
-            }
-        });
+                authorization: `token ${token}`,
+            },
+        })
     }
     // If no token, @octokit/graphql will use gh CLI auth
-    return graphql;
+    return graphql
 }
 
 /**
@@ -57,24 +57,24 @@ function createGraphqlClient() {
 export async function getProjectFields(
     owner: string,
     projectNumber: number,
-    forceRefresh = false
+    forceRefresh = false,
 ): Promise<{ projectId: string; fields: ProjectField[] }> {
-    const cacheKey = `${owner}/${projectNumber}`;
-    const now = Date.now();
+    const cacheKey = `${owner}/${projectNumber}`
+    const now = Date.now()
 
     // Check cache unless force refresh
     if (!forceRefresh && projectCache.has(cacheKey)) {
-        const cached = projectCache.get(cacheKey)!;
+        const cached = projectCache.get(cacheKey)!
         if (now - cached.fetchedAt < CACHE_TTL) {
             return {
                 projectId: cached.projectId,
-                fields: cached.fields
-            };
+                fields: cached.fields,
+            }
         }
     }
 
     // Query GitHub for project fields
-    const client = createGraphqlClient();
+    const client = createGraphqlClient()
 
     // First try as user account
     const userQuery = `
@@ -109,15 +109,15 @@ export async function getProjectFields(
                 }
             }
         }
-    `;
+    `
 
     // Try user project first
-    let response: ProjectQueryResponse;
+    let response: ProjectQueryResponse
     try {
         response = await client<ProjectQueryResponse>(userQuery, {
             owner,
-            projectNumber
-        });
+            projectNumber,
+        })
     } catch {
         // If user query fails, try as organization
         const orgQuery = `
@@ -152,21 +152,22 @@ export async function getProjectFields(
                     }
                 }
             }
-        `;
+        `
 
         response = await client<ProjectQueryResponse>(orgQuery, {
             owner,
-            projectNumber
-        });
+            projectNumber,
+        })
     }
 
-    const projectData = response.user?.projectV2 || response.organization?.projectV2;
+    const projectData =
+        response.user?.projectV2 || response.organization?.projectV2
 
     if (!projectData) {
         throw new Error(
             `Project #${projectNumber} not found for owner '${owner}'. ` +
-            `Ensure the project exists and you have permission to access it.`
-        );
+                `Ensure the project exists and you have permission to access it.`,
+        )
     }
 
     // Transform GraphQL response to ProjectField[]
@@ -174,27 +175,27 @@ export async function getProjectFields(
         const field: ProjectField = {
             id: node.id,
             name: node.name,
-            dataType: (node.dataType || "TEXT") as ProjectField["dataType"]
-        };
-
-        if (node.options) {
-            field.options = node.options;
+            dataType: (node.dataType || 'TEXT') as ProjectField['dataType'],
         }
 
-        return field;
-    });
+        if (node.options) {
+            field.options = node.options
+        }
+
+        return field
+    })
 
     // Cache the result
     projectCache.set(cacheKey, {
         projectId: projectData.id,
         fields,
-        fetchedAt: now
-    });
+        fetchedAt: now,
+    })
 
     return {
         projectId: projectData.id,
-        fields
-    };
+        fields,
+    }
 }
 
 /**
@@ -203,9 +204,9 @@ export async function getProjectFields(
 export async function getIssueNodeId(
     owner: string,
     repo: string,
-    issueNumber: number
+    issueNumber: number,
 ): Promise<string> {
-    const client = createGraphqlClient();
+    const client = createGraphqlClient()
 
     const query = `
         query($owner: String!, $repo: String!, $issueNumber: Int!) {
@@ -215,21 +216,19 @@ export async function getIssueNodeId(
                 }
             }
         }
-    `;
+    `
 
     const response = await client<IssueNodeIdResponse>(query, {
         owner,
         repo,
-        issueNumber
-    });
+        issueNumber,
+    })
 
     if (!response.repository?.issue) {
-        throw new Error(
-            `Issue #${issueNumber} not found in ${owner}/${repo}`
-        );
+        throw new Error(`Issue #${issueNumber} not found in ${owner}/${repo}`)
     }
 
-    return response.repository.issue.id;
+    return response.repository.issue.id
 }
 
 /**
@@ -237,9 +236,9 @@ export async function getIssueNodeId(
  */
 export async function addIssueToProject(
     projectId: string,
-    contentId: string
+    contentId: string,
 ): Promise<string> {
-    const client = createGraphqlClient();
+    const client = createGraphqlClient()
 
     const mutation = `
         mutation($projectId: ID!, $contentId: ID!) {
@@ -252,14 +251,14 @@ export async function addIssueToProject(
                 }
             }
         }
-    `;
+    `
 
     const response = await client<AddProjectItemResponse>(mutation, {
         projectId,
-        contentId
-    });
+        contentId,
+    })
 
-    return response.addProjectV2ItemById.item.id;
+    return response.addProjectV2ItemById.item.id
 }
 
 /**
@@ -270,34 +269,34 @@ export async function updateProjectFieldValue(
     itemId: string,
     fieldId: string,
     value: string | number,
-    fieldType: ProjectField["dataType"]
+    fieldType: ProjectField['dataType'],
 ): Promise<void> {
-    const client = createGraphqlClient();
+    const client = createGraphqlClient()
 
     // Build value object based on field type
-    let valueObject: any;
+    let valueObject: any
 
     switch (fieldType) {
-        case "TEXT":
-            valueObject = { text: String(value) };
-            break;
-        case "NUMBER":
-            valueObject = { number: Number(value) };
-            break;
-        case "DATE":
+        case 'TEXT':
+            valueObject = { text: String(value) }
+            break
+        case 'NUMBER':
+            valueObject = { number: Number(value) }
+            break
+        case 'DATE':
             // Expect ISO 8601 format string
-            valueObject = { date: String(value) };
-            break;
-        case "SINGLE_SELECT":
+            valueObject = { date: String(value) }
+            break
+        case 'SINGLE_SELECT':
             // Value should be option ID (resolved by caller)
-            valueObject = { singleSelectOptionId: String(value) };
-            break;
-        case "ITERATION":
+            valueObject = { singleSelectOptionId: String(value) }
+            break
+        case 'ITERATION':
             // Value should be iteration ID
-            valueObject = { iterationId: String(value) };
-            break;
+            valueObject = { iterationId: String(value) }
+            break
         default:
-            throw new Error(`Unsupported field type: ${fieldType}`);
+            throw new Error(`Unsupported field type: ${fieldType}`)
     }
 
     const mutation = `
@@ -313,14 +312,14 @@ export async function updateProjectFieldValue(
                 }
             }
         }
-    `;
+    `
 
     await client<UpdateFieldValueResponse>(mutation, {
         projectId,
         itemId,
         fieldId,
-        value: valueObject
-    });
+        value: valueObject,
+    })
 }
 
 /**
@@ -329,15 +328,15 @@ export async function updateProjectFieldValue(
 export async function createProjectField(
     projectId: string,
     name: string,
-    dataType: ProjectField["dataType"],
-    options?: string[]
+    dataType: ProjectField['dataType'],
+    options?: string[],
 ): Promise<{ fieldId: string }> {
-    const client = createGraphqlClient();
+    const client = createGraphqlClient()
 
     // For SINGLE_SELECT fields, create with options
-    if (dataType === "SINGLE_SELECT") {
+    if (dataType === 'SINGLE_SELECT') {
         if (!options || options.length === 0) {
-            throw new Error("SINGLE_SELECT fields require at least one option");
+            throw new Error('SINGLE_SELECT fields require at least one option')
         }
 
         const mutation = `
@@ -355,21 +354,21 @@ export async function createProjectField(
                     }
                 }
             }
-        `;
+        `
 
         const optionInputs = options.map((opt) => ({
             name: opt,
-            color: "GRAY",  // Default color, can be customized later
-            description: ""  // Required by GitHub API, can be empty
-        }));
+            color: 'GRAY', // Default color, can be customized later
+            description: '', // Required by GitHub API, can be empty
+        }))
 
         const response = await client<any>(mutation, {
             projectId,
             name,
-            options: optionInputs
-        });
+            options: optionInputs,
+        })
 
-        return { fieldId: response.createProjectV2Field.projectV2Field.id };
+        return { fieldId: response.createProjectV2Field.projectV2Field.id }
     }
 
     // For other field types
@@ -387,15 +386,15 @@ export async function createProjectField(
                 }
             }
         }
-    `;
+    `
 
     const response = await client<any>(mutation, {
         projectId,
         name,
-        dataType
-    });
+        dataType,
+    })
 
-    return { fieldId: response.createProjectV2Field.projectV2Field.id };
+    return { fieldId: response.createProjectV2Field.projectV2Field.id }
 }
 
 /**
@@ -403,9 +402,9 @@ export async function createProjectField(
  */
 export async function deleteProjectField(
     projectId: string,
-    fieldId: string
+    fieldId: string,
 ): Promise<void> {
-    const client = createGraphqlClient();
+    const client = createGraphqlClient()
 
     const mutation = `
         mutation($fieldId: ID!) {
@@ -415,11 +414,11 @@ export async function deleteProjectField(
                 clientMutationId
             }
         }
-    `;
+    `
 
     await client<any>(mutation, {
-        fieldId
-    });
+        fieldId,
+    })
 }
 
 /**
@@ -428,9 +427,9 @@ export async function deleteProjectField(
 export async function updateProjectFieldName(
     projectId: string,
     fieldId: string,
-    newName: string
+    newName: string,
 ): Promise<void> {
-    const client = createGraphqlClient();
+    const client = createGraphqlClient()
 
     const mutation = `
         mutation($fieldId: ID!, $name: String!) {
@@ -445,12 +444,12 @@ export async function updateProjectFieldName(
                 }
             }
         }
-    `;
+    `
 
     await client<any>(mutation, {
         fieldId,
-        name: newName
-    });
+        name: newName,
+    })
 }
 
 /**
@@ -459,9 +458,9 @@ export async function updateProjectFieldName(
 export async function addFieldOptions(
     projectId: string,
     fieldId: string,
-    options: string[]
+    options: string[],
 ): Promise<void> {
-    const client = createGraphqlClient();
+    const client = createGraphqlClient()
 
     for (const optionName of options) {
         const mutation = `
@@ -477,13 +476,13 @@ export async function addFieldOptions(
                     }
                 }
             }
-        `;
+        `
 
         await client<any>(mutation, {
             projectId,
             fieldId,
-            name: optionName
-        });
+            name: optionName,
+        })
     }
 }
 
@@ -492,9 +491,9 @@ export async function addFieldOptions(
  */
 export async function removeFieldOptions(
     projectId: string,
-    optionIds: string[]
+    optionIds: string[],
 ): Promise<void> {
-    const client = createGraphqlClient();
+    const client = createGraphqlClient()
 
     for (const optionId of optionIds) {
         const mutation = `
@@ -508,24 +507,27 @@ export async function removeFieldOptions(
                     }
                 }
             }
-        `;
+        `
 
         await client<any>(mutation, {
             projectId,
-            optionId
-        });
+            optionId,
+        })
     }
 }
 
 /**
  * Clear project cache (useful for testing or force refresh)
  */
-export function clearProjectCache(owner?: string, projectNumber?: number): void {
+export function clearProjectCache(
+    owner?: string,
+    projectNumber?: number,
+): void {
     if (owner && projectNumber) {
-        const cacheKey = `${owner}/${projectNumber}`;
-        projectCache.delete(cacheKey);
+        const cacheKey = `${owner}/${projectNumber}`
+        projectCache.delete(cacheKey)
     } else {
-        projectCache.clear();
+        projectCache.clear()
     }
 }
 
@@ -535,15 +537,17 @@ export function clearProjectCache(owner?: string, projectNumber?: number): void 
  */
 export async function listProjectItems(
     owner: string,
-    projectNumber: number
-): Promise<Array<{
-    id: string;
-    issueNumber: number | null;
-    title: string;
-    url: string;
-    fieldValues: Record<string, string | number>;
-}>> {
-    const client = createGraphqlClient();
+    projectNumber: number,
+): Promise<
+    Array<{
+        id: string
+        issueNumber: number | null
+        title: string
+        url: string
+        fieldValues: Record<string, string | number>
+    }>
+> {
+    const client = createGraphqlClient()
 
     const userQuery = `
         query($owner: String!, $projectNumber: Int!) {
@@ -595,50 +599,72 @@ export async function listProjectItems(
                 }
             }
         }
-    `;
+    `
 
-    const orgQuery = userQuery.replace("user(login: $owner)", "organization(login: $owner)");
+    const orgQuery = userQuery.replace(
+        'user(login: $owner)',
+        'organization(login: $owner)',
+    )
 
-    let response: any;
+    let response: any
     try {
-        response = await client<any>(userQuery, { owner, projectNumber });
+        response = await client<any>(userQuery, { owner, projectNumber })
     } catch {
-        response = await client<any>(orgQuery, { owner, projectNumber });
+        response = await client<any>(orgQuery, { owner, projectNumber })
     }
 
-    const projectData = response.user?.projectV2 ?? response.organization?.projectV2;
+    const projectData =
+        response.user?.projectV2 ?? response.organization?.projectV2
     if (!projectData) {
-        throw new Error(`Project #${projectNumber} not found for owner '${owner}'.`);
+        throw new Error(
+            `Project #${projectNumber} not found for owner '${owner}'.`,
+        )
     }
 
     return (projectData.items.nodes as any[]).map((item: any) => {
-        const content = item.content ?? {};
-        const fieldValues: Record<string, string | number> = {};
+        const content = item.content ?? {}
+        const fieldValues: Record<string, string | number> = {}
 
         for (const fv of (item.fieldValues?.nodes ?? []) as any[]) {
-            const fieldName: string | undefined =
-                fv.field?.name;
-            if (!fieldName) continue;
+            const fieldName: string | undefined = fv.field?.name
+            if (!fieldName) continue
 
-            if (fv.__typename === "ProjectV2ItemFieldTextValue" && fv.text !== null && fv.text !== undefined) {
-                fieldValues[fieldName] = fv.text;
-            } else if (fv.__typename === "ProjectV2ItemFieldNumberValue" && fv.number !== null && fv.number !== undefined) {
-                fieldValues[fieldName] = fv.number;
-            } else if (fv.__typename === "ProjectV2ItemFieldDateValue" && fv.date) {
-                fieldValues[fieldName] = fv.date;
-            } else if (fv.__typename === "ProjectV2ItemFieldSingleSelectValue" && fv.name) {
-                fieldValues[fieldName] = fv.name;
-            } else if (fv.__typename === "ProjectV2ItemFieldIterationValue" && fv.title) {
-                fieldValues[fieldName] = fv.title;
+            if (
+                fv.__typename === 'ProjectV2ItemFieldTextValue' &&
+                fv.text !== null &&
+                fv.text !== undefined
+            ) {
+                fieldValues[fieldName] = fv.text
+            } else if (
+                fv.__typename === 'ProjectV2ItemFieldNumberValue' &&
+                fv.number !== null &&
+                fv.number !== undefined
+            ) {
+                fieldValues[fieldName] = fv.number
+            } else if (
+                fv.__typename === 'ProjectV2ItemFieldDateValue' &&
+                fv.date
+            ) {
+                fieldValues[fieldName] = fv.date
+            } else if (
+                fv.__typename === 'ProjectV2ItemFieldSingleSelectValue' &&
+                fv.name
+            ) {
+                fieldValues[fieldName] = fv.name
+            } else if (
+                fv.__typename === 'ProjectV2ItemFieldIterationValue' &&
+                fv.title
+            ) {
+                fieldValues[fieldName] = fv.title
             }
         }
 
         return {
             id: item.id,
             issueNumber: content.number ?? null,
-            title: content.title ?? "(no title)",
-            url: content.url ?? "",
+            title: content.title ?? '(no title)',
+            url: content.url ?? '',
             fieldValues,
-        };
-    });
+        }
+    })
 }

@@ -1,80 +1,115 @@
-import express from "express";
-import { logger } from "../logger.js";
-import cors from "cors";
-import { registerHealthRoute } from "./health-route.js";
-import { registerPlaybackRoute } from "./playback-route.js";
-import { registerMetricsRoute, httpRequestsTotal, httpRequestDurationSeconds } from "./metrics-route.js";
-
-import { initPrisma } from '../db/index.js';
-import { RegisterRoutes } from './tsoa-routes.js';
-import { registerSwaggerRoute } from './swagger-route.js';
-import { config } from '../config.js';
+import cors from 'cors'
+import express from 'express'
+import { config } from '../config.js'
+import { initPrisma } from '../db/index.js'
+import { logger } from '../logger.js'
+import { registerHealthRoute } from './health-route.js'
+import {
+    httpRequestDurationSeconds,
+    httpRequestsTotal,
+    registerMetricsRoute,
+} from './metrics-route.js'
+import { registerPlaybackRoute } from './playback-route.js'
+import { registerSwaggerRoute } from './swagger-route.js'
+import { RegisterRoutes } from './tsoa-routes.js'
 
 export async function createHttpApp(): Promise<express.Application> {
     // Backwards-compatible: keep existing behavior when callers expect Prisma initialized
     // before the app is returned.
-    await initPrisma();
-    const app = express();
-    app.use(cors());
-    app.use(express.json());
+    await initPrisma()
+    const app = express()
+    app.use(cors())
+    app.use(express.json())
 
     // Diagnostic request logging to help debug hosting/proxy issues
     app.use((req, res, next) => {
         try {
-            logger.debug('incoming request', { method: req.method, path: req.path, authPresent: !!req.headers.authorization });
-        } catch { /* noop */ }
-        next();
-    });
+            logger.debug('incoming request', {
+                method: req.method,
+                path: req.path,
+                authPresent: !!req.headers.authorization,
+            })
+        } catch {
+            /* noop */
+        }
+        next()
+    })
 
     // HTTP instrumentation middleware
     app.use((req, res, next) => {
-        const end = httpRequestDurationSeconds.startTimer();
-        res.on("finish", () => {
-            const labels = { method: req.method, path: req.path, status: String(res.statusCode) };
-            httpRequestsTotal.inc(labels);
-            end(labels);
-        });
-        next();
-    });
+        const end = httpRequestDurationSeconds.startTimer()
+        res.on('finish', () => {
+            const labels = {
+                method: req.method,
+                path: req.path,
+                status: String(res.statusCode),
+            }
+            httpRequestsTotal.inc(labels)
+            end(labels)
+        })
+        next()
+    })
 
-    registerHealthRoute(app);
-    registerPlaybackRoute(app);
-    registerMetricsRoute(app);
+    registerHealthRoute(app)
+    registerPlaybackRoute(app)
+    registerMetricsRoute(app)
     // Book/author catalog routes are served by the TSOA controllers (RegisterRoutes below)
     // Spotify read-only endpoints (require MCP API key when MCP_API_KEY set)
     try {
-        const mod = await import('./spotify-route.js');
-        mod.registerSpotifyRoute(app);
-        logger.info('registered Spotify HTTP routes at /api/spotify/*');
+        const mod = await import('./spotify-route.js')
+        mod.registerSpotifyRoute(app)
+        logger.info('registered Spotify HTTP routes at /api/spotify/*')
     } catch (e) {
-        logger.error('failed to register spotify-route', e);
+        logger.error('failed to register spotify-route', e)
     }
     // Register tsoa-generated routes
-    RegisterRoutes(app);
+    RegisterRoutes(app)
 
     // Register Swagger UI documentation
-    registerSwaggerRoute(app);
+    registerSwaggerRoute(app)
 
     // Global JSON error handler — ensure API routes always return structured JSON
-    app.use((err: any, _req: express.Request, res: express.Response, _next: any) => {
-        try { logger.error('unhandled error', err) } catch { /* noop */ }
-        const status = (res.statusCode && res.statusCode >= 400) ? res.statusCode : (err?.status || 500)
-        const message = config.isProduction ? 'internal error' : (err?.message ?? 'internal error')
-        res.status(status).json({ error: message })
-    })
-
+    app.use(
+        (
+            err: any,
+            _req: express.Request,
+            res: express.Response,
+            _next: any,
+        ) => {
+            try {
+                logger.error('unhandled error', err)
+            } catch {
+                /* noop */
+            }
+            const status =
+                res.statusCode && res.statusCode >= 400
+                    ? res.statusCode
+                    : err?.status || 500
+            const message = config.isProduction
+                ? 'internal error'
+                : (err?.message ?? 'internal error')
+            res.status(status).json({ error: message })
+        },
+    )
 
     // MCP HTTP transport (HTTP Stream + SSE fallback)
     try {
-        const mod = await import('./mcp-http.js');
+        const mod = await import('./mcp-http.js')
         try {
-            mod.registerMcpHttp(app);
-            logger.info('registered MCP HTTP transport (routes mounted at /mcp)');
+            mod.registerMcpHttp(app)
+            logger.info(
+                'registered MCP HTTP transport (routes mounted at /mcp)',
+            )
             try {
-                const routes = (app as any)._router?.stack?.filter((l: any) => l.route).map((l: any) => ({ path: l.route.path, methods: l.route.methods }));
-                logger.debug('registered routes:', JSON.stringify(routes));
+                const routes = (app as any)._router?.stack
+                    ?.filter((l: any) => l.route)
+                    .map((l: any) => ({
+                        path: l.route.path,
+                        methods: l.route.methods,
+                    }))
+                logger.debug('registered routes:', JSON.stringify(routes))
             } catch (e) {
-                logger.error('failed to enumerate routes', e);
+                logger.error('failed to enumerate routes', e)
             }
         } catch (err) {
             logger.error('failed to register MCP HTTP transport', err)
@@ -84,51 +119,61 @@ export async function createHttpApp(): Promise<express.Application> {
     }
 
     // Basic 404 handler
-    app.use((_req, res) => res.status(404).json({ error: "not found" }));
+    app.use((_req, res) => res.status(404).json({ error: 'not found' }))
 
-    return app;
+    return app
 }
 
 // New helper: create a minimal app that can listen early and expose liveness/readiness
 export function createBasicApp(): express.Application {
-    const app = express();
-    app.use(cors());
-    app.use(express.json());
+    const app = express()
+    app.use(cors())
+    app.use(express.json())
 
     // Diagnostic request logging to help debug hosting/proxy issues
     app.use((req, res, next) => {
         try {
-            logger.debug('incoming request', { method: req.method, path: req.path, authPresent: !!req.headers.authorization });
-        } catch { /* noop */ }
-        next();
-    });
+            logger.debug('incoming request', {
+                method: req.method,
+                path: req.path,
+                authPresent: !!req.headers.authorization,
+            })
+        } catch {
+            /* noop */
+        }
+        next()
+    })
 
     // HTTP instrumentation middleware
     app.use((req, res, next) => {
-        const end = httpRequestDurationSeconds.startTimer();
-        res.on("finish", () => {
-            const labels = { method: req.method, path: req.path, status: String(res.statusCode) };
-            httpRequestsTotal.inc(labels);
-            end(labels);
-        });
-        next();
-    });
+        const end = httpRequestDurationSeconds.startTimer()
+        res.on('finish', () => {
+            const labels = {
+                method: req.method,
+                path: req.path,
+                status: String(res.statusCode),
+            }
+            httpRequestsTotal.inc(labels)
+            end(labels)
+        })
+        next()
+    })
 
     // Minimal publicly safe routes (liveness, readiness, playback, metrics)
-    registerHealthRoute(app);
-    registerPlaybackRoute(app);
-    registerMetricsRoute(app);
+    registerHealthRoute(app)
+    registerPlaybackRoute(app)
+    registerMetricsRoute(app)
 
     // Do NOT register the final 404 handler here - it must be registered *after*
     // DB-dependent routes so that routes added later are reachable. The 404 handler
     // is registered by `createHttpApp` (backwards-compatible caller) or by
     // `registerDbDependentRoutes` when DB-dependent registration completes.
 
-    return app;
+    return app
 }
 
 // Helper to register DB-dependent routes and optional extras after DB init
-import { mcpAuthMiddleware } from './middleware/mcp-auth.js';
+import { mcpAuthMiddleware } from './middleware/mcp-auth.js'
 export async function registerDbDependentRoutes(app: any) {
     // Install MCP API key middleware to protect DB-dependent routes when `MCP_API_KEY` is set
     app.use(mcpAuthMiddleware)
@@ -137,42 +182,64 @@ export async function registerDbDependentRoutes(app: any) {
 
     // Spotify read-only endpoints (require MCP API key when MCP_API_KEY set)
     try {
-        const mod = await import('./spotify-route.js');
-        mod.registerSpotifyRoute(app);
-        logger.info('registered Spotify HTTP routes at /api/spotify/*');
+        const mod = await import('./spotify-route.js')
+        mod.registerSpotifyRoute(app)
+        logger.info('registered Spotify HTTP routes at /api/spotify/*')
     } catch (e) {
-        logger.error('failed to register spotify-route', e);
+        logger.error('failed to register spotify-route', e)
     }
 
     // Register tsoa-generated routes
-    RegisterRoutes(app);
+    RegisterRoutes(app)
 
     // Register Swagger UI documentation
-    registerSwaggerRoute(app);
+    registerSwaggerRoute(app)
 
     // Global JSON error handler — ensure API routes always return structured JSON
-    app.use((err: any, _req: express.Request, res: express.Response, _next: any) => {
-        try { logger.error('unhandled error', err) } catch { /* noop */ }
-        const status = (res.statusCode && res.statusCode >= 400) ? res.statusCode : (err?.status || 500)
-        const message = config.isProduction ? 'internal error' : (err?.message ?? 'internal error')
-        res.status(status).json({ error: message })
-    })
+    app.use(
+        (
+            err: any,
+            _req: express.Request,
+            res: express.Response,
+            _next: any,
+        ) => {
+            try {
+                logger.error('unhandled error', err)
+            } catch {
+                /* noop */
+            }
+            const status =
+                res.statusCode && res.statusCode >= 400
+                    ? res.statusCode
+                    : err?.status || 500
+            const message = config.isProduction
+                ? 'internal error'
+                : (err?.message ?? 'internal error')
+            res.status(status).json({ error: message })
+        },
+    )
 
     // Basic 404 handler (must be registered after all other routes so it doesn't
     // intercept later-registered DB-dependent routes)
-    app.use((_req: any, res: any) => res.status(404).json({ error: "not found" }));
+    app.use((_req: any, res: any) =>
+        res.status(404).json({ error: 'not found' }),
+    )
 }
 
 import { WebSocketServer } from 'ws'
 import { WsServerTransport } from './mcp-ws.js'
 
-export async function startHttpServer(port: number, host?: string, opts?: { earlyStart?: boolean }): Promise<import("http").Server> {
-    const app = createBasicApp();
+export async function startHttpServer(
+    port: number,
+    host?: string,
+    opts?: { earlyStart?: boolean },
+): Promise<import('http').Server> {
+    const app = createBasicApp()
 
     return new Promise((resolve) => {
-        const bindHost = host ?? config.server.host;
+        const bindHost = host ?? config.server.host
         const server = app.listen(port, bindHost, async () => {
-            logger.info(`HTTP server listening on ${bindHost}:${port}`);
+            logger.info(`HTTP server listening on ${bindHost}:${port}`)
 
             // Attach WebSocket server for MCP remote transport when enabled via MCP_API_KEY
             const mcpKey = config.security.mcpApiKey
@@ -180,20 +247,38 @@ export async function startHttpServer(port: number, host?: string, opts?: { earl
                 const wss = new WebSocketServer({ server, path: '/mcp/ws' })
                 wss.on('connection', (ws, req) => {
                     try {
-                        const auth = (req.headers.authorization || '').toString()
+                        const auth = (
+                            req.headers.authorization || ''
+                        ).toString()
                         if (auth !== `Bearer ${mcpKey}`) {
                             ws.close(1008, 'unauthorized')
-                            logger.error('mcp ws: unauthorized connection attempt')
+                            logger.error(
+                                'mcp ws: unauthorized connection attempt',
+                            )
                             return
                         }
 
                         const transport = new WsServerTransport(ws as any)
                         // We will import the MCP server lazily so this module doesn't need a direct dependency cycle
-                        import('../server.js').then((mod) => {
-                            // create a temporary server instance for this connection
-                            const serverInstance = mod.createServer()
-                            serverInstance.connect(transport).catch((err) => logger.error('mcp ws connect failed', err))
-                        }).catch((err) => logger.error('failed to load MCP server for ws connection', err))
+                        import('../server.js')
+                            .then((mod) => {
+                                // create a temporary server instance for this connection
+                                const serverInstance = mod.createServer()
+                                serverInstance
+                                    .connect(transport)
+                                    .catch((err) =>
+                                        logger.error(
+                                            'mcp ws connect failed',
+                                            err,
+                                        ),
+                                    )
+                            })
+                            .catch((err) =>
+                                logger.error(
+                                    'failed to load MCP server for ws connection',
+                                    err,
+                                ),
+                            )
                     } catch (err) {
                         logger.error('error handling mcp ws connection', err)
                         ws.close(1011, 'internal error')
@@ -207,9 +292,11 @@ export async function startHttpServer(port: number, host?: string, opts?: { earl
             // Register MCP HTTP transport immediately — no DB dependency at route-registration
             // time. Tool handlers that need Prisma will lazily call initPrisma themselves.
             try {
-                const mod = await import('./mcp-http.js');
-                mod.registerMcpHttp(app);
-                logger.info('registered MCP HTTP transport (routes mounted at /mcp)');
+                const mod = await import('./mcp-http.js')
+                mod.registerMcpHttp(app)
+                logger.info(
+                    'registered MCP HTTP transport (routes mounted at /mcp)',
+                )
             } catch (err) {
                 logger.error('failed to register MCP HTTP transport', err)
             }
@@ -221,11 +308,14 @@ export async function startHttpServer(port: number, host?: string, opts?: { earl
             const initAndRegister = async () => {
                 try {
                     logger.info('Starting DB initialization')
-                    await initPrisma();
+                    await initPrisma()
                     try {
                         await registerDbDependentRoutes(app)
                     } catch (err) {
-                        logger.error('Error registering DB-dependent routes', err)
+                        logger.error(
+                            'Error registering DB-dependent routes',
+                            err,
+                        )
                     }
 
                     // Mark readiness so readiness probes return success
@@ -245,12 +335,16 @@ export async function startHttpServer(port: number, host?: string, opts?: { earl
 
             if (early) {
                 // Run init in background and return immediately
-                initAndRegister().catch(() => { /* logged above */ })
+                initAndRegister().catch(() => {
+                    /* logged above */
+                })
                 resolve(server)
             } else {
                 // Wait for full init before returning
-                initAndRegister().then(() => resolve(server)).catch(() => resolve(server))
+                initAndRegister()
+                    .then(() => resolve(server))
+                    .catch(() => resolve(server))
             }
-        });
-    });
+        })
+    })
 }

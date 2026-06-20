@@ -1,86 +1,84 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerListUsersTool } from "./list-users.js";
-import { registerGetUserTool } from "./get-user.js";
-// Book tools
-import {
-    registerCreateBookTool,
-    registerUpdateBookTool,
-    registerDeleteBookTool,
-    registerGetBookTool,
-    registerListBooksTool
-} from "./books/index.js";
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 // Author tools
 import {
     registerCreateAuthorTool,
-    registerUpdateAuthorTool,
     registerDeleteAuthorTool,
     registerGetAuthorTool,
-    registerListAuthorsTool
-} from "./authors/index.js";
-// Movie tools
+    registerListAuthorsTool,
+    registerUpdateAuthorTool,
+} from './authors/index.js'
+// Book tools
 import {
-    registerCreateMovieTool,
-    registerUpdateMovieTool,
-    registerDeleteMovieTool,
-    registerGetMovieTool,
-    registerListMoviesTool
-} from "./movies/index.js";
-
-// VideoGame tools
-import {
-    registerCreateVideoGameTool,
-    registerGetVideoGameTool,
-    registerListVideoGamesTool,
-    registerUpdateVideoGameTool,
-    registerDeleteVideoGameTool
-} from "./videogames/index.js";
-
+    registerCreateBookTool,
+    registerDeleteBookTool,
+    registerGetBookTool,
+    registerListBooksTool,
+    registerUpdateBookTool,
+} from './books/index.js'
 // ContentCreator tools
 import {
     registerCreateContentCreatorTool,
+    registerDeleteContentCreatorTool,
     registerGetContentCreatorTool,
     registerListContentCreatorsTool,
     registerUpdateContentCreatorTool,
-    registerDeleteContentCreatorTool
-} from "./content-creators/index.js";
+} from './content-creators/index.js'
+import { registerGetUserTool } from './get-user.js'
+import { registerListUsersTool } from './list-users.js'
+// Movie tools
+import {
+    registerCreateMovieTool,
+    registerDeleteMovieTool,
+    registerGetMovieTool,
+    registerListMoviesTool,
+    registerUpdateMovieTool,
+} from './movies/index.js'
+// VideoGame tools
+import {
+    registerCreateVideoGameTool,
+    registerDeleteVideoGameTool,
+    registerGetVideoGameTool,
+    registerListVideoGamesTool,
+    registerUpdateVideoGameTool,
+} from './videogames/index.js'
 
 export function registerDbTools(server: McpServer): void {
     // User tools
-    registerListUsersTool(server);
-    registerGetUserTool(server);
+    registerListUsersTool(server)
+    registerGetUserTool(server)
 
     // Book tools
-    registerCreateBookTool(server);
-    registerUpdateBookTool(server);
-    registerDeleteBookTool(server);
-    registerGetBookTool(server);
-    registerListBooksTool(server);
+    registerCreateBookTool(server)
+    registerUpdateBookTool(server)
+    registerDeleteBookTool(server)
+    registerGetBookTool(server)
+    registerListBooksTool(server)
 
     // Author tools
-    registerCreateAuthorTool(server);
-    registerUpdateAuthorTool(server);
-    registerDeleteAuthorTool(server);
-    registerGetAuthorTool(server);
-    registerListAuthorsTool(server);
+    registerCreateAuthorTool(server)
+    registerUpdateAuthorTool(server)
+    registerDeleteAuthorTool(server)
+    registerGetAuthorTool(server)
+    registerListAuthorsTool(server)
 
     // Movie tools
-    registerCreateMovieTool(server);
-    registerUpdateMovieTool(server);
-    registerDeleteMovieTool(server);
-    registerGetMovieTool(server);
-    registerListMoviesTool(server);
+    registerCreateMovieTool(server)
+    registerUpdateMovieTool(server)
+    registerDeleteMovieTool(server)
+    registerGetMovieTool(server)
+    registerListMoviesTool(server)
 
     // VideoGame tools
-    registerCreateVideoGameTool(server);
-    registerGetVideoGameTool(server);
-    registerListVideoGamesTool(server);
-    registerUpdateVideoGameTool(server);
-    registerDeleteVideoGameTool(server);
+    registerCreateVideoGameTool(server)
+    registerGetVideoGameTool(server)
+    registerListVideoGamesTool(server)
+    registerUpdateVideoGameTool(server)
+    registerDeleteVideoGameTool(server)
 
     // ContentCreator tools
-    registerCreateContentCreatorTool(server);
-    registerGetContentCreatorTool(server);
-    registerListContentCreatorsTool(server);
-    registerUpdateContentCreatorTool(server);
-    registerDeleteContentCreatorTool(server);
+    registerCreateContentCreatorTool(server)
+    registerGetContentCreatorTool(server)
+    registerListContentCreatorsTool(server)
+    registerUpdateContentCreatorTool(server)
+    registerDeleteContentCreatorTool(server)
 }

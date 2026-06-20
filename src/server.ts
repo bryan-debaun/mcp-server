@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 
 /**
  * Creates and configures the MCP server instance.
@@ -7,15 +7,15 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 export function createServer(): McpServer {
     const server = new McpServer(
         {
-            name: "bryan-debaun-mcp-server",
-            version: "0.1.0"
+            name: 'bryan-debaun-mcp-server',
+            version: '0.1.0',
         },
         {
             capabilities: {
-                tools: {}
-            }
-        }
-    );
+                tools: {},
+            },
+        },
+    )
 
-    return server;
+    return server
 }

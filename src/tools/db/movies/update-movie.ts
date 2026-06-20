@@ -1,39 +1,57 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerTool } from "../../registration.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { UpdateMovieInputSchema } from "./schemas.js";
-import { prisma } from "../../../db/index.js";
-import { normalizeStatusInput, statusLabel } from "../books/status.js";
-import { createSuccessResult, createErrorResult } from "../../github-issues/results.js";
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
+import { prisma } from '../../../db/index.js'
+import {
+    createErrorResult,
+    createSuccessResult,
+} from '../../github-issues/results.js'
+import { registerTool } from '../../registration.js'
+import { normalizeStatusInput, statusLabel } from '../books/status.js'
+import { UpdateMovieInputSchema } from './schemas.js'
 
-const name = "update-movie";
+const name = 'update-movie'
 const config = {
-    title: "Update Movie",
-    description: "Update an existing movie (admin only)",
-    inputSchema: UpdateMovieInputSchema
-};
+    title: 'Update Movie',
+    description: 'Update an existing movie (admin only)',
+    inputSchema: UpdateMovieInputSchema,
+}
 
 export function registerUpdateMovieTool(server: McpServer): void {
-    registerTool(server,
+    registerTool(
+        server,
         name,
         config,
         async (args: any): Promise<CallToolResult> => {
             try {
-                const { id, title, description, iasn, imdbId, releasedAt, status } = args;
-                const data: any = {};
-                if (title !== undefined) data.title = title;
-                if (description !== undefined) data.description = description;
-                if (iasn !== undefined) data.iasn = iasn;
-                if (imdbId !== undefined) data.imdbId = imdbId;
-                if (releasedAt !== undefined) data.releasedAt = releasedAt ? new Date(releasedAt) : null;
-                if (status !== undefined) data.status = normalizeStatusInput(status);
+                const {
+                    id,
+                    title,
+                    description,
+                    iasn,
+                    imdbId,
+                    releasedAt,
+                    status,
+                } = args
+                const data: any = {}
+                if (title !== undefined) data.title = title
+                if (description !== undefined) data.description = description
+                if (iasn !== undefined) data.iasn = iasn
+                if (imdbId !== undefined) data.imdbId = imdbId
+                if (releasedAt !== undefined)
+                    data.releasedAt = releasedAt ? new Date(releasedAt) : null
+                if (status !== undefined)
+                    data.status = normalizeStatusInput(status)
 
-                const movie = await prisma.movie.update({ where: { id }, data });
-                return createSuccessResult({ ...movie, statusLabel: statusLabel(movie.status) });
+                const movie = await prisma.movie.update({ where: { id }, data })
+                return createSuccessResult({
+                    ...movie,
+                    statusLabel: statusLabel(movie.status),
+                })
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                return createErrorResult(message);
+                const message =
+                    error instanceof Error ? error.message : String(error)
+                return createErrorResult(message)
             }
-        }
-    );
+        },
+    )
 }
