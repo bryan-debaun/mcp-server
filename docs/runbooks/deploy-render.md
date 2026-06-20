@@ -56,6 +56,47 @@ Health & Readiness
   - Server process is running
   - Critical subsystems (Spotify token store if persisted, metrics exporter) are reachable or in acceptable state
 - Add `/metrics` as a Prometheus-compatible endpoint for metrics scraping or export.
+- `/healthz?deep=1` additionally runs a trivial `SELECT 1` against Postgres and
+  returns `{ status, db: "ok", db_latency_ms }`. It returns `503 { db: "error" }`
+  when the DB is configured but unreachable, and `200 { db: "skipped" }` when
+  `DATABASE_URL` is unset (so CI / no-DB startups stay green). The plain
+  `/healthz` stays dependency-free and is what Render's own health check uses.
+
+Keep-alive (preventing cold starts) — issue #119
+-------------------------------------------------
+
+The service runs on Render's free web tier, which spins down after ~15 min idle
+(next request pays a ~30–60s cold start). Underneath that, the Supabase free
+project pauses after 7 days of inactivity and must be restored. Both surface as
+slow first loads for `bryandebaun.dev`, which calls this server at runtime for
+its catalog data.
+
+Mitigation — an **external scheduled ping** keeps both layers warm:
+
+- **Endpoint:** `GET /healthz?deep=1` (the deep variant — touches the DB, so the
+  same ping covers both Render spin-down and the Supabase 7-day pause).
+- **Scheduler:** a free external monitor — [cron-job.org](https://cron-job.org)
+  or UptimeRobot. (External, on purpose: Supabase's pause detector keys off
+  *external* activity, so an internal `pg_cron` self-ping does not reliably reset
+  the timer.)
+- **Cadence:** every **~10 minutes** (driven by Render's ~15-min idle window;
+  Supabase's weekly window is comfortably covered by the same schedule).
+- **Alerting:** configure the monitor to alert on non-200 so a `503 { db:
+  "error" }` (a genuine DB outage or a Supabase still restoring) is surfaced.
+
+Setup steps:
+
+1. Create a free account at cron-job.org (or UptimeRobot).
+2. Add a cron job / monitor for `https://<service-url>/healthz?deep=1` at a
+   ~10-minute interval.
+3. Enable failure notifications (email) on non-2xx responses.
+4. Verify warmth: leave the service idle >15 min, then `curl` it — the first
+   request should respond without a cold-start delay.
+
+Caveats: the self-ping consumes a small slice of Render's free monthly compute
+and a little Supabase egress (negligible at this cadence), and a keep-alive can
+mask genuine startup-latency regressions. Revisit (or move to paid tiers, which
+remove both spin-down and pause) if real traffic grows.
 
 Secrets & Token Management
 --------------------------
@@ -86,7 +127,7 @@ Logging & Monitoring
 
 - Use Render's log streaming in the dashboard for debugging and live logs.
 - Add metric counters for: `poll_success_total`, `poll_failure_total`, `intent_success_total`, `intent_failure_total`, `token_refresh_success_total`, `token_refresh_failure_total`.
-- Configure an external monitor (UptimeRobot, Pingdom) to check `/healthz` and alert on failures.
+- Configure an external monitor (cron-job.org, UptimeRobot, Pingdom) to ping `/healthz?deep=1` every ~10 min — this doubles as the keep-alive (see "Keep-alive" above) and alerts on failures.
 
 Deployment Workflow
 -------------------
