@@ -7,14 +7,27 @@ vi.mock('../../src/auth/jwt.js', () => ({
     resolveAppRole: vi.fn(),
 }))
 
+// Mock config so the api_key gate's MCP_API_KEY can be toggled per test without
+// touching process.env (config is a validated singleton loaded at import time).
+vi.mock('../../src/config.js', () => ({
+    config: { security: { mcpApiKey: undefined as string | undefined } },
+}))
+
 import { resolveAppRole, verifySupabaseJwt } from '../../src/auth/jwt.js'
+import { config } from '../../src/config.js'
 import { expressAuthentication } from '../../src/http/authentication'
 
 const mockVerify = verifySupabaseJwt as unknown as ReturnType<typeof vi.fn>
 const mockResolve = resolveAppRole as unknown as ReturnType<typeof vi.fn>
 
+const setMcpKey = (key: string | undefined) => {
+    ;(config as any).security.mcpApiKey = key
+}
+
 const reqWith = (authorization?: string) =>
     ({ headers: authorization ? { authorization } : {} }) as any
+
+const reqWithHeaders = (headers: Record<string, string>) => ({ headers }) as any
 
 describe('expressAuthentication (#117 — clean 401/403 instead of "internal error")', () => {
     beforeEach(() => {
@@ -68,7 +81,50 @@ describe('expressAuthentication (#117 — clean 401/403 instead of "internal err
 
     it('rejects an unknown security scheme', async () => {
         await expect(
-            expressAuthentication(reqWith('Bearer x'), 'apiKey'),
+            expressAuthentication(reqWith('Bearer x'), 'oauth2'),
         ).rejects.toThrow(/Unknown security name/)
+    })
+})
+
+describe('expressAuthentication api_key (#117 — spec matches deployment for reads)', () => {
+    beforeEach(() => {
+        setMcpKey(undefined)
+    })
+
+    it('passes through (open) when MCP_API_KEY is unset — keeps CI / no-DB green', async () => {
+        await expect(
+            expressAuthentication(reqWith(), 'api_key'),
+        ).resolves.toBeUndefined()
+    })
+
+    it('accepts the gateway key via the X-Mcp-Api-Key header', async () => {
+        setMcpKey('secret-key')
+        await expect(
+            expressAuthentication(
+                reqWithHeaders({ 'x-mcp-api-key': 'secret-key' }),
+                'api_key',
+            ),
+        ).resolves.toMatchObject({ apiKey: true })
+    })
+
+    it('accepts the gateway key via Authorization: Bearer', async () => {
+        setMcpKey('secret-key')
+        await expect(
+            expressAuthentication(reqWith('Bearer secret-key'), 'api_key'),
+        ).resolves.toMatchObject({ apiKey: true })
+    })
+
+    it('rejects a missing key with a clean 401 when MCP_API_KEY is set', async () => {
+        setMcpKey('secret-key')
+        await expect(
+            expressAuthentication(reqWith(), 'api_key'),
+        ).rejects.toMatchObject({ status: 401, message: 'Unauthorized' })
+    })
+
+    it('rejects a wrong key with a clean 401 (no internal error)', async () => {
+        setMcpKey('secret-key')
+        await expect(
+            expressAuthentication(reqWith('Bearer wrong'), 'api_key'),
+        ).rejects.toMatchObject({ status: 401, message: 'Unauthorized' })
     })
 })

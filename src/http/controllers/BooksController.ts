@@ -96,6 +96,7 @@ export class BooksController extends Controller {
      * @param offset Number of results to skip (default 0)
      */
     @Get()
+    @Security('api_key')
     @SuccessResponse('200', 'Books retrieved successfully')
     @Response('500', 'Internal server error')
     public async listBooks(
@@ -125,6 +126,7 @@ export class BooksController extends Controller {
      * @param id Book ID
      */
     @Get('{id}')
+    @Security('api_key')
     @SuccessResponse('200', 'Book retrieved successfully')
     @Response('404', 'Book not found')
     @Response('400', 'Invalid book ID')

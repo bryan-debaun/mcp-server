@@ -4,6 +4,7 @@ import {
     Query,
     Response,
     Route,
+    Security,
     SuccessResponse,
     Tags,
 } from 'tsoa'
@@ -50,12 +51,14 @@ export interface PlaylistsResponse {
 @Tags('Spotify')
 export class SpotifyController extends Controller {
     @Get('/now-playing')
+    @Security('api_key')
     @SuccessResponse('200', 'Current playback state')
     public async nowPlaying(): Promise<PlaybackState> {
         return getPlayback()
     }
 
     @Get('/liked')
+    @Security('api_key')
     @SuccessResponse('200', 'Currently liked tracks (Spotify)')
     @Response('500', 'Spotify adapter not configured or failed')
     public async liked(
@@ -85,6 +88,7 @@ export class SpotifyController extends Controller {
     }
 
     @Get('/playlists')
+    @Security('api_key')
     @SuccessResponse('200', 'User playlists (Spotify)')
     @Response('500', 'Spotify adapter not configured or failed')
     public async playlists(

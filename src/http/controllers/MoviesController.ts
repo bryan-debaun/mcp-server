@@ -61,6 +61,7 @@ export interface UpdateMovieRequest {
 @Tags('Movies')
 export class MoviesController extends Controller {
     @Get()
+    @Security('api_key')
     @SuccessResponse('200', 'Movies retrieved successfully')
     public async listMovies(
         @Query() status?: string,
@@ -78,6 +79,7 @@ export class MoviesController extends Controller {
     }
 
     @Get('{id}')
+    @Security('api_key')
     @SuccessResponse('200', 'Movie retrieved successfully')
     @Response('404', 'Movie not found')
     public async getMovie(@Path() id: number): Promise<Movie> {
