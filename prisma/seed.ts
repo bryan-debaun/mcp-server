@@ -1,6 +1,7 @@
 import pkg from '@prisma/client'
 const { PrismaClient } = pkg as any
 import { PrismaPg } from '@prisma/adapter-pg'
+import { cptsdArticle } from './seed-data/cptsd.js'
 
 const dbUrl = process.env.DATABASE_URL
 if (!dbUrl) {
@@ -269,13 +270,21 @@ export async function runSeed(prismaClient?: any) {
         },
     })
 
+    // Seed the one real Article data point (CPTSD), idempotently by slug.
+    const cptsd = await db.article.upsert({
+        where: { slug: cptsdArticle.slug },
+        update: {},
+        create: cptsdArticle,
+    })
+
     console.log({
         profiles: { bryanAdmin, admin },
         authors: { author1, author2 },
         books: { book1, book2, book3 },
         movies: { movie1, movie2, movie3 },
         games: { game1, game2, game3 },
-        contentCreators: { cc1, cc2, cc3 }
+        contentCreators: { cc1, cc2, cc3 },
+        articles: { cptsd }
     })
 
     // Reset sequences to ensure they're ahead of any manually-inserted IDs (fixes CI test flakes with duplicate key violations)
@@ -285,6 +294,7 @@ export async function runSeed(prismaClient?: any) {
         { table: 'Movie', sequence: 'Movie_id_seq' },
         { table: 'VideoGame', sequence: 'VideoGame_id_seq' },
         { table: 'ContentCreator', sequence: 'ContentCreator_id_seq' },
+        { table: 'Article', sequence: 'Article_id_seq' },
     ]
 
     for (const { table, sequence } of sequenceResets) {

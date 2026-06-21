@@ -28,6 +28,7 @@ const MODEL_NAMES = [
     'movie',
     'videoGame',
     'contentCreator',
+    'article',
     'rating',
 ] as const
 

@@ -1,4 +1,12 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+// Article tools
+import {
+    registerCreateArticleTool,
+    registerDeleteArticleTool,
+    registerGetArticleTool,
+    registerListArticlesTool,
+    registerUpdateArticleTool,
+} from './articles/index.js'
 // Author tools
 import {
     registerCreateAuthorTool,
@@ -81,4 +89,11 @@ export function registerDbTools(server: McpServer): void {
     registerListContentCreatorsTool(server)
     registerUpdateContentCreatorTool(server)
     registerDeleteContentCreatorTool(server)
+
+    // Article tools
+    registerCreateArticleTool(server)
+    registerUpdateArticleTool(server)
+    registerDeleteArticleTool(server)
+    registerGetArticleTool(server)
+    registerListArticlesTool(server)
 }

@@ -15,6 +15,11 @@ enum ItemStatus {
   COMPLETED
 }
 
+enum ArticleStatus {
+  draft
+  published
+}
+
 // Note: Prisma 7 requires the datasource URL to be configured in `prisma.config.ts`.
 // See `prisma.config.ts` for local dev config and CI usage.
 
@@ -125,4 +130,23 @@ model ContentCreator {
   updatedAt   DateTime @updatedAt
 
   @@index([name])
+}
+
+// DB-backed site articles (philosophy content). Drafts stay out of public
+// source and publishing doesn't require a redeploy. Public reads are
+// restricted to `published`; drafts require admin auth. See issue #120.
+model Article {
+  id          Int           @id @default(autoincrement())
+  slug        String        @unique
+  title       String
+  summary     String?
+  body        String // Markdown source
+  status      ArticleStatus @default(draft)
+  tags        String[]      @default([])
+  publishedAt DateTime?     @map("published_at")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([status])
+  @@index([publishedAt])
 }
