@@ -59,6 +59,29 @@ export function setErrorReporter(reporter: ErrorReporter | null): void {
     errorReporter = reporter
 }
 
+/** A diagnostic breadcrumb — context attached to later error reports, not an event itself. */
+export interface Breadcrumb {
+    category: string
+    message: string
+    level?: 'info' | 'warning' | 'error'
+    data?: Record<string, unknown>
+}
+
+export type BreadcrumbReporter = (crumb: Breadcrumb) => void
+
+let breadcrumbReporter: BreadcrumbReporter | null = null
+
+/**
+ * Attach (or clear) a reporter for `logger.breadcrumb` — the second observability
+ * choke point (alongside `setErrorReporter`). Lets e.g. Sentry record breadcrumbs
+ * without coupling callers to the reporter. No-op until a reporter is attached.
+ */
+export function setBreadcrumbReporter(
+    reporter: BreadcrumbReporter | null,
+): void {
+    breadcrumbReporter = reporter
+}
+
 function adapt(level: 'debug' | 'info' | 'warn' | 'error'): LogFn {
     return (...args: unknown[]) => {
         const ctx: Record<string, unknown> = {}
@@ -88,6 +111,18 @@ export const logger = {
     info: adapt('info'),
     warn: adapt('warn'),
     error: adapt('error'),
+    /**
+     * Record a diagnostic breadcrumb via the attached reporter (e.g. Sentry).
+     * No-op when no reporter is set, and never throws into the caller.
+     */
+    breadcrumb(crumb: Breadcrumb): void {
+        if (!breadcrumbReporter) return
+        try {
+            breadcrumbReporter(crumb)
+        } catch {
+            /* noop — breadcrumbs must never break the request path */
+        }
+    },
     /** The underlying pino instance, for child loggers / advanced use. */
     raw: base,
 }

@@ -128,6 +128,7 @@ Logging & Monitoring
 - Use Render's log streaming in the dashboard for debugging and live logs.
 - Add metric counters for: `poll_success_total`, `poll_failure_total`, `intent_success_total`, `intent_failure_total`, `token_refresh_success_total`, `token_refresh_failure_total`.
 - Configure an external monitor (cron-job.org, UptimeRobot, Pingdom) to ping `/healthz?deep=1` every ~10 min — this doubles as the keep-alive (see "Keep-alive" above) and alerts on failures.
+- **Admin audit trail (#37):** every successful admin catalog mutation (create/update/delete of books, authors, movies, videogames, content-creators) emits a structured `logger.info` entry tagged `audit: true` with the actor (`sub`/`email`), action, entity type + id, request id, and ip. These are log-only (no DB table); to review, filter the log stream for `"audit":true`. They do **not** raise Sentry *events* (only `logger.error` does), but when Sentry is enabled each is also recorded as a `category: "audit"` **breadcrumb**, so the recent admin-action trail is attached to any subsequent error event for context.
 
 Deployment Workflow
 -------------------
