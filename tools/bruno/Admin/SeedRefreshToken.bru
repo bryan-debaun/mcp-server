@@ -1,0 +1,132 @@
+meta {
+  name: SeedRefreshToken
+  type: http
+  seq: 1
+  tags: [
+    Admin
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/admin/spotify/oauth-callback
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "code": "",
+    "refreshToken": ""
+  }
+}
+
+docs {
+  Accept a Spotify OAuth `code` (server-side exchange) or a `refreshToken` and seed
+  the server's SPOTIFY_REFRESH_TOKEN value so the adapter can start.
+  
+  Notes:
+  - This endpoint is intended as a one-time admin helper. In production prefer setting
+    `SPOTIFY_REFRESH_TOKEN` via your host/secret manager (Render, etc.).
+  - When running in `development` this will also persist the token to `.env.local`.
+}
+
+example {
+  name: 200 Response
+  description: Refresh token seeded
+  
+  request: {
+    url: {{baseUrl}}/api/admin/spotify/oauth-callback
+    method: POST
+    mode: json
+    body:json: {
+      {
+        "code": "",
+        "refreshToken": ""
+      }
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "success": false,
+          "persistedToEnvFile": false,
+          "message": ""
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 400 Response
+  description: Invalid request
+  
+  request: {
+    url: {{baseUrl}}/api/admin/spotify/oauth-callback
+    method: POST
+    mode: json
+    body:json: {
+      {
+        "code": "",
+        "refreshToken": ""
+      }
+    }
+  }
+  
+  response: {
+    status: {
+      code: 400
+      text: Bad Request
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}
+
+example {
+  name: 500 Response
+  description: Server error
+  
+  request: {
+    url: {{baseUrl}}/api/admin/spotify/oauth-callback
+    method: POST
+    mode: json
+    body:json: {
+      {
+        "code": "",
+        "refreshToken": ""
+      }
+    }
+  }
+  
+  response: {
+    status: {
+      code: 500
+      text: Internal Server Error
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}

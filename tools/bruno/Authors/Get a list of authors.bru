@@ -1,0 +1,123 @@
+meta {
+  name: Get a list of authors
+  type: http
+  seq: 1
+  tags: [
+    Authors
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/authors
+  body: none
+  auth: apikey
+}
+
+params:query {
+  ~search: 
+  ~limit: 
+  ~offset: 
+}
+
+headers {
+  X-Mcp-Api-Key: {{apiKey}}
+}
+
+auth:apikey {
+  key: X-Mcp-Api-Key
+  value: {{apiKey}}
+  placement: header
+}
+
+docs {
+  List authors with optional filtering
+}
+
+example {
+  name: 200 Response
+  description: Authors retrieved successfully
+  
+  request: {
+    url: {{baseUrl}}/api/authors
+    method: GET
+    mode: none
+    params:query: {
+      ~search: 
+      ~limit: 
+      ~offset: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "authors": [
+            {
+              "id": 0,
+              "name": "",
+              "bio": "",
+              "createdAt": "",
+              "updatedAt": "",
+              "books": [
+                {
+                  "title": "",
+                  "id": 0
+                }
+              ]
+            }
+          ],
+          "total": 0
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 500 Response
+  description: Internal server error
+  
+  request: {
+    url: {{baseUrl}}/api/authors
+    method: GET
+    mode: none
+    params:query: {
+      ~search: 
+      ~limit: 
+      ~offset: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    status: {
+      code: 500
+      text: Internal Server Error
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}

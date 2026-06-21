@@ -1,0 +1,112 @@
+meta {
+  name: Playlists
+  type: http
+  seq: 3
+  tags: [
+    Spotify
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/spotify/playlists
+  body: none
+  auth: apikey
+}
+
+params:query {
+  ~limit: 
+  ~offset: 
+}
+
+headers {
+  X-Mcp-Api-Key: {{apiKey}}
+}
+
+auth:apikey {
+  key: X-Mcp-Api-Key
+  value: {{apiKey}}
+  placement: header
+}
+
+example {
+  name: 200 Response
+  description: User playlists (Spotify)
+  
+  request: {
+    url: {{baseUrl}}/api/spotify/playlists
+    method: GET
+    mode: none
+    params:query: {
+      ~limit: 
+      ~offset: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "items": [
+            {
+              "id": "",
+              "name": "",
+              "tracks": {
+                "total": 0
+              }
+            }
+          ],
+          "total": 0,
+          "limit": 0,
+          "offset": 0
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 500 Response
+  description: Spotify adapter not configured or failed
+  
+  request: {
+    url: {{baseUrl}}/api/spotify/playlists
+    method: GET
+    mode: none
+    params:query: {
+      ~limit: 
+      ~offset: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    status: {
+      code: 500
+      text: Internal Server Error
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}

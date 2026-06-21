@@ -1,0 +1,109 @@
+meta {
+  name: GetMovie
+  type: http
+  seq: 3
+  tags: [
+    Movies
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/movies/:id
+  body: none
+  auth: apikey
+}
+
+params:path {
+  id: 
+}
+
+headers {
+  X-Mcp-Api-Key: {{apiKey}}
+}
+
+auth:apikey {
+  key: X-Mcp-Api-Key
+  value: {{apiKey}}
+  placement: header
+}
+
+example {
+  name: 200 Response
+  description: Movie retrieved successfully
+  
+  request: {
+    url: {{baseUrl}}/api/movies/:id
+    method: GET
+    mode: none
+    params:path: {
+      id: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "id": 0,
+          "title": "",
+          "status": "",
+          "description": "",
+          "iasn": "",
+          "imdbId": "",
+          "releasedAt": "",
+          "createdAt": "",
+          "updatedAt": "",
+          "rating": 0,
+          "review": "",
+          "ratedAt": ""
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Movie not found
+  
+  request: {
+    url: {{baseUrl}}/api/movies/:id
+    method: GET
+    mode: none
+    params:path: {
+      id: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}

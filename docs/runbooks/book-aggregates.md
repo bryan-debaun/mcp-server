@@ -29,4 +29,4 @@ If `book_aggregate_update_failures_total` increases:
 
 If you need to re-run a backfill safely on production large datasets, consider copying the script to run with a throttling loop and checkpointing (currently the script iterates by id and is resumable).
 
-Note: The Postman collection has been updated to assert `averageRating` and `ratingCount` presence on relevant `Books` endpoints for smoke checks and CI validation.
+Note (historical): the `averageRating`/`ratingCount` aggregates were later removed in the single-user refactor, and API smoke checks now live in the Bruno collection (`tools/bruno/`, see [docs/bruno.md](../bruno.md)) rather than a Postman collection.

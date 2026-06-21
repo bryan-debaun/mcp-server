@@ -1,0 +1,131 @@
+meta {
+  name: UpdateVideoGame
+  type: http
+  seq: 4
+  tags: [
+    VideoGames
+  ]
+}
+
+put {
+  url: {{baseUrl}}/api/videogames/:id
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id: 
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "id": 0,
+    "title": "",
+    "platform": "",
+    "description": "",
+    "igdbId": "",
+    "releasedAt": "",
+    "status": ""
+  }
+}
+
+example {
+  name: 200 Response
+  description: Video game updated successfully
+  
+  request: {
+    url: {{baseUrl}}/api/videogames/:id
+    method: PUT
+    mode: json
+    params:path: {
+      id: 
+    }
+  
+    body:json: {
+      {
+        "id": 0,
+        "title": "",
+        "platform": "",
+        "description": "",
+        "igdbId": "",
+        "releasedAt": "",
+        "status": ""
+      }
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "id": 0,
+          "title": "",
+          "status": "",
+          "description": "",
+          "platform": "",
+          "igdbId": "",
+          "releasedAt": "",
+          "createdAt": "",
+          "updatedAt": "",
+          "rating": 0,
+          "review": "",
+          "ratedAt": ""
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Video game not found
+  
+  request: {
+    url: {{baseUrl}}/api/videogames/:id
+    method: PUT
+    mode: json
+    params:path: {
+      id: 
+    }
+  
+    body:json: {
+      {
+        "id": 0,
+        "title": "",
+        "platform": "",
+        "description": "",
+        "igdbId": "",
+        "releasedAt": "",
+        "status": ""
+      }
+    }
+  }
+  
+  response: {
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}

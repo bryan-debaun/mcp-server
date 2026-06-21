@@ -1,0 +1,24 @@
+meta {
+  name: Health (deep / keep-alive)
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/healthz?deep=1
+  body: none
+  auth: none
+}
+
+params:query {
+  deep: 1
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Deep health check (issue #119). Runs SELECT 1 to keep Render + Supabase warm.
+  Returns db: ok|skipped and db_latency_ms; 503 if a configured DB is unreachable.
+}

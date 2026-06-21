@@ -1,0 +1,84 @@
+meta {
+  name: DeleteContentCreator
+  type: http
+  seq: 5
+  tags: [
+    ContentCreators
+  ]
+}
+
+delete {
+  url: {{baseUrl}}/api/content-creators/:id
+  body: none
+  auth: bearer
+}
+
+params:path {
+  id: 
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+example {
+  name: 200 Response
+  description: Content creator deleted successfully
+  
+  request: {
+    url: {{baseUrl}}/api/content-creators/:id
+    method: DELETE
+    mode: none
+    params:path: {
+      id: 
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "success": false
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Content creator not found
+  
+  request: {
+    url: {{baseUrl}}/api/content-creators/:id
+    method: DELETE
+    mode: none
+    params:path: {
+      id: 
+    }
+  }
+  
+  response: {
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}
