@@ -1,0 +1,80 @@
+meta {
+  name: ListContentCreators
+  type: http
+  seq: 1
+  tags: [
+    ContentCreators
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/content-creators
+  body: none
+  auth: apikey
+}
+
+params:query {
+  ~search: 
+  ~limit: 
+  ~offset: 
+}
+
+headers {
+  X-Mcp-Api-Key: {{apiKey}}
+}
+
+auth:apikey {
+  key: X-Mcp-Api-Key
+  value: {{apiKey}}
+  placement: header
+}
+
+example {
+  name: 200 Response
+  description: Content creators retrieved successfully
+  
+  request: {
+    url: {{baseUrl}}/api/content-creators
+    method: GET
+    mode: none
+    params:query: {
+      ~search: 
+      ~limit: 
+      ~offset: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "creators": [
+            {
+              "id": 0,
+              "name": "",
+              "description": "",
+              "website": "",
+              "createdAt": "",
+              "updatedAt": ""
+            }
+          ],
+          "total": 0
+        }
+      '''
+    }
+  }
+}

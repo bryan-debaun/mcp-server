@@ -1,0 +1,121 @@
+meta {
+  name: Liked
+  type: http
+  seq: 2
+  tags: [
+    Spotify
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/spotify/liked
+  body: none
+  auth: apikey
+}
+
+params:query {
+  ~limit: 
+  ~offset: 
+}
+
+headers {
+  X-Mcp-Api-Key: {{apiKey}}
+}
+
+auth:apikey {
+  key: X-Mcp-Api-Key
+  value: {{apiKey}}
+  placement: header
+}
+
+example {
+  name: 200 Response
+  description: Currently liked tracks (Spotify)
+  
+  request: {
+    url: {{baseUrl}}/api/spotify/liked
+    method: GET
+    mode: none
+    params:query: {
+      ~limit: 
+      ~offset: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "items": [
+            {
+              "added_at": "",
+              "track": {
+                "duration_ms": 0,
+                "album": {
+                  "name": ""
+                },
+                "artists": [
+                  {
+                    "name": ""
+                  }
+                ],
+                "name": "",
+                "id": ""
+              }
+            }
+          ],
+          "total": 0,
+          "limit": 0,
+          "offset": 0
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 500 Response
+  description: Spotify adapter not configured or failed
+  
+  request: {
+    url: {{baseUrl}}/api/spotify/liked
+    method: GET
+    mode: none
+    params:query: {
+      ~limit: 
+      ~offset: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    status: {
+      code: 500
+      text: Internal Server Error
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}

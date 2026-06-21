@@ -1,0 +1,81 @@
+meta {
+  name: CreateVideoGame
+  type: http
+  seq: 2
+  tags: [
+    VideoGames
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/videogames
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "title": "",
+    "platform": "",
+    "description": "",
+    "igdbId": "",
+    "releasedAt": "",
+    "status": ""
+  }
+}
+
+example {
+  name: 201 Response
+  description: Video game created successfully
+  
+  request: {
+    url: {{baseUrl}}/api/videogames
+    method: POST
+    mode: json
+    body:json: {
+      {
+        "title": "",
+        "platform": "",
+        "description": "",
+        "igdbId": "",
+        "releasedAt": "",
+        "status": ""
+      }
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 201
+      text: Created
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "id": 0,
+          "title": "",
+          "status": "",
+          "description": "",
+          "platform": "",
+          "igdbId": "",
+          "releasedAt": "",
+          "createdAt": "",
+          "updatedAt": "",
+          "rating": 0,
+          "review": "",
+          "ratedAt": ""
+        }
+      '''
+    }
+  }
+}

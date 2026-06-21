@@ -1,0 +1,129 @@
+meta {
+  name: GetArticle
+  type: http
+  seq: 3
+  tags: [
+    Articles
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/articles/:slug
+  body: none
+  auth: apikey
+}
+
+params:query {
+  ~status: draft
+  ~status: published
+  ~status: all
+}
+
+params:path {
+  slug: 
+}
+
+headers {
+  X-Mcp-Api-Key: {{apiKey}}
+}
+
+auth:apikey {
+  key: X-Mcp-Api-Key
+  value: {{apiKey}}
+  placement: header
+}
+
+docs {
+  Get an article by slug (published-only unless an admin requests drafts).
+}
+
+example {
+  name: 200 Response
+  description: Article retrieved successfully
+  
+  request: {
+    url: {{baseUrl}}/api/articles/:slug
+    method: GET
+    mode: none
+    params:query: {
+      ~status: draft
+      ~status: published
+      ~status: all
+    }
+  
+    params:path: {
+      slug: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "id": 0,
+          "slug": "",
+          "title": "",
+          "summary": "",
+          "body": "",
+          "status": "draft",
+          "tags": [],
+          "publishedAt": "",
+          "createdAt": "",
+          "updatedAt": ""
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Article not found
+  
+  request: {
+    url: {{baseUrl}}/api/articles/:slug
+    method: GET
+    mode: none
+    params:query: {
+      ~status: draft
+      ~status: published
+      ~status: all
+    }
+  
+    params:path: {
+      slug: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}

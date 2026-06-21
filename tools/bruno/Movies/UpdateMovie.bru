@@ -1,0 +1,131 @@
+meta {
+  name: UpdateMovie
+  type: http
+  seq: 4
+  tags: [
+    Movies
+  ]
+}
+
+put {
+  url: {{baseUrl}}/api/movies/:id
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id: 
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "id": 0,
+    "title": "",
+    "description": "",
+    "iasn": "",
+    "imdbId": "",
+    "releasedAt": "",
+    "status": ""
+  }
+}
+
+example {
+  name: 200 Response
+  description: Movie updated successfully
+  
+  request: {
+    url: {{baseUrl}}/api/movies/:id
+    method: PUT
+    mode: json
+    params:path: {
+      id: 
+    }
+  
+    body:json: {
+      {
+        "id": 0,
+        "title": "",
+        "description": "",
+        "iasn": "",
+        "imdbId": "",
+        "releasedAt": "",
+        "status": ""
+      }
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "id": 0,
+          "title": "",
+          "status": "",
+          "description": "",
+          "iasn": "",
+          "imdbId": "",
+          "releasedAt": "",
+          "createdAt": "",
+          "updatedAt": "",
+          "rating": 0,
+          "review": "",
+          "ratedAt": ""
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Movie not found
+  
+  request: {
+    url: {{baseUrl}}/api/movies/:id
+    method: PUT
+    mode: json
+    params:path: {
+      id: 
+    }
+  
+    body:json: {
+      {
+        "id": 0,
+        "title": "",
+        "description": "",
+        "iasn": "",
+        "imdbId": "",
+        "releasedAt": "",
+        "status": ""
+      }
+    }
+  }
+  
+  response: {
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}

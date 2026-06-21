@@ -1,0 +1,144 @@
+meta {
+  name: Get a list of books
+  type: http
+  seq: 1
+  tags: [
+    Books
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/books
+  body: none
+  auth: apikey
+}
+
+params:query {
+  ~authorId: 
+  ~minRating: 
+  ~search: 
+  ~status: NOT_STARTED
+  ~status: IN_PROGRESS
+  ~status: COMPLETED
+  ~limit: 
+  ~offset: 
+}
+
+headers {
+  X-Mcp-Api-Key: {{apiKey}}
+}
+
+auth:apikey {
+  key: X-Mcp-Api-Key
+  value: {{apiKey}}
+  placement: header
+}
+
+docs {
+  List books with optional filtering
+}
+
+example {
+  name: 200 Response
+  description: Books retrieved successfully
+  
+  request: {
+    url: {{baseUrl}}/api/books
+    method: GET
+    mode: none
+    params:query: {
+      ~authorId: 
+      ~minRating: 
+      ~search: 
+      ~status: NOT_STARTED
+      ~status: IN_PROGRESS
+      ~status: COMPLETED
+      ~limit: 
+      ~offset: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "books": [
+            {
+              "id": 0,
+              "title": "",
+              "description": "",
+              "isbn": "",
+              "publishedAt": "",
+              "status": "NOT_STARTED",
+              "createdAt": "",
+              "updatedAt": "",
+              "rating": 0,
+              "review": "",
+              "ratedAt": "",
+              "authors": [
+                {
+                  "name": "",
+                  "id": 0
+                }
+              ]
+            }
+          ],
+          "total": 0
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 500 Response
+  description: Internal server error
+  
+  request: {
+    url: {{baseUrl}}/api/books
+    method: GET
+    mode: none
+    params:query: {
+      ~authorId: 
+      ~minRating: 
+      ~search: 
+      ~status: NOT_STARTED
+      ~status: IN_PROGRESS
+      ~status: COMPLETED
+      ~limit: 
+      ~offset: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    status: {
+      code: 500
+      text: Internal Server Error
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}

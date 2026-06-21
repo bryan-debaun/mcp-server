@@ -1,0 +1,88 @@
+meta {
+  name: ListMovies
+  type: http
+  seq: 1
+  tags: [
+    Movies
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/movies
+  body: none
+  auth: apikey
+}
+
+params:query {
+  ~status: 
+  ~search: 
+  ~limit: 
+  ~offset: 
+}
+
+headers {
+  X-Mcp-Api-Key: {{apiKey}}
+}
+
+auth:apikey {
+  key: X-Mcp-Api-Key
+  value: {{apiKey}}
+  placement: header
+}
+
+example {
+  name: 200 Response
+  description: Movies retrieved successfully
+  
+  request: {
+    url: {{baseUrl}}/api/movies
+    method: GET
+    mode: none
+    params:query: {
+      ~status: 
+      ~search: 
+      ~limit: 
+      ~offset: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "movies": [
+            {
+              "id": 0,
+              "title": "",
+              "status": "",
+              "description": "",
+              "iasn": "",
+              "imdbId": "",
+              "releasedAt": "",
+              "createdAt": "",
+              "updatedAt": "",
+              "rating": 0,
+              "review": "",
+              "ratedAt": ""
+            }
+          ],
+          "total": 0
+        }
+      '''
+    }
+  }
+}

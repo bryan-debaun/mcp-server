@@ -1,0 +1,172 @@
+meta {
+  name: Delete a book by ID
+  type: http
+  seq: 5
+  tags: [
+    Books
+  ]
+}
+
+delete {
+  url: {{baseUrl}}/api/books/:id
+  body: none
+  auth: bearer
+}
+
+params:path {
+  id: 
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Delete a book (admin only)
+}
+
+example {
+  name: 200 Response
+  description: Book deleted successfully
+  
+  request: {
+    url: {{baseUrl}}/api/books/:id
+    method: DELETE
+    mode: none
+    params:path: {
+      id: 
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "success": false
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 400 Response
+  description: Invalid book ID
+  
+  request: {
+    url: {{baseUrl}}/api/books/:id
+    method: DELETE
+    mode: none
+    params:path: {
+      id: 
+    }
+  }
+  
+  response: {
+    status: {
+      code: 400
+      text: Bad Request
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}
+
+example {
+  name: 401 Response
+  description: Unauthorized
+  
+  request: {
+    url: {{baseUrl}}/api/books/:id
+    method: DELETE
+    mode: none
+    params:path: {
+      id: 
+    }
+  }
+  
+  response: {
+    status: {
+      code: 401
+      text: Unauthorized
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Book not found
+  
+  request: {
+    url: {{baseUrl}}/api/books/:id
+    method: DELETE
+    mode: none
+    params:path: {
+      id: 
+    }
+  }
+  
+  response: {
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}
+
+example {
+  name: 500 Response
+  description: Internal server error
+  
+  request: {
+    url: {{baseUrl}}/api/books/:id
+    method: DELETE
+    mode: none
+    params:path: {
+      id: 
+    }
+  }
+  
+  response: {
+    status: {
+      code: 500
+      text: Internal Server Error
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}

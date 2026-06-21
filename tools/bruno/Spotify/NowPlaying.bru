@@ -1,0 +1,65 @@
+meta {
+  name: NowPlaying
+  type: http
+  seq: 1
+  tags: [
+    Spotify
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/spotify/now-playing
+  body: none
+  auth: apikey
+}
+
+headers {
+  X-Mcp-Api-Key: {{apiKey}}
+}
+
+auth:apikey {
+  key: X-Mcp-Api-Key
+  value: {{apiKey}}
+  placement: header
+}
+
+example {
+  name: 200 Response
+  description: Current playback state
+  
+  request: {
+    url: {{baseUrl}}/api/spotify/now-playing
+    method: GET
+    mode: none
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "shuffle_state": false,
+          "repeat_state": "track",
+          "device": "",
+          "track": "",
+          "progress_ms": 0,
+          "is_playing": false,
+          "timestamp": "",
+          "source": "spotify"
+        }
+      '''
+    }
+  }
+}

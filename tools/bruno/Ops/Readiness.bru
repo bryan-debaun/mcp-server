@@ -1,0 +1,19 @@
+meta {
+  name: Readiness
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/readyz
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Readiness probe. 200 once the app is ready to serve; 503 while initializing.
+}

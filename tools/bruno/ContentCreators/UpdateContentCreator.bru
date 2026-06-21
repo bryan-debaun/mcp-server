@@ -1,0 +1,116 @@
+meta {
+  name: UpdateContentCreator
+  type: http
+  seq: 4
+  tags: [
+    ContentCreators
+  ]
+}
+
+put {
+  url: {{baseUrl}}/api/content-creators/:id
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id: 
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "id": 0,
+    "name": "",
+    "description": "",
+    "website": ""
+  }
+}
+
+example {
+  name: 200 Response
+  description: Content creator updated successfully
+  
+  request: {
+    url: {{baseUrl}}/api/content-creators/:id
+    method: PUT
+    mode: json
+    params:path: {
+      id: 
+    }
+  
+    body:json: {
+      {
+        "id": 0,
+        "name": "",
+        "description": "",
+        "website": ""
+      }
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "id": 0,
+          "name": "",
+          "description": "",
+          "website": "",
+          "createdAt": "",
+          "updatedAt": ""
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Content creator not found
+  
+  request: {
+    url: {{baseUrl}}/api/content-creators/:id
+    method: PUT
+    mode: json
+    params:path: {
+      id: 
+    }
+  
+    body:json: {
+      {
+        "id": 0,
+        "name": "",
+        "description": "",
+        "website": ""
+      }
+    }
+  }
+  
+  response: {
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}

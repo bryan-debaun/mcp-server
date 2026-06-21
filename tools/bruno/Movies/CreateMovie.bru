@@ -1,0 +1,81 @@
+meta {
+  name: CreateMovie
+  type: http
+  seq: 2
+  tags: [
+    Movies
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/movies
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "title": "",
+    "description": "",
+    "iasn": "",
+    "imdbId": "",
+    "releasedAt": "",
+    "status": ""
+  }
+}
+
+example {
+  name: 201 Response
+  description: Movie created successfully
+  
+  request: {
+    url: {{baseUrl}}/api/movies
+    method: POST
+    mode: json
+    body:json: {
+      {
+        "title": "",
+        "description": "",
+        "iasn": "",
+        "imdbId": "",
+        "releasedAt": "",
+        "status": ""
+      }
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 201
+      text: Created
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "id": 0,
+          "title": "",
+          "status": "",
+          "description": "",
+          "iasn": "",
+          "imdbId": "",
+          "releasedAt": "",
+          "createdAt": "",
+          "updatedAt": "",
+          "rating": 0,
+          "review": "",
+          "ratedAt": ""
+        }
+      '''
+    }
+  }
+}

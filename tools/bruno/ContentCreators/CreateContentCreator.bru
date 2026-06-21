@@ -1,0 +1,69 @@
+meta {
+  name: CreateContentCreator
+  type: http
+  seq: 2
+  tags: [
+    ContentCreators
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/content-creators
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "name": "",
+    "description": "",
+    "website": ""
+  }
+}
+
+example {
+  name: 201 Response
+  description: Content creator created successfully
+  
+  request: {
+    url: {{baseUrl}}/api/content-creators
+    method: POST
+    mode: json
+    body:json: {
+      {
+        "name": "",
+        "description": "",
+        "website": ""
+      }
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 201
+      text: Created
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "id": 0,
+          "name": "",
+          "description": "",
+          "website": "",
+          "createdAt": "",
+          "updatedAt": ""
+        }
+      '''
+    }
+  }
+}

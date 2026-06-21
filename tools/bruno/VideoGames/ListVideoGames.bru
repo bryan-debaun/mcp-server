@@ -1,0 +1,88 @@
+meta {
+  name: ListVideoGames
+  type: http
+  seq: 1
+  tags: [
+    VideoGames
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/videogames
+  body: none
+  auth: apikey
+}
+
+params:query {
+  ~platform: 
+  ~search: 
+  ~limit: 
+  ~offset: 
+}
+
+headers {
+  X-Mcp-Api-Key: {{apiKey}}
+}
+
+auth:apikey {
+  key: X-Mcp-Api-Key
+  value: {{apiKey}}
+  placement: header
+}
+
+example {
+  name: 200 Response
+  description: Video games retrieved successfully
+  
+  request: {
+    url: {{baseUrl}}/api/videogames
+    method: GET
+    mode: none
+    params:query: {
+      ~platform: 
+      ~search: 
+      ~limit: 
+      ~offset: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "videoGames": [
+            {
+              "id": 0,
+              "title": "",
+              "status": "",
+              "description": "",
+              "platform": "",
+              "igdbId": "",
+              "releasedAt": "",
+              "createdAt": "",
+              "updatedAt": "",
+              "rating": 0,
+              "review": "",
+              "ratedAt": ""
+            }
+          ],
+          "total": 0
+        }
+      '''
+    }
+  }
+}

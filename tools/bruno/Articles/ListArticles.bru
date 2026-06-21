@@ -1,0 +1,96 @@
+meta {
+  name: ListArticles
+  type: http
+  seq: 1
+  tags: [
+    Articles
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/articles
+  body: none
+  auth: apikey
+}
+
+params:query {
+  ~status: draft
+  ~status: published
+  ~status: all
+  ~tag: 
+  ~search: 
+  ~limit: 
+  ~offset: 
+}
+
+headers {
+  X-Mcp-Api-Key: {{apiKey}}
+}
+
+auth:apikey {
+  key: X-Mcp-Api-Key
+  value: {{apiKey}}
+  placement: header
+}
+
+docs {
+  List articles (published-only unless an admin requests drafts).
+}
+
+example {
+  name: 200 Response
+  description: Articles retrieved successfully
+  
+  request: {
+    url: {{baseUrl}}/api/articles
+    method: GET
+    mode: none
+    params:query: {
+      ~status: draft
+      ~status: published
+      ~status: all
+      ~tag: 
+      ~search: 
+      ~limit: 
+      ~offset: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "articles": [
+            {
+              "id": 0,
+              "slug": "",
+              "title": "",
+              "summary": "",
+              "body": "",
+              "status": "draft",
+              "tags": [],
+              "publishedAt": "",
+              "createdAt": "",
+              "updatedAt": ""
+            }
+          ],
+          "total": 0
+        }
+      '''
+    }
+  }
+}
