@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/node'
 import { config } from './config.js'
-import { logger, setErrorReporter } from './logger.js'
+import { logger, setBreadcrumbReporter, setErrorReporter } from './logger.js'
 
 let initialized = false
 
@@ -56,6 +56,17 @@ export function initSentry(): void {
         } else {
             Sentry.captureMessage(message || 'error', 'error')
         }
+    })
+
+    // Bridge: record breadcrumbs (e.g. admin audit events) so the recent trail is
+    // attached to any subsequent error event, without raising events themselves.
+    setBreadcrumbReporter((crumb) => {
+        Sentry.addBreadcrumb({
+            category: crumb.category,
+            message: crumb.message,
+            level: crumb.level ?? 'info',
+            data: scrub(crumb.data ?? {}) as Record<string, unknown>,
+        })
     })
 
     logger.info('Sentry error reporting initialized', {

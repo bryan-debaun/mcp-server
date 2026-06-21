@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { config } from '../src/config.js'
-import { logger, setErrorReporter } from '../src/logger.js'
+import {
+    logger,
+    setBreadcrumbReporter,
+    setErrorReporter,
+} from '../src/logger.js'
 import { initSentry } from '../src/sentry.js'
 
 describe('Sentry / logger error bridge', () => {
@@ -29,6 +33,41 @@ describe('Sentry / logger error bridge', () => {
         logger.debug('details')
 
         expect(reporter).not.toHaveBeenCalled()
+    })
+
+    it('logger.breadcrumb invokes an attached breadcrumb reporter', () => {
+        const reporter = vi.fn()
+        setBreadcrumbReporter(reporter)
+        try {
+            logger.breadcrumb({ category: 'audit', message: 'create book #1' })
+            expect(reporter).toHaveBeenCalledTimes(1)
+            expect(reporter.mock.calls[0][0]).toMatchObject({
+                category: 'audit',
+                message: 'create book #1',
+            })
+        } finally {
+            setBreadcrumbReporter(null)
+        }
+    })
+
+    it('logger.breadcrumb is a silent no-op when no reporter is attached', () => {
+        setBreadcrumbReporter(null)
+        expect(() =>
+            logger.breadcrumb({ category: 'audit', message: 'x' }),
+        ).not.toThrow()
+    })
+
+    it('a throwing breadcrumb reporter never propagates into the caller', () => {
+        setBreadcrumbReporter(() => {
+            throw new Error('reporter blew up')
+        })
+        try {
+            expect(() =>
+                logger.breadcrumb({ category: 'audit', message: 'x' }),
+            ).not.toThrow()
+        } finally {
+            setBreadcrumbReporter(null)
+        }
     })
 
     it('initSentry is a no-op when no DSN is configured (does not install a reporter)', () => {

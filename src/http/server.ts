@@ -9,6 +9,7 @@ import {
     httpRequestsTotal,
     registerMetricsRoute,
 } from './metrics-route.js'
+import { auditAdminCatalogMutations } from './middleware/audit.js'
 import { registerPlaybackRoute } from './playback-route.js'
 import { registerSwaggerRoute } from './swagger-route.js'
 import { RegisterRoutes } from './tsoa-routes.js'
@@ -62,6 +63,8 @@ export async function createHttpApp(): Promise<express.Application> {
     } catch (e) {
         logger.error('failed to register spotify-route', e)
     }
+    // Audit admin catalog mutations (one place; logs successful writes) — #37
+    app.use(auditAdminCatalogMutations)
     // Register tsoa-generated routes
     RegisterRoutes(app)
 
@@ -194,6 +197,9 @@ export async function registerDbDependentRoutes(app: any) {
     } catch (e) {
         logger.error('failed to register spotify-route', e)
     }
+
+    // Audit admin catalog mutations (one place; logs successful writes) — #37
+    app.use(auditAdminCatalogMutations)
 
     // Register tsoa-generated routes
     RegisterRoutes(app)
