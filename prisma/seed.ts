@@ -1,25 +1,63 @@
+import { pathToFileURL } from 'node:url'
 import pkg from '@prisma/client'
 const { PrismaClient } = pkg as any
 import { PrismaPg } from '@prisma/adapter-pg'
 import { cptsdArticle } from './seed-data/cptsd.js'
 
-const dbUrl = process.env.DATABASE_URL
-if (!dbUrl) {
-    throw new Error('DATABASE_URL environment variable is required for seeding')
+// Lazily construct the real client so importing this module (e.g. from tests
+// that inject a mock `db`) has no side effects and doesn't require DATABASE_URL.
+let _prisma: any
+function getPrisma() {
+    if (!_prisma) {
+        const dbUrl = process.env.DATABASE_URL
+        if (!dbUrl) {
+            throw new Error(
+                'DATABASE_URL environment variable is required for seeding',
+            )
+        }
+        _prisma = new PrismaClient({
+            adapter: new PrismaPg({ connectionString: dbUrl }),
+        })
+    }
+    return _prisma
 }
 
-const adapter = new PrismaPg({ connectionString: dbUrl })
-const prisma = new PrismaClient({ adapter })
+/**
+ * Upsert canonical, hand-curated content that must exist in every environment
+ * (currently the published CPTSD article). This runs regardless of the
+ * sample-data presence guard below: that guard short-circuits the bulk demo data
+ * (ADR-0008), but canonical content added after a DB was first seeded must still
+ * reach it via the deploy-time seed. Idempotent; tolerant of a not-yet-migrated
+ * table so it never breaks the rest of the seed.
+ */
+async function ensureCanonicalContent(db: any) {
+    try {
+        await db.article.upsert({
+            where: { slug: cptsdArticle.slug },
+            update: {},
+            create: cptsdArticle,
+        })
+        console.log('Ensured canonical article:', cptsdArticle.slug)
+    } catch (err) {
+        console.error(
+            'Failed to ensure canonical article (is the Article table migrated?):',
+            err,
+        )
+    }
+}
 
 export async function runSeed(prismaClient?: any) {
-    const db = prismaClient ?? prisma
+    const db = prismaClient ?? getPrisma()
 
-    // Quick presence check to avoid re-seeding on every cold start.
-    // Check if Bryan's admin profile exists as the canonical marker.
+    // Canonical content is ensured on every run, even when the DB is already seeded.
+    await ensureCanonicalContent(db)
+
+    // Quick presence check to avoid re-seeding bulk sample data on every cold
+    // start. Bryan's admin profile is the canonical marker.
     try {
         const existingAdmin = await db.profile.findUnique({ where: { email: 'brn.dbn@gmail.com' } })
         if (existingAdmin) {
-            console.log('DB already seeded; skipping.')
+            console.log('DB already seeded; skipping sample data.')
             return
         }
     } catch (err) {
@@ -270,12 +308,8 @@ export async function runSeed(prismaClient?: any) {
         },
     })
 
-    // Seed the one real Article data point (CPTSD), idempotently by slug.
-    const cptsd = await db.article.upsert({
-        where: { slug: cptsdArticle.slug },
-        update: {},
-        create: cptsdArticle,
-    })
+    // Note: the canonical CPTSD article is upserted by ensureCanonicalContent()
+    // at the top of runSeed, so it is seeded even on an already-seeded DB.
 
     console.log({
         profiles: { bryanAdmin, admin },
@@ -283,8 +317,7 @@ export async function runSeed(prismaClient?: any) {
         books: { book1, book2, book3 },
         movies: { movie1, movie2, movie3 },
         games: { game1, game2, game3 },
-        contentCreators: { cc1, cc2, cc3 },
-        articles: { cptsd }
+        contentCreators: { cc1, cc2, cc3 }
     })
 
     // Reset sequences to ensure they're ahead of any manually-inserted IDs (fixes CI test flakes with duplicate key violations)
@@ -315,9 +348,16 @@ async function main() {
         console.error(e)
         process.exit(1)
     } finally {
-        await prisma.$disconnect()
+        await getPrisma().$disconnect()
     }
 }
 
-main()
+// Only run when executed directly (`node dist/seed.js` / `prisma db seed`),
+// not when imported (e.g. by tests) — importing must have no side effects.
+const isMain =
+    !!process.argv[1] &&
+    import.meta.url === pathToFileURL(process.argv[1]).href
+if (isMain) {
+    main()
+}
 
