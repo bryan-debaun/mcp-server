@@ -1,0 +1,138 @@
+meta {
+  name: GetAnalytics
+  type: http
+  seq: 3
+  tags: [
+    Bets
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/bets/analytics
+  body: none
+  auth: apikey
+}
+
+params:query {
+  ~source: INTUITION
+  ~source: AI_ASSISTED
+  ~sport: 
+  ~market: moneyline
+  ~market: spread
+  ~market: total
+  ~market: prop
+  ~market: parlay
+  ~from: 
+  ~to: 
+}
+
+headers {
+  X-Mcp-Api-Key: {{apiKey}}
+}
+
+auth:apikey {
+  key: X-Mcp-Api-Key
+  value: {{apiKey}}
+  placement: header
+}
+
+docs {
+  Performance analytics (ROI, hit-rate, units, CLV) segmented by source —
+  the intuition-vs-AI scoreboard. Declared before `{id}` to avoid a route clash.
+}
+
+example {
+  name: 200 Response
+  description: Analytics computed
+  
+  request: {
+    url: {{baseUrl}}/api/bets/analytics
+    method: GET
+    mode: none
+    params:query: {
+      ~source: INTUITION
+      ~source: AI_ASSISTED
+      ~sport: 
+      ~market: moneyline
+      ~market: spread
+      ~market: total
+      ~market: prop
+      ~market: parlay
+      ~from: 
+      ~to: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "overall": {
+            "count": 0,
+            "pending": 0,
+            "settled": 0,
+            "wins": 0,
+            "losses": 0,
+            "pushes": 0,
+            "voids": 0,
+            "hitRate": 0,
+            "staked": 0,
+            "profit": 0,
+            "roi": 0,
+            "units": 0,
+            "clvCount": 0,
+            "avgClvPct": 0
+          },
+          "bySource": {
+            "AI_ASSISTED": {
+              "count": 0,
+              "pending": 0,
+              "settled": 0,
+              "wins": 0,
+              "losses": 0,
+              "pushes": 0,
+              "voids": 0,
+              "hitRate": 0,
+              "staked": 0,
+              "profit": 0,
+              "roi": 0,
+              "units": 0,
+              "clvCount": 0,
+              "avgClvPct": 0
+            },
+            "INTUITION": {
+              "count": 0,
+              "pending": 0,
+              "settled": 0,
+              "wins": 0,
+              "losses": 0,
+              "pushes": 0,
+              "voids": 0,
+              "hitRate": 0,
+              "staked": 0,
+              "profit": 0,
+              "roi": 0,
+              "units": 0,
+              "clvCount": 0,
+              "avgClvPct": 0
+            }
+          }
+        }
+      '''
+    }
+  }
+}

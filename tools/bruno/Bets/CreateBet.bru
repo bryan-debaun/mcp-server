@@ -1,0 +1,240 @@
+meta {
+  name: CreateBet
+  type: http
+  seq: 2
+  tags: [
+    Bets
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/bets
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "sport": "",
+    "event": "",
+    "market": "moneyline",
+    "selection": "",
+    "oddsAmerican": 0,
+    "stake": 0,
+    "source": "INTUITION",
+    "league": "",
+    "line": 0,
+    "book": "",
+    "placedAt": "",
+    "aiModel": "",
+    "aiRationale": "",
+    "aiEstProb": 0,
+    "aiEV": 0,
+    "legs": [
+      {
+        "event": "",
+        "selection": "",
+        "oddsAmerican": 0,
+        "line": 0
+      }
+    ],
+    "notes": ""
+  }
+}
+
+docs {
+  Log a new bet (admin only).
+}
+
+example {
+  name: 201 Response
+  description: Bet created successfully
+  
+  request: {
+    url: {{baseUrl}}/api/bets
+    method: POST
+    mode: json
+    body:json: {
+      {
+        "sport": "",
+        "event": "",
+        "market": "moneyline",
+        "selection": "",
+        "oddsAmerican": 0,
+        "stake": 0,
+        "source": "INTUITION",
+        "league": "",
+        "line": 0,
+        "book": "",
+        "placedAt": "",
+        "aiModel": "",
+        "aiRationale": "",
+        "aiEstProb": 0,
+        "aiEV": 0,
+        "legs": [
+          {
+            "event": "",
+            "selection": "",
+            "oddsAmerican": 0,
+            "line": 0
+          }
+        ],
+        "notes": ""
+      }
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 201
+      text: Created
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "id": 0,
+          "placedAt": "",
+          "sport": "",
+          "league": "",
+          "event": "",
+          "market": "moneyline",
+          "selection": "",
+          "line": 0,
+          "oddsAmerican": 0,
+          "stake": 0,
+          "book": "",
+          "status": "PENDING",
+          "settledAt": "",
+          "payout": 0,
+          "source": "INTUITION",
+          "aiModel": "",
+          "aiRationale": "",
+          "aiEstProb": 0,
+          "aiEV": 0,
+          "closingLine": 0,
+          "closingOddsAmerican": 0,
+          "legs": "",
+          "notes": "",
+          "createdAt": "",
+          "updatedAt": ""
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 400 Response
+  description: Invalid request
+  
+  request: {
+    url: {{baseUrl}}/api/bets
+    method: POST
+    mode: json
+    body:json: {
+      {
+        "sport": "",
+        "event": "",
+        "market": "moneyline",
+        "selection": "",
+        "oddsAmerican": 0,
+        "stake": 0,
+        "source": "INTUITION",
+        "league": "",
+        "line": 0,
+        "book": "",
+        "placedAt": "",
+        "aiModel": "",
+        "aiRationale": "",
+        "aiEstProb": 0,
+        "aiEV": 0,
+        "legs": [
+          {
+            "event": "",
+            "selection": "",
+            "oddsAmerican": 0,
+            "line": 0
+          }
+        ],
+        "notes": ""
+      }
+    }
+  }
+  
+  response: {
+    status: {
+      code: 400
+      text: Bad Request
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}
+
+example {
+  name: 401 Response
+  description: Unauthorized
+  
+  request: {
+    url: {{baseUrl}}/api/bets
+    method: POST
+    mode: json
+    body:json: {
+      {
+        "sport": "",
+        "event": "",
+        "market": "moneyline",
+        "selection": "",
+        "oddsAmerican": 0,
+        "stake": 0,
+        "source": "INTUITION",
+        "league": "",
+        "line": 0,
+        "book": "",
+        "placedAt": "",
+        "aiModel": "",
+        "aiRationale": "",
+        "aiEstProb": 0,
+        "aiEV": 0,
+        "legs": [
+          {
+            "event": "",
+            "selection": "",
+            "oddsAmerican": 0,
+            "line": 0
+          }
+        ],
+        "notes": ""
+      }
+    }
+  }
+  
+  response: {
+    status: {
+      code: 401
+      text: Unauthorized
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}
