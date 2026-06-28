@@ -110,6 +110,14 @@ const envSchema = z.object({
     SPOTIFY_REDIRECT_URI: z.string().url().optional(),
     SPOTIFY_POLL_INTERVAL_MS: posInt(15_000),
 
+    // ── Odds (The Odds API) ───────────────────────────────────────────────
+    ODDS_API_KEY: z.string().optional(),
+    ODDS_API_BASE: z
+        .string()
+        .url()
+        .optional()
+        .default('https://api.the-odds-api.com/v4'),
+
     // ── GitHub ────────────────────────────────────────────────────────────
     GITHUB_TOKEN: z.string().optional(),
 
@@ -250,6 +258,12 @@ export const config = {
         redirectUri: env.SPOTIFY_REDIRECT_URI,
         pollIntervalMs: env.SPOTIFY_POLL_INTERVAL_MS,
         enabled: spotifyEnabled,
+    },
+
+    odds: {
+        apiKey: env.ODDS_API_KEY,
+        baseUrl: env.ODDS_API_BASE,
+        enabled: Boolean(env.ODDS_API_KEY),
     },
 
     github: {

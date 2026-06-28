@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { registerDbTools } from './db/index.js'
 import { registerGitHubIssuesTools } from './github-issues/index.js'
 import { registerGitHubProjectsTools } from './github-projects/index.js'
+import { registerOddsTools } from './odds/index.js'
 
 /**
  * Registers all tool categories with the MCP server.
@@ -21,6 +22,9 @@ export function registerTools(server: McpServer): void {
 
     // Database tools
     registerDbTools(server)
+
+    // Odds-analysis tools (The Odds API) — #129
+    registerOddsTools(server)
 
     // Future tool categories can be added here:
     // registerGitTools(server);
