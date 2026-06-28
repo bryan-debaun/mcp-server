@@ -15,6 +15,16 @@ import {
     registerListAuthorsTool,
     registerUpdateAuthorTool,
 } from './authors/index.js'
+// Bet tools (sports-betting tracker)
+import {
+    registerBetAnalyticsTool,
+    registerCreateBetTool,
+    registerDeleteBetTool,
+    registerGetBetTool,
+    registerListBetsTool,
+    registerSettleBetTool,
+    registerUpdateBetTool,
+} from './bets/index.js'
 // Book tools
 import {
     registerCreateBookTool,
@@ -96,4 +106,13 @@ export function registerDbTools(server: McpServer): void {
     registerDeleteArticleTool(server)
     registerGetArticleTool(server)
     registerListArticlesTool(server)
+
+    // Bet tools (sports-betting tracker)
+    registerCreateBetTool(server)
+    registerUpdateBetTool(server)
+    registerGetBetTool(server)
+    registerListBetsTool(server)
+    registerDeleteBetTool(server)
+    registerSettleBetTool(server)
+    registerBetAnalyticsTool(server)
 }

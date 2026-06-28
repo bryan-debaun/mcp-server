@@ -1,0 +1,126 @@
+meta {
+  name: GetBet
+  type: http
+  seq: 4
+  tags: [
+    Bets
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/bets/:id
+  body: none
+  auth: apikey
+}
+
+params:path {
+  id: 
+}
+
+headers {
+  X-Mcp-Api-Key: {{apiKey}}
+}
+
+auth:apikey {
+  key: X-Mcp-Api-Key
+  value: {{apiKey}}
+  placement: header
+}
+
+docs {
+  Get a bet by ID.
+}
+
+example {
+  name: 200 Response
+  description: Bet retrieved successfully
+  
+  request: {
+    url: {{baseUrl}}/api/bets/:id
+    method: GET
+    mode: none
+    params:path: {
+      id: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "id": 0,
+          "placedAt": "",
+          "sport": "",
+          "league": "",
+          "event": "",
+          "market": "moneyline",
+          "selection": "",
+          "line": 0,
+          "oddsAmerican": 0,
+          "stake": 0,
+          "book": "",
+          "status": "PENDING",
+          "settledAt": "",
+          "payout": 0,
+          "source": "INTUITION",
+          "aiModel": "",
+          "aiRationale": "",
+          "aiEstProb": 0,
+          "aiEV": 0,
+          "closingLine": 0,
+          "closingOddsAmerican": 0,
+          "legs": "",
+          "notes": "",
+          "createdAt": "",
+          "updatedAt": ""
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Bet not found
+  
+  request: {
+    url: {{baseUrl}}/api/bets/:id
+    method: GET
+    mode: none
+    params:path: {
+      id: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}

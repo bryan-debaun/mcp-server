@@ -20,6 +20,27 @@ enum ArticleStatus {
   published
 }
 
+enum BetStatus {
+  PENDING
+  WON
+  LOST
+  PUSH
+  VOID
+}
+
+enum BetSource {
+  INTUITION
+  AI_ASSISTED
+}
+
+enum BetMarket {
+  moneyline
+  spread
+  total
+  prop
+  parlay
+}
+
 // Note: Prisma 7 requires the datasource URL to be configured in `prisma.config.ts`.
 // See `prisma.config.ts` for local dev config and CI usage.
 
@@ -149,4 +170,40 @@ model Article {
 
   @@index([status])
   @@index([publishedAt])
+}
+
+// Personal sports-betting tracker. Core purpose: compare bets made on intuition
+// vs. with AI assistance, graded on closing-line value (CLV) + ROI. See #127/#128.
+// Private data — admin-only at the RLS layer.
+model Bet {
+  id                  Int       @id @default(autoincrement())
+  placedAt            DateTime  @default(now()) @map("placed_at")
+  sport               String
+  league              String?
+  event               String // human-readable event description
+  market              BetMarket
+  selection           String // what was bet (team/over/player prop, etc.)
+  line                Float? // spread/total line, if applicable
+  oddsAmerican        Int       @map("odds_american") // e.g. -110, +150
+  stake               Float
+  book                String    @default("DraftKings")
+  status              BetStatus @default(PENDING)
+  settledAt           DateTime? @map("settled_at")
+  payout              Float? // total returned on a win (incl. stake)
+  source              BetSource
+  aiModel             String?   @map("ai_model")
+  aiRationale         String?   @map("ai_rationale")
+  aiEstProb           Float?    @map("ai_est_prob") // AI's estimated win prob (0..1)
+  aiEV                Float?    @map("ai_ev") // AI's estimated EV at placement
+  closingLine         Float?    @map("closing_line") // filled in Phase 2 (#129)
+  closingOddsAmerican Int?      @map("closing_odds_american")
+  legs                Json? // parlay legs, when market = parlay
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([source])
+  @@index([status])
+  @@index([sport])
+  @@index([placedAt])
 }

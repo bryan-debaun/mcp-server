@@ -1,0 +1,202 @@
+meta {
+  name: UpdateBet
+  type: http
+  seq: 5
+  tags: [
+    Bets
+  ]
+}
+
+put {
+  url: {{baseUrl}}/api/bets/:id
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id: 
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "sport": "",
+    "league": "",
+    "event": "",
+    "market": "moneyline",
+    "selection": "",
+    "line": 0,
+    "oddsAmerican": 0,
+    "stake": 0,
+    "book": "",
+    "source": "INTUITION",
+    "aiModel": "",
+    "aiRationale": "",
+    "aiEstProb": 0,
+    "aiEV": 0,
+    "closingLine": 0,
+    "closingOddsAmerican": 0,
+    "legs": [
+      {
+        "event": "",
+        "selection": "",
+        "oddsAmerican": 0,
+        "line": 0
+      }
+    ],
+    "notes": ""
+  }
+}
+
+docs {
+  Update a bet by ID (admin only) — edit details or set closing line for CLV.
+}
+
+example {
+  name: 200 Response
+  description: Bet updated successfully
+  
+  request: {
+    url: {{baseUrl}}/api/bets/:id
+    method: PUT
+    mode: json
+    params:path: {
+      id: 
+    }
+  
+    body:json: {
+      {
+        "sport": "",
+        "league": "",
+        "event": "",
+        "market": "moneyline",
+        "selection": "",
+        "line": 0,
+        "oddsAmerican": 0,
+        "stake": 0,
+        "book": "",
+        "source": "INTUITION",
+        "aiModel": "",
+        "aiRationale": "",
+        "aiEstProb": 0,
+        "aiEV": 0,
+        "closingLine": 0,
+        "closingOddsAmerican": 0,
+        "legs": [
+          {
+            "event": "",
+            "selection": "",
+            "oddsAmerican": 0,
+            "line": 0
+          }
+        ],
+        "notes": ""
+      }
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "id": 0,
+          "placedAt": "",
+          "sport": "",
+          "league": "",
+          "event": "",
+          "market": "moneyline",
+          "selection": "",
+          "line": 0,
+          "oddsAmerican": 0,
+          "stake": 0,
+          "book": "",
+          "status": "PENDING",
+          "settledAt": "",
+          "payout": 0,
+          "source": "INTUITION",
+          "aiModel": "",
+          "aiRationale": "",
+          "aiEstProb": 0,
+          "aiEV": 0,
+          "closingLine": 0,
+          "closingOddsAmerican": 0,
+          "legs": "",
+          "notes": "",
+          "createdAt": "",
+          "updatedAt": ""
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Bet not found
+  
+  request: {
+    url: {{baseUrl}}/api/bets/:id
+    method: PUT
+    mode: json
+    params:path: {
+      id: 
+    }
+  
+    body:json: {
+      {
+        "sport": "",
+        "league": "",
+        "event": "",
+        "market": "moneyline",
+        "selection": "",
+        "line": 0,
+        "oddsAmerican": 0,
+        "stake": 0,
+        "book": "",
+        "source": "INTUITION",
+        "aiModel": "",
+        "aiRationale": "",
+        "aiEstProb": 0,
+        "aiEV": 0,
+        "closingLine": 0,
+        "closingOddsAmerican": 0,
+        "legs": [
+          {
+            "event": "",
+            "selection": "",
+            "oddsAmerican": 0,
+            "line": 0
+          }
+        ],
+        "notes": ""
+      }
+    }
+  }
+  
+  response: {
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}
