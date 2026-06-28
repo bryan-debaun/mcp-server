@@ -30,7 +30,8 @@
         "prisma:dev": "prisma db push && prisma generate",
         "prisma:seed": "node dist/seed.js",
         "prisma:seed:dev": "tsx prisma/seed.ts",
-        "prisma:generate": "prisma generate"
+        "prisma:generate": "prisma generate",
+        "db:deploy": "prisma migrate deploy && node dist/seed.js"
     },
     "keywords": [
         "mcp",

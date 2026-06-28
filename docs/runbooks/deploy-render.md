@@ -48,6 +48,42 @@ Render will detect `render.yaml` and build using Docker if present. The applicat
 - Build: `pnpm install --frozen-lockfile && pnpm run build`
 - Start: `pnpm run start` (this runs `node dist/index.js`)
 
+Database migrations & seeding
+-----------------------------
+
+The app does **not** apply migrations or seed at runtime (ADR-0008; the start
+command is just `node dist/index.js`). Migrations must be applied as a deploy
+step or manually — otherwise a merged schema change (e.g. a new table) never
+reaches prod and the API serves errors for the missing relation.
+
+- **Recommended — set a Render Pre-Deploy Command** (Dashboard → service →
+  Settings → Pre-Deploy Command) to:
+
+  ```
+  pnpm run db:deploy
+  ```
+
+  which runs `prisma migrate deploy && node dist/seed.js`. Pre-Deploy runs in the
+  built image (with prod `DATABASE_URL`) before the new version goes live, so
+  every deploy applies pending migrations and ensures canonical content.
+
+- **Seeding semantics:** `prisma db seed` short-circuits the bulk sample data on
+  an already-seeded DB (ADR-0008), but `ensureCanonicalContent()` always upserts
+  canonical content (e.g. the published CPTSD article) idempotently — so newly
+  added canonical content reaches prod on the next deploy/seed.
+
+- **Manual one-off** (Dashboard → service → Shell), e.g. to apply immediately
+  without a redeploy:
+
+  ```
+  pnpm exec prisma migrate deploy
+  pnpm run prisma:seed
+  ```
+
+- Direct prod DB connections from a laptop typically time out (Supabase direct
+  connections are IPv6/pooler-only), so run these in the Render Shell rather than
+  locally.
+
 Health & Readiness
 ------------------
 
