@@ -6,10 +6,16 @@
  */
 
 // Load dotenv before reading process.env. Only in non-production — hosted
-// environments (Render) inject vars directly. Safe to call multiple times.
+// environments (Render) inject vars directly. Load `.env.local` first so its
+// values take precedence over `.env`, while real shell env vars still win over
+// both (dotenv's default `override: false` never clobbers what's already set).
+// This matches the test setup (vitest loads `.env.local`) and the conventional
+// "`.env.local` = local overrides" behavior. Safe to call multiple times.
 if (process.env.NODE_ENV !== 'production') {
     try {
-        await import('dotenv/config')
+        const { config: loadEnv } = await import('dotenv')
+        loadEnv({ path: '.env.local' })
+        loadEnv() // .env — fills anything not already set
     } catch {
         // dotenv not installed or not available; env vars provided by platform
     }
