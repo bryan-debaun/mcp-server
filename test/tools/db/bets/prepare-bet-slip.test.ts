@@ -84,6 +84,42 @@ describe('prepare-bet-slip (#130) — places nothing, prepares everything', () =
         expect(data.draftBet.legs).toHaveLength(2)
     })
 
+    it('handles a same-game parlay (legs without odds) using the combined price', async () => {
+        const { data } = await call({
+            event: 'Lakers @ Celtics (SGP)',
+            stake: 20,
+            oddsAmerican: 450, // combined SGP price (legs have no per-leg odds)
+            legs: [
+                { event: 'Lakers @ Celtics', selection: 'Tatum 30+' },
+                {
+                    event: 'Lakers @ Celtics',
+                    selection: 'Over 220.5',
+                    line: 220.5,
+                },
+            ],
+            sport: 'basketball_nba',
+        })
+        expect(data.slip.market).toBe('parlay')
+        expect(data.slip.oddsAmerican).toBe(450) // uses the provided combined price
+        expect(Number.isNaN(data.slip.oddsAmerican)).toBe(false)
+        expect(data.slip.potentialPayout).toBeCloseTo(110) // 20 * 5.5
+        expect(data.slip.caveat).toMatch(/correlat/i)
+        expect(data.draftBet.legs).toHaveLength(2)
+    })
+
+    it('errors on a same-game parlay with no per-leg odds AND no combined price', async () => {
+        const { isError, data } = await call({
+            event: 'SGP',
+            stake: 20,
+            legs: [
+                { event: 'g', selection: 'A' },
+                { event: 'g', selection: 'B' },
+            ],
+        })
+        expect(isError).toBe(true)
+        expect(String(data)).toMatch(/same-game parlay/i)
+    })
+
     it('errors when a single bet has no oddsAmerican', async () => {
         const { isError, data } = await call({
             event: 'A @ B',
