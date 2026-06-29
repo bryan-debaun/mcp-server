@@ -6,6 +6,7 @@ vi.mock('../../../src/adapters/odds/the-odds-api.js', () => ({
     getEvents: vi.fn(),
     getOdds: vi.fn(),
     getEventOdds: vi.fn(),
+    getScores: vi.fn(),
     isOddsConfigured: vi.fn(() => true),
 }))
 
@@ -15,10 +16,12 @@ import { registerDevigTool } from '../../../src/tools/odds/devig.js'
 import { registerFindArbitrageTool } from '../../../src/tools/odds/find-arbitrage.js'
 import { registerFindPositiveEvTool } from '../../../src/tools/odds/find-positive-ev.js'
 import { registerGetOddsTool } from '../../../src/tools/odds/get-odds.js'
+import { registerGetScoresTool } from '../../../src/tools/odds/get-scores.js'
 import { registerListSportsTool } from '../../../src/tools/odds/list-sports.js'
 
 const getOdds = adapter.getOdds as unknown as ReturnType<typeof vi.fn>
 const getSports = adapter.getSports as unknown as ReturnType<typeof vi.fn>
+const getScores = adapter.getScores as unknown as ReturnType<typeof vi.fn>
 
 const handlers = new Map<string, (args: any) => Promise<any>>()
 const fake: any = {
@@ -51,11 +54,13 @@ beforeAll(() => {
     registerBuildParlayTool(fake)
     registerFindPositiveEvTool(fake)
     registerFindArbitrageTool(fake)
+    registerGetScoresTool(fake)
 })
 
 beforeEach(() => {
     getOdds.mockReset()
     getSports.mockReset()
+    getScores.mockReset()
 })
 
 describe('odds tools — pure (no API)', () => {
@@ -182,5 +187,30 @@ describe('odds tools — API-backed (mocked adapter)', () => {
         expect(data.count).toBe(1)
         expect(data.arbitrage[0].isArb).toBe(true)
         expect(data.arbitrage[0].profitPct).toBeGreaterThan(0)
+    })
+
+    it('get-scores returns the results feed (for reconciliation)', async () => {
+        getScores.mockResolvedValueOnce([
+            {
+                id: 'e1',
+                sport_key: 'basketball_nba',
+                commence_time: '2026-06-28T00:00:00Z',
+                completed: true,
+                home_team: 'Home',
+                away_team: 'Away',
+                scores: [
+                    { name: 'Home', score: '110' },
+                    { name: 'Away', score: '104' },
+                ],
+                last_update: '2026-06-28T03:00:00Z',
+            },
+        ])
+        const { data } = await call('get-scores', {
+            sport: 'basketball_nba',
+            daysFrom: 1,
+        })
+        expect(data.count).toBe(1)
+        expect(data.scores[0].completed).toBe(true)
+        expect(getScores).toHaveBeenCalledWith('basketball_nba', 1)
     })
 })

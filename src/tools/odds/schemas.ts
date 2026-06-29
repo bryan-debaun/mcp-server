@@ -43,6 +43,17 @@ export const FindPositiveEvInputSchema = {
         .describe('Minimum EV per unit to report (default 0.02 = +2%)'),
 }
 
+export const GetScoresInputSchema = {
+    sport: z.string().describe('Sport key (e.g. basketball_nba)'),
+    daysFrom: z
+        .number()
+        .int()
+        .min(1)
+        .max(3)
+        .optional()
+        .describe('Include completed games from the last N days (1-3)'),
+}
+
 export const FindArbitrageInputSchema = {
     sport: z.string().describe('Sport key (e.g. basketball_nba)'),
     markets: z.string().optional().describe('Markets; default h2h'),

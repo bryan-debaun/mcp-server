@@ -22,6 +22,7 @@ import {
     registerDeleteBetTool,
     registerGetBetTool,
     registerListBetsTool,
+    registerPrepareBetSlipTool,
     registerSettleBetTool,
     registerUpdateBetTool,
 } from './bets/index.js'
@@ -115,4 +116,5 @@ export function registerDbTools(server: McpServer): void {
     registerDeleteBetTool(server)
     registerSettleBetTool(server)
     registerBetAnalyticsTool(server)
+    registerPrepareBetSlipTool(server)
 }
