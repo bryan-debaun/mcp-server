@@ -8,7 +8,14 @@ const SettleStatusEnum = z.enum(['WON', 'LOST', 'PUSH', 'VOID'])
 const LegSchema = z.object({
     event: z.string().describe('Leg event description'),
     selection: z.string().describe('Leg selection'),
-    oddsAmerican: z.number().int().describe('Leg American odds'),
+    // Optional: same-game parlays (SGPs) only expose the combined price, not
+    // per-leg odds. The bet's economics come from the top-level combined
+    // oddsAmerican; leg odds are descriptive. (#137)
+    oddsAmerican: z
+        .number()
+        .int()
+        .optional()
+        .describe('Leg American odds (optional; SGPs omit it)'),
     line: z.number().optional().describe('Leg line, if applicable'),
 })
 
@@ -111,7 +118,13 @@ const SlipLegSchema = z.object({
     label: z.string().optional().describe('Leg label'),
     event: z.string().optional().describe('Leg event'),
     selection: z.string().optional().describe('Leg selection'),
-    oddsAmerican: z.number().int().describe('Leg American odds'),
+    // Optional for same-game parlays — provide the top-level combined
+    // oddsAmerican instead (#137).
+    oddsAmerican: z
+        .number()
+        .int()
+        .optional()
+        .describe('Leg American odds (optional; SGPs omit it)'),
     line: z.number().optional(),
     fairProb: z
         .number()

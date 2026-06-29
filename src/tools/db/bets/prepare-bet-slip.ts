@@ -4,7 +4,11 @@ import {
     createErrorResult,
     createSuccessResult,
 } from '../../github-issues/results.js'
-import { americanToDecimal, buildParlay } from '../../odds/odds-math.js'
+import {
+    americanToDecimal,
+    buildParlay,
+    PARLAY_CAVEAT,
+} from '../../odds/odds-math.js'
 import { registerTool } from '../../registration.js'
 import { draftkingsLink } from './draftkings.js'
 import { PrepareBetSlipInputSchema } from './schemas.js'
@@ -43,11 +47,17 @@ export function registerPrepareBetSlipTool(server: McpServer): void {
                 } = args
 
                 const isParlay = Array.isArray(legs) && legs.length >= 2
-                let effectiveOdds: number
-                let parlay: ReturnType<typeof buildParlay> | undefined
+                const legsHaveOdds =
+                    isParlay &&
+                    legs.every((l: any) => typeof l.oddsAmerican === 'number')
 
-                if (isParlay) {
-                    parlay = buildParlay(
+                let effectiveOdds: number
+                let fp: number | null
+                let caveat: string | undefined
+
+                if (isParlay && legsHaveOdds) {
+                    // Standard parlay: derive combined odds from the legs.
+                    const parlay = buildParlay(
                         legs.map((l: any) => ({
                             oddsAmerican: l.oddsAmerican,
                             fairProb: l.fairProb,
@@ -55,6 +65,19 @@ export function registerPrepareBetSlipTool(server: McpServer): void {
                         })),
                     )
                     effectiveOdds = parlay.combinedAmerican
+                    fp = parlay.fairProb
+                    caveat = parlay.caveat
+                } else if (isParlay) {
+                    // Same-game parlay: legs lack per-leg odds, so use the
+                    // provided combined price (#137). Legs are descriptive.
+                    if (typeof oddsAmerican !== 'number') {
+                        return createErrorResult(
+                            'For a same-game parlay (legs without odds), provide the combined oddsAmerican.',
+                        )
+                    }
+                    effectiveOdds = oddsAmerican
+                    fp = fairProb ?? null
+                    caveat = PARLAY_CAVEAT
                 } else {
                     if (typeof oddsAmerican !== 'number') {
                         return createErrorResult(
@@ -62,13 +85,12 @@ export function registerPrepareBetSlipTool(server: McpServer): void {
                         )
                     }
                     effectiveOdds = oddsAmerican
+                    fp = fairProb ?? null
+                    caveat = undefined
                 }
 
                 const decimal = americanToDecimal(effectiveOdds)
                 const potentialPayout = round(stake * decimal)
-                const fp = isParlay
-                    ? (parlay?.fairProb ?? null)
-                    : (fairProb ?? null)
                 const ev = fp != null ? round(fp * decimal - 1) : null
                 const market = isParlay
                     ? 'parlay'
@@ -96,7 +118,7 @@ export function registerPrepareBetSlipTool(server: McpServer): void {
                     fairProb: fp,
                     ev,
                     edgePct: ev != null ? round(ev * 100) : null,
-                    caveat: isParlay ? parlay?.caveat : undefined,
+                    caveat,
                 }
 
                 // Exact args to log this once placed (preserves source + AI metadata).

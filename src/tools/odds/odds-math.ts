@@ -6,6 +6,12 @@ const round = (n: number, dp = 4) => {
     return Math.round(n * f) / f
 }
 
+/** Honest framing for any parlay (compounded vig + correlation risk). */
+export const PARLAY_CAVEAT =
+    "Parlays compound the books' vig and assume independent legs. " +
+    'Correlated legs are often limited/voided and erode real value — ' +
+    'treat as longshot/entertainment unless every leg is independently +EV.'
+
 /** American odds → decimal odds (total return per 1 unit staked). */
 export function americanToDecimal(odds: number): number {
     return odds > 0 ? 1 + odds / 100 : 1 + 100 / -odds
@@ -136,9 +142,6 @@ export function buildParlay(legs: ParlayLeg[]): ParlayResult {
         fairProb: fairProb != null ? round(fairProb) : null,
         ev: ev != null ? round(ev) : null,
         edgePct: ev != null ? round(ev * 100) : null,
-        caveat:
-            "Parlays compound the books' vig and assume independent legs. " +
-            'Correlated legs are often limited/voided and erode real value — ' +
-            'treat as longshot/entertainment unless every leg is independently +EV.',
+        caveat: PARLAY_CAVEAT,
     }
 }
