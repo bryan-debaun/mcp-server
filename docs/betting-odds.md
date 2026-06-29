@@ -35,3 +35,14 @@ Closing-line value is the primary intuition-vs-AI signal (#127). Capturing it:
 > "What NBA games have +EV moneylines tonight?" → `find-positive-ev sport=basketball_nba`
 > "Devig these: -110 / -110" → `devig`
 > "Build a parlay: Celtics ML -150, Over 220 -110" → `build-parlay` (returns combined odds + caveat)
+
+## Place-assist & reconciliation (Phase 3 — #130)
+
+DraftKings has **no public bet-placement (or pre-filled bet-slip) API**, and automated real-money wagering is out of scope by design. The flow is human-in-the-loop:
+
+1. **`prepare-bet-slip`** (no network, no DB) — turn a single bet or parlay legs into a ready-to-replicate slip: combined odds, implied/fair prob, EV, potential payout, the parlay caveat, a best-effort **DraftKings link** (a navigation aid to the league page — *not* a pre-filled slip), and a `draftBet` object with the exact `create-bet` args (source + AI metadata preserved).
+2. **You place it manually** on DraftKings and tap confirm.
+3. **Log it:** call `create-bet` with the returned `draftBet` (status `PENDING`).
+4. **Reconcile:** `get-scores sport=… daysFrom=1` (results feed) → `settle-bet { id, status, payout? }` (payout auto-computed on a win). `bet-analytics` then refreshes CLV/ROI by source.
+
+Nothing in this pipeline submits a wager — every bet requires a human tap on DraftKings.

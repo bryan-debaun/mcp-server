@@ -47,6 +47,12 @@ export interface OddsApiEventOdds extends OddsApiEvent {
     bookmakers: OddsApiBookmaker[]
 }
 
+export interface OddsApiScore extends OddsApiEvent {
+    completed: boolean
+    scores: { name: string; score: string }[] | null
+    last_update: string | null
+}
+
 export class OddsApiNotConfiguredError extends Error {
     constructor() {
         super('Odds API not configured: set ODDS_API_KEY')
@@ -108,6 +114,19 @@ export function getOdds(
         regions: opts.regions ?? 'us',
         markets: opts.markets ?? 'h2h',
         oddsFormat: opts.oddsFormat ?? 'american',
+    })
+}
+
+/**
+ * Recent + upcoming scores for a sport. `daysFrom` (1–3) includes completed
+ * games from the last N days — used to reconcile/settle pending bets.
+ */
+export function getScores(
+    sport: string,
+    daysFrom?: number,
+): Promise<OddsApiScore[]> {
+    return request<OddsApiScore[]>(`/sports/${sport}/scores`, {
+        daysFrom: daysFrom ? String(daysFrom) : undefined,
     })
 }
 

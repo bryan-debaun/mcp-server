@@ -106,3 +106,48 @@ export const BetAnalyticsInputSchema = {
         .describe('Only bets placed on/after (ISO 8601)'),
     to: z.string().optional().describe('Only bets placed on/before (ISO 8601)'),
 }
+
+const SlipLegSchema = z.object({
+    label: z.string().optional().describe('Leg label'),
+    event: z.string().optional().describe('Leg event'),
+    selection: z.string().optional().describe('Leg selection'),
+    oddsAmerican: z.number().int().describe('Leg American odds'),
+    line: z.number().optional(),
+    fairProb: z
+        .number()
+        .optional()
+        .describe('Leg fair win prob (0..1) → enables EV'),
+})
+
+export const PrepareBetSlipInputSchema = {
+    event: z.string().describe('Event description (e.g. "Lakers @ Celtics")'),
+    market: MarketEnum.optional().describe(
+        'Market (defaults to parlay when legs given, else moneyline)',
+    ),
+    selection: z.string().optional().describe('Selection for a single bet'),
+    line: z.number().optional().describe('Spread/total line, if applicable'),
+    oddsAmerican: z
+        .number()
+        .int()
+        .optional()
+        .describe('Required for a single bet; computed from legs for a parlay'),
+    stake: z.number().positive().describe('Amount to risk'),
+    legs: z
+        .array(SlipLegSchema)
+        .min(2)
+        .optional()
+        .describe('Parlay legs (≥2) instead of a single selection'),
+    sport: z
+        .string()
+        .optional()
+        .describe('Sport key for the DK link (e.g. basketball_nba)'),
+    source: SourceEnum.optional().describe('INTUITION or AI_ASSISTED'),
+    aiModel: z.string().optional(),
+    aiRationale: z.string().optional(),
+    aiEstProb: z.number().optional(),
+    fairProb: z
+        .number()
+        .optional()
+        .describe('Fair win prob for a single bet → enables EV'),
+    book: z.string().optional().describe('Sportsbook (default DraftKings)'),
+}
