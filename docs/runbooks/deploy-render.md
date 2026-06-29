@@ -51,38 +51,31 @@ Render will detect `render.yaml` and build using Docker if present. The applicat
 Database migrations & seeding
 -----------------------------
 
-The app does **not** apply migrations or seed at runtime (ADR-0008; the start
-command is just `node dist/index.js`). Migrations must be applied as a deploy
-step or manually — otherwise a merged schema change (e.g. a new table) never
-reaches prod and the API serves errors for the missing relation.
+**Migrations apply automatically on container boot.** The Docker `CMD` runs
+`prisma migrate deploy` before `node dist/index.js` (the `prisma` +
+`@prisma/config` packages are prod deps so the CLI survives the prod prune). So
+every deploy/restart applies pending migrations using the prod `DATABASE_URL`
+from Render's env — no paid **Pre-Deploy Command** required (Render's free tier
+doesn't offer one). It's a fast no-op when nothing is pending, and **non-fatal**:
+if the DB is unreachable at boot (e.g. a paused Supabase free project) it logs
+`[boot] prisma migrate deploy failed; starting anyway` and the server still
+starts, so health checks stay up rather than crash-looping.
 
-- **Recommended — set a Render Pre-Deploy Command** (Dashboard → service →
-  Settings → Pre-Deploy Command) to:
+- **Seeding stays manual/explicit** (ADR-0008) — boot does NOT seed (avoids
+  cold-start cost). Seed on demand via the Render Shell when needed:
 
-  ```
-  pnpm run db:deploy
-  ```
-
-  which runs `prisma migrate deploy && node dist/seed.js`. Pre-Deploy runs in the
-  built image (with prod `DATABASE_URL`) before the new version goes live, so
-  every deploy applies pending migrations and ensures canonical content.
-
-- **Seeding semantics:** `prisma db seed` short-circuits the bulk sample data on
-  an already-seeded DB (ADR-0008), but `ensureCanonicalContent()` always upserts
-  canonical content (e.g. the published CPTSD article) idempotently — so newly
-  added canonical content reaches prod on the next deploy/seed.
-
-- **Manual one-off** (Dashboard → service → Shell), e.g. to apply immediately
-  without a redeploy:
-
-  ```
-  pnpm exec prisma migrate deploy
-  pnpm run prisma:seed
+  ```sh
+  pnpm exec prisma db seed     # or: node dist/seed.js
   ```
 
-- Direct prod DB connections from a laptop typically time out (Supabase direct
-  connections are IPv6/pooler-only), so run these in the Render Shell rather than
-  locally.
+  `prisma db seed` short-circuits the bulk sample data on an already-seeded DB,
+  but `ensureCanonicalContent()` always upserts canonical content (e.g. the CPTSD
+  article) idempotently.
+
+- **Manual one-off migrate** (rarely needed now): Dashboard → service → Shell →
+  `pnpm exec prisma migrate deploy`. Direct prod DB connections from a laptop
+  time out (Supabase direct is IPv6/pooler-only), so use the Render Shell — or
+  apply via the Supabase MCP/SQL editor and reconcile `_prisma_migrations`.
 
 Health & Readiness
 ------------------

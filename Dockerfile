@@ -46,4 +46,12 @@ COPY --from=build /app/scripts ./scripts
 
 EXPOSE 8080
 ENV PORT=8080
-CMD ["node", "dist/index.js"]
+
+# Apply pending DB migrations on boot, then start. Render's free tier has no
+# Pre-Deploy Command, so this is how migrations reach prod automatically (#126
+# follow-up). `prisma` + `@prisma/config` are prod deps so the CLI survives the
+# prod prune; `migrate deploy` is a fast no-op when nothing is pending. It is
+# intentionally non-fatal: if the DB is unreachable at boot (e.g. a paused
+# Supabase free project) we log and start anyway so the API/health checks stay
+# up rather than crash-looping.
+CMD ["sh", "-c", "pnpm exec prisma migrate deploy || echo '[boot] prisma migrate deploy failed; starting anyway'; exec node dist/index.js"]
