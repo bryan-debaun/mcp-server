@@ -9,8 +9,10 @@ RUN corepack enable
 ARG DATABASE_URL
 ENV DATABASE_URL=$DATABASE_URL
 
-# Install full deps (with frozen lockfile) — leverage layer caching on lockfile changes
-COPY package.json pnpm-lock.yaml .npmrc ./
+# Install full deps (with frozen lockfile) — leverage layer caching on lockfile changes.
+# pnpm-workspace.yaml carries the pnpm 11 `allowBuilds` approval; without it the
+# strict build-script check fails the install (ERR_PNPM_IGNORED_BUILDS).
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 RUN pnpm install --frozen-lockfile
 
 # Copy source and build (prisma generate + tsoa routes + tsc + seed compile)
@@ -36,7 +38,7 @@ ENV NODE_ENV=production
 RUN corepack enable
 
 # Copy package manifests, the pruned (production) node_modules, and built artifacts
-COPY --from=build /app/package.json /app/pnpm-lock.yaml /app/.npmrc ./
+COPY --from=build /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml /app/.npmrc ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/build ./build
