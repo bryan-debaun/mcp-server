@@ -20,6 +20,14 @@ enum ArticleStatus {
   published
 }
 
+enum ResumeDownloadStatus {
+  pending
+  approved
+  denied
+  fulfilled
+  expired
+}
+
 enum BetStatus {
   PENDING
   WON
@@ -170,6 +178,28 @@ model Article {
 
   @@index([status])
   @@index([publishedAt])
+}
+
+// Gated résumé-download flow for bryandebaun.dev (#139). A user requests the
+// contact-bearing ("full") résumé; an admin approves/denies; an approval grants a
+// time-limited (72h) download window. Private data — admin + owner only at the RLS
+// layer. `expired` is computed lazily at read time (no scheduler); persisted status
+// stays approved/fulfilled until an admin or a read transitions it.
+model ResumeDownloadRequest {
+  id            String               @id @default(cuid())
+  userId        String
+  userEmail     String
+  reason        String?
+  status        ResumeDownloadStatus @default(pending)
+  adminNote     String?
+  downloadCount Int                  @default(0)
+  createdAt     DateTime             @default(now())
+  approvedAt    DateTime?
+  expiresAt     DateTime?
+
+  @@index([userId])
+  @@index([status])
+  @@index([userId, createdAt]) // supports the 3-per-trailing-30-days quota count
 }
 
 // Personal sports-betting tracker. Core purpose: compare bets made on intuition

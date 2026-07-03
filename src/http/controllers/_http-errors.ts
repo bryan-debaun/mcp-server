@@ -20,6 +20,30 @@ export function isUniqueViolation(err: any): boolean {
     )
 }
 
+/** True when a tool error indicates a per-user quota was exceeded (→ 429). */
+export function isQuotaExceeded(err: any): boolean {
+    return (
+        typeof err?.message === 'string' &&
+        err.message.toLowerCase().includes('quota exceeded')
+    )
+}
+
+/**
+ * True when a tool error indicates the entity is in a state that forbids the
+ * requested transition (→ 409), e.g. approving a non-pending request or
+ * fulfilling an unapproved/expired one.
+ */
+export function isInvalidState(err: any): boolean {
+    const m = err?.message
+    if (typeof m !== 'string') return false
+    const lowered = m.toLowerCase()
+    return (
+        lowered.startsWith('cannot ') ||
+        lowered.includes('not approved') ||
+        lowered.includes('window has expired')
+    )
+}
+
 /** Create an Error carrying an HTTP status, for handlers that throw to the framework. */
 export function httpError(
     status: number,
