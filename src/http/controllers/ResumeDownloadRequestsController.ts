@@ -17,6 +17,7 @@ import {
 import { callTool } from '../../tools/local.js'
 import {
     httpError,
+    isExpiredWindow,
     isInvalidState,
     isNotFound,
     isQuotaExceeded,
@@ -198,29 +199,27 @@ export class ResumeDownloadRequestsController extends Controller {
     }
 
     /**
-     * Record a download against the caller's own approved request. Increments
-     * downloadCount and flips status to fulfilled; only valid within the window.
+     * Record a download against an approved request and enforce the cap (#145).
+     * Server-to-server (API-key): the website's download route calls this before
+     * serving the PDF. Atomically increments downloadCount and flips status to
+     * fulfilled once the cap (3) is reached.
      * @param id Request id
      */
-    @Patch('{id}/fulfill')
-    @Security('jwt')
+    @Post('{id}/record-download')
+    @Security('api_key')
     @SuccessResponse('200', 'Download recorded')
-    @Response('401', 'Unauthorized')
     @Response('404', 'Request not found')
-    @Response('409', 'Request is not approved or the window has expired')
-    public async fulfillRequest(
-        @Request() request: ExpressRequest,
+    @Response('409', 'Download cap reached or request not approved')
+    @Response('410', 'Download window has expired')
+    public async recordDownload(
         @Path() id: string,
     ): Promise<ResumeDownloadRequest> {
-        const { userId } = this.requireUser(request)
         try {
-            const result = await callTool('fulfill-resume-download-request', {
-                id,
-                userId,
-            })
+            const result = await callTool('record-resume-download', { id })
             return result as ResumeDownloadRequest
         } catch (err: any) {
             if (isNotFound(err)) throw httpError(404, 'Request not found')
+            if (isExpiredWindow(err)) throw httpError(410, err.message)
             if (isInvalidState(err)) throw httpError(409, err.message)
             throw err
         }

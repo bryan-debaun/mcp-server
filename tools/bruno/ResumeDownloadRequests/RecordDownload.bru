@@ -1,0 +1,178 @@
+meta {
+  name: RecordDownload
+  type: http
+  seq: 6
+  tags: [
+    ResumeDownloadRequests
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/resumeDownloadRequests/:id/record-download
+  body: none
+  auth: apikey
+}
+
+params:path {
+  id: 
+}
+
+headers {
+  X-Mcp-Api-Key: {{apiKey}}
+}
+
+auth:apikey {
+  key: X-Mcp-Api-Key
+  value: {{apiKey}}
+  placement: header
+}
+
+docs {
+  Record a download against an approved request and enforce the cap (#145).
+  Server-to-server (API-key): the website's download route calls this before
+  serving the PDF. Atomically increments downloadCount and flips status to
+  fulfilled once the cap (3) is reached.
+}
+
+example {
+  name: 200 Response
+  description: Download recorded
+  
+  request: {
+    url: {{baseUrl}}/api/resumeDownloadRequests/:id/record-download
+    method: POST
+    mode: none
+    params:path: {
+      id: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "id": "",
+          "userId": "",
+          "userEmail": "",
+          "reason": "",
+          "status": "pending",
+          "adminNote": "",
+          "downloadCount": 0,
+          "createdAt": "",
+          "approvedAt": "",
+          "expiresAt": ""
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Request not found
+  
+  request: {
+    url: {{baseUrl}}/api/resumeDownloadRequests/:id/record-download
+    method: POST
+    mode: none
+    params:path: {
+      id: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}
+
+example {
+  name: 409 Response
+  description: Download cap reached or request not approved
+  
+  request: {
+    url: {{baseUrl}}/api/resumeDownloadRequests/:id/record-download
+    method: POST
+    mode: none
+    params:path: {
+      id: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    status: {
+      code: 409
+      text: Conflict
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}
+
+example {
+  name: 410 Response
+  description: Download window has expired
+  
+  request: {
+    url: {{baseUrl}}/api/resumeDownloadRequests/:id/record-download
+    method: POST
+    mode: none
+    params:path: {
+      id: 
+    }
+  
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    status: {
+      code: 410
+      text: Gone
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}

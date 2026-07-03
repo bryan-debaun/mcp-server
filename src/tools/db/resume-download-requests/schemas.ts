@@ -61,9 +61,9 @@ export const DenyResumeDownloadRequestInputSchema = {
     adminNote: z.string().optional().describe('Optional internal admin note'),
 }
 
-// `userId` scopes the fulfillment to the owner: the REST controller passes the
-// caller's JWT sub so a user can only fulfill their own approved request.
-export const FulfillResumeDownloadRequestInputSchema = {
-    id: z.string().describe('Request id to fulfill (record a download)'),
-    userId: z.string().describe('Owning user id; must match the request owner'),
+// Record a download against an approved request. Server-to-server (API-key)
+// mutation — the website's download route calls this before serving the PDF, so
+// no user identity is needed here; the cap is enforced atomically in the handler.
+export const RecordResumeDownloadInputSchema = {
+    id: z.string().describe('Request id to record a download against'),
 }

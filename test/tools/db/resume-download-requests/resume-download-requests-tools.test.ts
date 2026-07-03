@@ -10,6 +10,7 @@ vi.mock('../../../../src/db/index', () => ({
             findUnique: vi.fn(),
             create: vi.fn(),
             update: vi.fn(),
+            updateMany: vi.fn(),
         },
     },
 }))
@@ -18,9 +19,9 @@ import { prisma } from '../../../../src/db/index.js'
 import { registerApproveResumeDownloadRequestTool } from '../../../../src/tools/db/resume-download-requests/approve-resume-download-request.js'
 import { registerCreateResumeDownloadRequestTool } from '../../../../src/tools/db/resume-download-requests/create-resume-download-request.js'
 import { registerDenyResumeDownloadRequestTool } from '../../../../src/tools/db/resume-download-requests/deny-resume-download-request.js'
-import { registerFulfillResumeDownloadRequestTool } from '../../../../src/tools/db/resume-download-requests/fulfill-resume-download-request.js'
 import { registerGetResumeDownloadRequestTool } from '../../../../src/tools/db/resume-download-requests/get-resume-download-request.js'
 import { registerListResumeDownloadRequestsTool } from '../../../../src/tools/db/resume-download-requests/list-resume-download-requests.js'
+import { registerRecordResumeDownloadTool } from '../../../../src/tools/db/resume-download-requests/record-download.js'
 
 const rdr = (prisma as any).resumeDownloadRequest as Record<
     string,
@@ -54,7 +55,7 @@ beforeAll(() => {
     registerGetResumeDownloadRequestTool(fake)
     registerApproveResumeDownloadRequestTool(fake)
     registerDenyResumeDownloadRequestTool(fake)
-    registerFulfillResumeDownloadRequestTool(fake)
+    registerRecordResumeDownloadTool(fake)
 })
 
 beforeEach(() => {
@@ -181,73 +182,108 @@ describe('resume-download-request tools — approve/deny', () => {
     })
 })
 
-describe('resume-download-request tools — fulfill (owner + window)', () => {
-    it('404s when the request belongs to another user', async () => {
+describe('resume-download-request tools — record-download (cap #145)', () => {
+    it('atomically increments an approved, unexpired, under-cap request', async () => {
+        rdr.updateMany.mockResolvedValueOnce({ count: 1 })
         rdr.findUnique.mockResolvedValueOnce({
             id: 'r1',
-            userId: 'someone-else',
             status: 'approved',
+            downloadCount: 1,
             expiresAt: future(),
         })
-        const { isError, data } = await call(
-            'fulfill-resume-download-request',
-            { id: 'r1', userId: 'u1' },
-        )
-        expect(isError).toBe(true)
-        expect(String(data)).toMatch(/not found/i)
-        expect(rdr.update).not.toHaveBeenCalled()
-    })
-
-    it('rejects a request that is not approved', async () => {
-        rdr.findUnique.mockResolvedValueOnce({
+        const { isError, data } = await call('record-resume-download', {
             id: 'r1',
-            userId: 'u1',
-            status: 'pending',
-            expiresAt: future(),
         })
-        const { isError, data } = await call(
-            'fulfill-resume-download-request',
-            { id: 'r1', userId: 'u1' },
-        )
-        expect(isError).toBe(true)
-        expect(String(data)).toMatch(/not approved/i)
-    })
-
-    it('rejects once the download window has expired', async () => {
-        rdr.findUnique.mockResolvedValueOnce({
+        expect(isError).toBe(false)
+        expect(data.downloadCount).toBe(1)
+        expect(data.status).toBe('approved') // under cap → stays approved
+        // The gate is atomic: increments only an approved, unexpired, under-cap row.
+        const where = rdr.updateMany.mock.calls[0][0].where
+        expect(where).toMatchObject({
             id: 'r1',
-            userId: 'u1',
             status: 'approved',
-            expiresAt: past(),
+            downloadCount: { lt: 3 },
         })
-        const { isError, data } = await call(
-            'fulfill-resume-download-request',
-            { id: 'r1', userId: 'u1' },
-        )
-        expect(isError).toBe(true)
-        expect(String(data)).toMatch(/window has expired/i)
+        expect(where.expiresAt.gt).toBeInstanceOf(Date)
+        expect(rdr.updateMany.mock.calls[0][0].data.downloadCount).toEqual({
+            increment: 1,
+        })
+        expect(rdr.update).not.toHaveBeenCalled() // no flip below the cap
     })
 
-    it('records a download: increments count and flips to fulfilled', async () => {
+    it('flips status to fulfilled when the download reaches the cap', async () => {
+        rdr.updateMany.mockResolvedValueOnce({ count: 1 })
         rdr.findUnique.mockResolvedValueOnce({
             id: 'r1',
-            userId: 'u1',
             status: 'approved',
+            downloadCount: 3,
             expiresAt: future(),
         })
         rdr.update.mockImplementation(async ({ data }: any) => ({
             id: 'r1',
-            userId: 'u1',
+            downloadCount: 3,
             ...data,
         }))
-        const { isError, data } = await call(
-            'fulfill-resume-download-request',
-            { id: 'r1', userId: 'u1' },
-        )
-        expect(isError).toBe(false)
+        const { data } = await call('record-resume-download', { id: 'r1' })
         expect(data.status).toBe('fulfilled')
-        const arg = rdr.update.mock.calls[0][0]
-        expect(arg.where).toEqual({ id: 'r1' })
-        expect(arg.data.downloadCount).toEqual({ increment: 1 })
+        expect(rdr.update.mock.calls[0][0]).toEqual({
+            where: { id: 'r1' },
+            data: { status: 'fulfilled' },
+        })
+    })
+
+    it('404s a missing request', async () => {
+        rdr.updateMany.mockResolvedValueOnce({ count: 0 })
+        rdr.findUnique.mockResolvedValueOnce(null)
+        const { isError, data } = await call('record-resume-download', {
+            id: 'nope',
+        })
+        expect(isError).toBe(true)
+        expect(String(data)).toMatch(/not found/i)
+    })
+
+    it('rejects with cap-reached once at the cap (fulfilled row)', async () => {
+        rdr.updateMany.mockResolvedValueOnce({ count: 0 })
+        rdr.findUnique.mockResolvedValueOnce({
+            id: 'r1',
+            status: 'fulfilled',
+            downloadCount: 3,
+            expiresAt: future(),
+        })
+        const { isError, data } = await call('record-resume-download', {
+            id: 'r1',
+        })
+        expect(isError).toBe(true)
+        expect(String(data)).toMatch(/cap reached/i)
+    })
+
+    it('rejects once the download window has expired', async () => {
+        rdr.updateMany.mockResolvedValueOnce({ count: 0 })
+        rdr.findUnique.mockResolvedValueOnce({
+            id: 'r1',
+            status: 'approved',
+            downloadCount: 1,
+            expiresAt: past(),
+        })
+        const { isError, data } = await call('record-resume-download', {
+            id: 'r1',
+        })
+        expect(isError).toBe(true)
+        expect(String(data)).toMatch(/window has expired/i)
+    })
+
+    it('rejects a request that is not approved', async () => {
+        rdr.updateMany.mockResolvedValueOnce({ count: 0 })
+        rdr.findUnique.mockResolvedValueOnce({
+            id: 'r1',
+            status: 'pending',
+            downloadCount: 0,
+            expiresAt: future(),
+        })
+        const { isError, data } = await call('record-resume-download', {
+            id: 'r1',
+        })
+        expect(isError).toBe(true)
+        expect(String(data)).toMatch(/not approved/i)
     })
 })

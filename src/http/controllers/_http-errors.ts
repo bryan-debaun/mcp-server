@@ -30,8 +30,8 @@ export function isQuotaExceeded(err: any): boolean {
 
 /**
  * True when a tool error indicates the entity is in a state that forbids the
- * requested transition (→ 409), e.g. approving a non-pending request or
- * fulfilling an unapproved/expired one.
+ * requested transition (→ 409), e.g. approving a non-pending request, recording
+ * a download against an unapproved request, or hitting the download cap.
  */
 export function isInvalidState(err: any): boolean {
     const m = err?.message
@@ -40,7 +40,15 @@ export function isInvalidState(err: any): boolean {
     return (
         lowered.startsWith('cannot ') ||
         lowered.includes('not approved') ||
-        lowered.includes('window has expired')
+        lowered.includes('cap reached')
+    )
+}
+
+/** True when a tool error indicates a time-limited window has elapsed (→ 410). */
+export function isExpiredWindow(err: any): boolean {
+    return (
+        typeof err?.message === 'string' &&
+        err.message.toLowerCase().includes('window has expired')
     )
 }
 
