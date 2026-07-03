@@ -202,6 +202,16 @@ model ResumeDownloadRequest {
   @@index([userId, createdAt]) // supports the 3-per-trailing-30-days quota count
 }
 
+// DB-backed résumé, ADR-0007 Phase 3 (#147). A SINGLETON: exactly one row (id = 1,
+// enforced by a CHECK constraint in the migration). `document` holds the JSON Resume
+// structure as jsonb. `basics.privateContact` (email/phone) is stripped from public
+// reads at the application layer — see the resume tools / ResumeController.
+model Resume {
+  id        Int      @id @default(1)
+  document  Json
+  updatedAt DateTime @updatedAt
+}
+
 // Personal sports-betting tracker. Core purpose: compare bets made on intuition
 // vs. with AI assistance, graded on closing-line value (CLV) + ROI. See #127/#128.
 // Private data — admin-only at the RLS layer.

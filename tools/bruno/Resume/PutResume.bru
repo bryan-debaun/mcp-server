@@ -1,0 +1,192 @@
+meta {
+  name: PutResume
+  type: http
+  seq: 2
+  tags: [
+    Resume
+  ]
+}
+
+put {
+  url: {{baseUrl}}/api/resume
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "basics": {
+      "name": "",
+      "label": "",
+      "url": "",
+      "summary": "",
+      "privateContact": {
+        "email": "",
+        "phone": ""
+      }
+    },
+    "work": [],
+    "education": [],
+    "skills": [],
+    "projects": []
+  }
+}
+
+docs {
+  Replace the singleton résumé document (admin only).
+}
+
+example {
+  name: 200 Response
+  description: Résumé updated
+  
+  request: {
+    url: {{baseUrl}}/api/resume
+    method: PUT
+    mode: json
+    body:json: {
+      {
+        "basics": {
+          "name": "",
+          "label": "",
+          "url": "",
+          "summary": "",
+          "privateContact": {
+            "email": "",
+            "phone": ""
+          }
+        },
+        "work": [],
+        "education": [],
+        "skills": [],
+        "projects": []
+      }
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "document": {
+            "basics": {
+              "name": "",
+              "label": "",
+              "url": "",
+              "summary": "",
+              "privateContact": {
+                "email": "",
+                "phone": ""
+              }
+            },
+            "work": [],
+            "education": [],
+            "skills": [],
+            "projects": []
+          },
+          "updatedAt": ""
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 400 Response
+  description: Invalid résumé document
+  
+  request: {
+    url: {{baseUrl}}/api/resume
+    method: PUT
+    mode: json
+    body:json: {
+      {
+        "basics": {
+          "name": "",
+          "label": "",
+          "url": "",
+          "summary": "",
+          "privateContact": {
+            "email": "",
+            "phone": ""
+          }
+        },
+        "work": [],
+        "education": [],
+        "skills": [],
+        "projects": []
+      }
+    }
+  }
+  
+  response: {
+    status: {
+      code: 400
+      text: Bad Request
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}
+
+example {
+  name: 401 Response
+  description: Unauthorized
+  
+  request: {
+    url: {{baseUrl}}/api/resume
+    method: PUT
+    mode: json
+    body:json: {
+      {
+        "basics": {
+          "name": "",
+          "label": "",
+          "url": "",
+          "summary": "",
+          "privateContact": {
+            "email": "",
+            "phone": ""
+          }
+        },
+        "work": [],
+        "education": [],
+        "skills": [],
+        "projects": []
+      }
+    }
+  }
+  
+  response: {
+    status: {
+      code: 401
+      text: Unauthorized
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}

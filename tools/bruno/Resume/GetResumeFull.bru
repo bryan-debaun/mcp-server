@@ -1,0 +1,106 @@
+meta {
+  name: GetResumeFull
+  type: http
+  seq: 3
+  tags: [
+    Resume
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/resume/full
+  body: none
+  auth: apikey
+}
+
+headers {
+  X-Mcp-Api-Key: {{apiKey}}
+}
+
+auth:apikey {
+  key: X-Mcp-Api-Key
+  value: {{apiKey}}
+  placement: header
+}
+
+docs {
+  Full résumé including private contact. Server-to-server (API-key) or admin.
+}
+
+example {
+  name: 200 Response
+  description: Full résumé retrieved
+  
+  request: {
+    url: {{baseUrl}}/api/resume/full
+    method: GET
+    mode: none
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "document": {
+            "basics": {
+              "name": "",
+              "label": "",
+              "url": "",
+              "summary": "",
+              "privateContact": {
+                "email": "",
+                "phone": ""
+              }
+            },
+            "work": [],
+            "education": [],
+            "skills": [],
+            "projects": []
+          },
+          "updatedAt": ""
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Résumé not found
+  
+  request: {
+    url: {{baseUrl}}/api/resume/full
+    method: GET
+    mode: none
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}

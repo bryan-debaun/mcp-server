@@ -1,0 +1,106 @@
+meta {
+  name: GetResume
+  type: http
+  seq: 1
+  tags: [
+    Resume
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/resume
+  body: none
+  auth: apikey
+}
+
+headers {
+  X-Mcp-Api-Key: {{apiKey}}
+}
+
+auth:apikey {
+  key: X-Mcp-Api-Key
+  value: {{apiKey}}
+  placement: header
+}
+
+docs {
+  Public résumé — private contact fields removed.
+}
+
+example {
+  name: 200 Response
+  description: Résumé retrieved
+  
+  request: {
+    url: {{baseUrl}}/api/resume
+    method: GET
+    mode: none
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "document": {
+            "basics": {
+              "name": "",
+              "label": "",
+              "url": "",
+              "summary": "",
+              "privateContact": {
+                "email": "",
+                "phone": ""
+              }
+            },
+            "work": [],
+            "education": [],
+            "skills": [],
+            "projects": []
+          },
+          "updatedAt": ""
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Résumé not found
+  
+  request: {
+    url: {{baseUrl}}/api/resume
+    method: GET
+    mode: none
+    headers: {
+      X-Mcp-Api-Key: {{apiKey}}
+    }
+  }
+  
+  response: {
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}
