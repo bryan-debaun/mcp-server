@@ -1,0 +1,10 @@
+# pnpm 11 reads build-script approval from here — the package.json "pnpm" field
+# is no longer read as of pnpm 11 (see https://pnpm.io/settings). pnpm 11 also
+# replaced the onlyBuiltDependencies / ignoredBuiltDependencies lists with a single
+# allowBuilds map (package -> boolean); true = run its install/build script.
+allowBuilds:
+  '@prisma/engines': true   # native Prisma query engine — required
+  esbuild: true             # tsx / vitest binary — required
+  prisma: true              # Prisma CLI preinstall — required
+  '@scarf/scarf': false     # telemetry only
+  protobufjs: false         # optional CJS/codegen optimization; not needed at runtime
