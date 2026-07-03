@@ -1,0 +1,15 @@
+# Doppler CLI project scope for this repo.
+#
+# `doppler setup` reads this file to auto-select the Doppler project + config on
+# any machine, so the same secrets resolve on your PC and your Mac without ever
+# copying a .env file around. This file contains NO secret values — safe to commit.
+#
+# First-time setup on a machine:
+#   doppler login          # browser auth, once per machine
+#   doppler setup          # reads the block below; no interactive prompts
+#   doppler run -- pnpm dev
+#
+# Docs: https://docs.doppler.com/docs/cli  •  See docs/secrets-doppler.md
+setup:
+  project: bad-mcp
+  config: dev
