@@ -52,6 +52,15 @@ import {
     registerListMoviesTool,
     registerUpdateMovieTool,
 } from './movies/index.js'
+// Résumé-download-request tools (#139)
+import {
+    registerApproveResumeDownloadRequestTool,
+    registerCreateResumeDownloadRequestTool,
+    registerDenyResumeDownloadRequestTool,
+    registerFulfillResumeDownloadRequestTool,
+    registerGetResumeDownloadRequestTool,
+    registerListResumeDownloadRequestsTool,
+} from './resume-download-requests/index.js'
 // VideoGame tools
 import {
     registerCreateVideoGameTool,
@@ -107,6 +116,14 @@ export function registerDbTools(server: McpServer): void {
     registerDeleteArticleTool(server)
     registerGetArticleTool(server)
     registerListArticlesTool(server)
+
+    // Résumé-download-request tools (#139)
+    registerCreateResumeDownloadRequestTool(server)
+    registerListResumeDownloadRequestsTool(server)
+    registerGetResumeDownloadRequestTool(server)
+    registerApproveResumeDownloadRequestTool(server)
+    registerDenyResumeDownloadRequestTool(server)
+    registerFulfillResumeDownloadRequestTool(server)
 
     // Bet tools (sports-betting tracker)
     registerCreateBetTool(server)

@@ -1,0 +1,97 @@
+meta {
+  name: GetRequest
+  type: http
+  seq: 3
+  tags: [
+    ResumeDownloadRequests
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/resumeDownloadRequests/:id
+  body: none
+  auth: bearer
+}
+
+params:path {
+  id: 
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Get a résumé-download request by id (admin).
+}
+
+example {
+  name: 200 Response
+  description: Request retrieved
+  
+  request: {
+    url: {{baseUrl}}/api/resumeDownloadRequests/:id
+    method: GET
+    mode: none
+    params:path: {
+      id: 
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "id": "",
+          "userId": "",
+          "userEmail": "",
+          "reason": "",
+          "status": "pending",
+          "adminNote": "",
+          "downloadCount": 0,
+          "createdAt": "",
+          "approvedAt": "",
+          "expiresAt": ""
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Request not found
+  
+  request: {
+    url: {{baseUrl}}/api/resumeDownloadRequests/:id
+    method: GET
+    mode: none
+    params:path: {
+      id: 
+    }
+  }
+  
+  response: {
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}

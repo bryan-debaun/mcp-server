@@ -1,0 +1,149 @@
+meta {
+  name: ApproveRequest
+  type: http
+  seq: 4
+  tags: [
+    ResumeDownloadRequests
+  ]
+}
+
+patch {
+  url: {{baseUrl}}/api/resumeDownloadRequests/:id/approve
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id: 
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "adminNote": ""
+  }
+}
+
+docs {
+  Approve a pending request (admin). Sets approvedAt and a 72h window.
+}
+
+example {
+  name: 200 Response
+  description: Request approved
+  
+  request: {
+    url: {{baseUrl}}/api/resumeDownloadRequests/:id/approve
+    method: PATCH
+    mode: json
+    params:path: {
+      id: 
+    }
+  
+    body:json: {
+      {
+        "adminNote": ""
+      }
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "id": "",
+          "userId": "",
+          "userEmail": "",
+          "reason": "",
+          "status": "pending",
+          "adminNote": "",
+          "downloadCount": 0,
+          "createdAt": "",
+          "approvedAt": "",
+          "expiresAt": ""
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Request not found
+  
+  request: {
+    url: {{baseUrl}}/api/resumeDownloadRequests/:id/approve
+    method: PATCH
+    mode: json
+    params:path: {
+      id: 
+    }
+  
+    body:json: {
+      {
+        "adminNote": ""
+      }
+    }
+  }
+  
+  response: {
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}
+
+example {
+  name: 409 Response
+  description: Request is not pending
+  
+  request: {
+    url: {{baseUrl}}/api/resumeDownloadRequests/:id/approve
+    method: PATCH
+    mode: json
+    params:path: {
+      id: 
+    }
+  
+    body:json: {
+      {
+        "adminNote": ""
+      }
+    }
+  }
+  
+  response: {
+    status: {
+      code: 409
+      text: Conflict
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}

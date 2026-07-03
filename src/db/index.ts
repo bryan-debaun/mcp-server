@@ -29,6 +29,7 @@ const MODEL_NAMES = [
     'videoGame',
     'contentCreator',
     'article',
+    'resumeDownloadRequest',
     'bet',
     'rating',
 ] as const
@@ -39,6 +40,7 @@ function makeStubModel(fail: () => never) {
         findMany: async (_opts?: any) => [],
         findUnique: async (_opts?: any) => null,
         findFirst: async (_opts?: any) => null,
+        count: async (_opts?: any) => 0,
         create: async (_data?: any) => fail(),
         update: async (_opts?: any) => fail(),
         upsert: async (_opts?: any) => fail(),

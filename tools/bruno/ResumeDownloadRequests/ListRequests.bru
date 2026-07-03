@@ -1,0 +1,82 @@
+meta {
+  name: ListRequests
+  type: http
+  seq: 2
+  tags: [
+    ResumeDownloadRequests
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/resumeDownloadRequests
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ~status: 
+  ~userId: 
+  ~limit: 
+  ~offset: 
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  List résumé-download requests (admin).
+}
+
+example {
+  name: 200 Response
+  description: Requests retrieved
+  
+  request: {
+    url: {{baseUrl}}/api/resumeDownloadRequests
+    method: GET
+    mode: none
+    params:query: {
+      ~status: 
+      ~userId: 
+      ~limit: 
+      ~offset: 
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "requests": [
+            {
+              "id": "",
+              "userId": "",
+              "userEmail": "",
+              "reason": "",
+              "status": "pending",
+              "adminNote": "",
+              "downloadCount": 0,
+              "createdAt": "",
+              "approvedAt": "",
+              "expiresAt": ""
+            }
+          ],
+          "total": 0,
+          "limit": 0,
+          "offset": 0
+        }
+      '''
+    }
+  }
+}

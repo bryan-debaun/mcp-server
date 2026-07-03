@@ -1,0 +1,134 @@
+meta {
+  name: CreateRequest
+  type: http
+  seq: 1
+  tags: [
+    ResumeDownloadRequests
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/resumeDownloadRequests
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "reason": ""
+  }
+}
+
+docs {
+  Create a résumé-download request for the authenticated user.
+  Enforces a per-user quota (max 3 in the trailing 30 days) → 429.
+}
+
+example {
+  name: 201 Response
+  description: Request created
+  
+  request: {
+    url: {{baseUrl}}/api/resumeDownloadRequests
+    method: POST
+    mode: json
+    body:json: {
+      {
+        "reason": ""
+      }
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 201
+      text: Created
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "id": "",
+          "userId": "",
+          "userEmail": "",
+          "reason": "",
+          "status": "pending",
+          "adminNote": "",
+          "downloadCount": 0,
+          "createdAt": "",
+          "approvedAt": "",
+          "expiresAt": ""
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 401 Response
+  description: Unauthorized
+  
+  request: {
+    url: {{baseUrl}}/api/resumeDownloadRequests
+    method: POST
+    mode: json
+    body:json: {
+      {
+        "reason": ""
+      }
+    }
+  }
+  
+  response: {
+    status: {
+      code: 401
+      text: Unauthorized
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}
+
+example {
+  name: 429 Response
+  description: Quota exceeded
+  
+  request: {
+    url: {{baseUrl}}/api/resumeDownloadRequests
+    method: POST
+    mode: json
+    body:json: {
+      {
+        "reason": ""
+      }
+    }
+  }
+  
+  response: {
+    status: {
+      code: 429
+      text: Too Many Requests
+    }
+  
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}
