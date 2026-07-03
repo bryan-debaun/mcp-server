@@ -44,6 +44,11 @@ export function isInvalidState(err: any): boolean {
     )
 }
 
+/** True when a tool error indicates invalid input / a failed shape validation (→ 400). */
+export function isValidationError(err: any): boolean {
+    return typeof err?.message === 'string' && /^invalid /i.test(err.message)
+}
+
 /** True when a tool error indicates a time-limited window has elapsed (→ 410). */
 export function isExpiredWindow(err: any): boolean {
     return (

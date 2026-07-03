@@ -1,8 +1,11 @@
 import { pathToFileURL } from 'node:url'
 import pkg from '@prisma/client'
+
 const { PrismaClient } = pkg as any
+
 import { PrismaPg } from '@prisma/adapter-pg'
 import { cptsdArticle } from './seed-data/cptsd.js'
+import { resumeSkeleton } from './seed-data/resume.js'
 
 // Lazily construct the real client so importing this module (e.g. from tests
 // that inject a mock `db`) has no side effects and doesn't require DATABASE_URL.
@@ -44,6 +47,22 @@ async function ensureCanonicalContent(db: any) {
             err,
         )
     }
+
+    try {
+        // Ensure the singleton résumé row exists. `update: {}` so re-seeding never
+        // clobbers an edited résumé; real content arrives via PUT /api/resume.
+        await db.resume.upsert({
+            where: { id: 1 },
+            update: {},
+            create: { id: 1, document: resumeSkeleton },
+        })
+        console.log('Ensured singleton résumé row (id=1)')
+    } catch (err) {
+        console.error(
+            'Failed to ensure résumé singleton (is the Resume table migrated?):',
+            err,
+        )
+    }
 }
 
 export async function runSeed(prismaClient?: any) {
@@ -55,7 +74,9 @@ export async function runSeed(prismaClient?: any) {
     // Quick presence check to avoid re-seeding bulk sample data on every cold
     // start. Bryan's admin profile is the canonical marker.
     try {
-        const existingAdmin = await db.profile.findUnique({ where: { email: 'brn.dbn@gmail.com' } })
+        const existingAdmin = await db.profile.findUnique({
+            where: { email: 'brn.dbn@gmail.com' },
+        })
         if (existingAdmin) {
             console.log('DB already seeded; skipping sample data.')
             return
@@ -75,8 +96,8 @@ export async function runSeed(prismaClient?: any) {
     if (!adminSupabaseUuid) {
         console.warn(
             'ADMIN_SUPABASE_UUID not set — using a random UUID for the admin Profile. ' +
-            'JWT admin auth will not match the Supabase user until this is set and any ' +
-            'existing prod row is reconciled (see issue #90).'
+                'JWT admin auth will not match the Supabase user until this is set and any ' +
+                'existing prod row is reconciled (see issue #90).',
         )
     }
     const bryanUuid = adminSupabaseUuid ?? crypto.randomUUID()
@@ -317,7 +338,7 @@ export async function runSeed(prismaClient?: any) {
         books: { book1, book2, book3 },
         movies: { movie1, movie2, movie3 },
         games: { game1, game2, game3 },
-        contentCreators: { cc1, cc2, cc3 }
+        contentCreators: { cc1, cc2, cc3 },
     })
 
     // Reset sequences to ensure they're ahead of any manually-inserted IDs (fixes CI test flakes with duplicate key violations)
@@ -332,7 +353,9 @@ export async function runSeed(prismaClient?: any) {
 
     for (const { table, sequence } of sequenceResets) {
         try {
-            await db.$executeRawUnsafe(`SELECT setval('"${sequence}"', (SELECT COALESCE(MAX(id), 1) FROM "${table}"))`)
+            await db.$executeRawUnsafe(
+                `SELECT setval('"${sequence}"', (SELECT COALESCE(MAX(id), 1) FROM "${table}"))`,
+            )
             console.log(`${table} sequence reset successfully`)
         } catch (err) {
             console.error(`Failed to reset ${table} sequence:`, err)
@@ -355,9 +378,7 @@ async function main() {
 // Only run when executed directly (`node dist/seed.js` / `prisma db seed`),
 // not when imported (e.g. by tests) — importing must have no side effects.
 const isMain =
-    !!process.argv[1] &&
-    import.meta.url === pathToFileURL(process.argv[1]).href
+    !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href
 if (isMain) {
     main()
 }
-

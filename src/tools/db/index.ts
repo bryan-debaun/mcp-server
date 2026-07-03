@@ -52,6 +52,11 @@ import {
     registerListMoviesTool,
     registerUpdateMovieTool,
 } from './movies/index.js'
+// Résumé content (singleton) tools (#147)
+import {
+    registerGetResumeTool,
+    registerUpdateResumeTool,
+} from './resume/index.js'
 // Résumé-download-request tools (#139)
 import {
     registerApproveResumeDownloadRequestTool,
@@ -124,6 +129,10 @@ export function registerDbTools(server: McpServer): void {
     registerApproveResumeDownloadRequestTool(server)
     registerDenyResumeDownloadRequestTool(server)
     registerRecordResumeDownloadTool(server)
+
+    // Résumé content (singleton) tools (#147)
+    registerGetResumeTool(server)
+    registerUpdateResumeTool(server)
 
     // Bet tools (sports-betting tracker)
     registerCreateBetTool(server)
