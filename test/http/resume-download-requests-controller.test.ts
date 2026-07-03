@@ -103,36 +103,48 @@ describe('ResumeDownloadRequestsController — admin actions', () => {
     })
 })
 
-describe('ResumeDownloadRequestsController — fulfill (owner)', () => {
+describe('ResumeDownloadRequestsController — record-download (#145)', () => {
     beforeEach(() => {
         mockCallTool.mockReset()
     })
 
-    it('injects the caller id from the JWT and records the download', async () => {
+    it('delegates to the record-resume-download tool by id', async () => {
         mockCallTool.mockResolvedValueOnce({
             id: 'r1',
-            status: 'fulfilled',
+            status: 'approved',
             downloadCount: 1,
         })
-        await new ResumeDownloadRequestsController().fulfillRequest(
-            reqAs({ sub: 'user-123', email: 'a@b.com' }),
+        const res = await new ResumeDownloadRequestsController().recordDownload(
             'r1',
         )
-        expect(mockCallTool).toHaveBeenCalledWith(
-            'fulfill-resume-download-request',
-            { id: 'r1', userId: 'user-123' },
-        )
+        expect(res).toMatchObject({ downloadCount: 1 })
+        expect(mockCallTool).toHaveBeenCalledWith('record-resume-download', {
+            id: 'r1',
+        })
     })
 
-    it('maps an expired/not-approved error to 409', async () => {
+    it('maps a cap-reached error to 409', async () => {
+        mockCallTool.mockRejectedValueOnce(new Error('Download cap reached'))
+        await expect(
+            new ResumeDownloadRequestsController().recordDownload('r1'),
+        ).rejects.toMatchObject({ status: 409 })
+    })
+
+    it('maps an expired-window error to 410', async () => {
         mockCallTool.mockRejectedValueOnce(
             new Error('Download window has expired'),
         )
         await expect(
-            new ResumeDownloadRequestsController().fulfillRequest(
-                reqAs({ sub: 'user-123', email: 'a@b.com' }),
-                'r1',
-            ),
-        ).rejects.toMatchObject({ status: 409 })
+            new ResumeDownloadRequestsController().recordDownload('r1'),
+        ).rejects.toMatchObject({ status: 410 })
+    })
+
+    it('maps a not-found error to 404', async () => {
+        mockCallTool.mockRejectedValueOnce(
+            new Error('Resume download request not found'),
+        )
+        await expect(
+            new ResumeDownloadRequestsController().recordDownload('nope'),
+        ).rejects.toMatchObject({ status: 404 })
     })
 })

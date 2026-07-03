@@ -43,6 +43,7 @@ function makeStubModel(fail: () => never) {
         count: async (_opts?: any) => 0,
         create: async (_data?: any) => fail(),
         update: async (_opts?: any) => fail(),
+        updateMany: async (_opts?: any) => fail(),
         upsert: async (_opts?: any) => fail(),
         delete: async (_opts?: any) => fail(),
         deleteMany: async (_opts?: any) => fail(),

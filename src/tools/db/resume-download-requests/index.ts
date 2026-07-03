@@ -1,6 +1,6 @@
 export { registerApproveResumeDownloadRequestTool } from './approve-resume-download-request.js'
 export { registerCreateResumeDownloadRequestTool } from './create-resume-download-request.js'
 export { registerDenyResumeDownloadRequestTool } from './deny-resume-download-request.js'
-export { registerFulfillResumeDownloadRequestTool } from './fulfill-resume-download-request.js'
 export { registerGetResumeDownloadRequestTool } from './get-resume-download-request.js'
 export { registerListResumeDownloadRequestsTool } from './list-resume-download-requests.js'
+export { registerRecordResumeDownloadTool } from './record-download.js'

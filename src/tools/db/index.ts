@@ -57,9 +57,9 @@ import {
     registerApproveResumeDownloadRequestTool,
     registerCreateResumeDownloadRequestTool,
     registerDenyResumeDownloadRequestTool,
-    registerFulfillResumeDownloadRequestTool,
     registerGetResumeDownloadRequestTool,
     registerListResumeDownloadRequestsTool,
+    registerRecordResumeDownloadTool,
 } from './resume-download-requests/index.js'
 // VideoGame tools
 import {
@@ -123,7 +123,7 @@ export function registerDbTools(server: McpServer): void {
     registerGetResumeDownloadRequestTool(server)
     registerApproveResumeDownloadRequestTool(server)
     registerDenyResumeDownloadRequestTool(server)
-    registerFulfillResumeDownloadRequestTool(server)
+    registerRecordResumeDownloadTool(server)
 
     // Bet tools (sports-betting tracker)
     registerCreateBetTool(server)
