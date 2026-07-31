@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
+import { logCapabilityWarnings } from './capabilities.js'
 // config.ts loads dotenv at module init — import it before anything else.
 import { config } from './config.js'
 import { logger } from './logger.js'
@@ -42,6 +43,11 @@ async function main(): Promise<void> {
     } catch (e) {
         logger.warn('startup diagnostic failed', e)
     }
+
+    // Surface unconfigured optional integrations in the boot logs. Without this
+    // a missing secret (e.g. GITHUB_TOKEN, #155) is invisible until a tool call
+    // fails at runtime with no corresponding startup signal.
+    logCapabilityWarnings()
 
     // Decide transport based on runtime environment.
     // Priority:
