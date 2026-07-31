@@ -2,7 +2,29 @@
 
 > **Status:** Honest self-assessment for a solo personal project. Sections describe what genuinely exists in the repo today. Controls that do **not** exist are flagged **Gap** with an action item rather than papered over. No SLAs, alerting, or paging that aren't actually configured are invented here.
 >
-> **Reviewer:** Bryan DeBaun (solo owner/operator) · **Date:** 2026-05-31 · **Service version:** `0.1.0`
+> **Reviewer:** Bryan DeBaun (solo owner/operator) · **Original:** 2026-05-31 · **Re-verified:** 2026-07-31 · **Service version:** `0.1.0`
+
+## Re-verification summary — 2026-07-31
+
+Every gap from the 2026-05-31 review was re-checked against the code as it stands today. Outcome:
+
+| | Count | |
+|---|---|---|
+| ✅ **Closed** | 3 | #4 (Sentry log noise), #9 (cold-start keep-alive documented), #11 (incident runbook) |
+| 🟡 **Partially closed** | 2 | #5 (CI gate — now runs `verify`, but Render's `autoDeploy` still doesn't wait for it), #7 (RLS — tests exist; enforcement path still unproven) |
+| ❌ **Still open** | 7 | #1, #2, #3, #6, #8, #10, #12 — of which #1/#2/#3/#8 are **ops actions only**, nothing in the repo can close them |
+
+**Five findings were added that the original review missed.** Two were live defects:
+
+| New | Severity | Finding |
+|---|---|---|
+| **A** | 🔴 High | **Credential leak to Sentry.** `mcp-http.ts` logged the caller's presented bearer token verbatim (`{ got: auth }`) at `logger.error` on every auth failure. `logger.error` is bridged to Sentry, and Sentry scrubs by *key name* — `got` matches none of the scrub patterns, so failed auth attempts shipped the presented key out in the clear. **Fixed (#152).** |
+| **B** | 🔴 High | **Silent admin downgrade.** The JWT subject lookup was gated on a UUID regex; a non-matching subject resolved to no profile, which reports `isAdmin: false`. Indistinguishable from an ordinary non-admin in the logs. **Fixed (#151).** |
+| **C** | 🟠 Medium | **Deployment docs contradicted themselves about migrations** — `deploy/render.yaml` said migrations are "intentionally NOT run automatically", the Dockerfile `CMD` ran `prisma migrate deploy` at boot, and §3 of this document described a third mechanism (a Render build command). During an incident, ambiguity about the most destructive operation is worse than either answer. **Fixed.** |
+| **D** | 🟠 Medium | **Boot migration is non-fatal.** `... || echo '[boot] prisma migrate deploy failed; starting anyway'`. Deliberate (a paused Supabase shouldn't crash-loop the service), but a genuinely failed migration starts the server against an **un-migrated schema**, announced only by one log line. **Documented; still an accepted risk.** |
+| **E** | 🟡 Low | **`pnpm run verify` was unrunnable on Windows.** No `.gitattributes` + `core.autocrlf=true` → CRLF working tree, while Biome's formatter defaults to LF. Every file reported as a format error locally; CI (Linux) would have passed, except CI never ran `verify`. The check rotted where nobody could see it. **Fixed.** |
+
+Findings A, B, C and E are fixed in this pass. D is documented as an accepted risk. The remaining open gaps are re-stated with current evidence in §12.
 
 ---
 
@@ -77,14 +99,19 @@ GitHub automation callers      ─┘                                  ├→ Gi
 
 ### Deploy (verified `deploy/render.yaml` + `Dockerfile`)
 
-- **Platform:** Render web service, `env: docker`, `plan: starter`, `branch: main`, `autoDeploy: true` → **every push to `main` triggers a production deploy.**
-- **Build command (render.yaml):** `corepack enable && pnpm install --frozen-lockfile && pnpm run build && pnpm exec prisma migrate deploy && pnpm run prisma:seed`
-  - `pnpm run build` = `prisma generate && tsoa spec-and-routes && tsc && build:seed`.
-  - **Migrations run at deploy time** via `prisma migrate deploy`.
-  - **Seed runs at deploy time** (`prisma:seed`) — see ADR-0008 (prevent runtime DB seed) for the guardrail context.
-- **Start:** `pnpm run start` → `node dist/index.js`.
+> **Corrected 2026-07-31 (finding C).** The description below was wrong: it cited a `render.yaml` build command that Render **ignores** for Docker services, and claimed the seed runs at deploy time (it does not). Verified against the `Dockerfile` and `deploy/render.yaml` as they stand.
+
+- **Platform:** Render web service, `runtime: docker`, `plan: starter`, `branch: main`, `autoDeploy: true` → **every push to `main` triggers a production deploy.**
+- **Build:** driven entirely by the `Dockerfile` (multi-stage `node:24-alpine`). Render **ignores `buildCommand`/`startCommand` for Docker services** — the Dockerfile is the source of truth. It runs `pnpm run build` (= `prisma generate && tsoa spec-and-routes && tsc && build:seed`) and ships a pruned, production-only `node_modules`.
+- **Start + migrations:** the Dockerfile `CMD` is
+  ```sh
+  sh -c "pnpm exec prisma migrate deploy || echo '[boot] prisma migrate deploy failed; starting anyway'; exec node dist/index.js"
+  ```
+  So **migrations run at container boot**, not at build. `prisma` + `@prisma/config` are kept as prod deps so the CLI survives the prune.
+  - The step is **deliberately non-fatal** so a paused Supabase project doesn't crash-loop the service — see finding **D**.
+  - `DATABASE_URL` must be a **direct** (non-pooled, port 5432) connection; Supabase's pgbouncer endpoint can't take the advisory locks `migrate deploy` needs.
+- **Seeding is NOT automatic** (ADR-0008) — boot never seeds. Run explicitly from the Render Shell: `pnpm exec prisma db seed`.
 - **Health check path:** `/healthz` (Render uses this to gate the deploy).
-- **Image:** multi-stage `node:24-alpine`; runtime installs prod deps only and copies the generated Prisma client.
 
 ### Rollback (verified `docs/runbooks/deploy-render.md`)
 
@@ -93,10 +120,12 @@ GitHub automation callers      ─┘                                  ├→ Gi
 
 ### Gaps
 
-- **Gap — auto-deploy on `main` with no staging gate or smoke gate.** A bad push to `main` deploys straight to production. Canary checks in the runbook are **manual** (`curl /healthz`, `/api/playback`, `/metrics`).
-  - *Action:* Add a minimal CI gate (build + `pnpm test` + `pnpm run verify`) that must pass before Render deploys, or deploy from a release branch. Consider Render preview environments for risky changes.
-- **Gap — migrations + seed run inline in the deploy build with no automated pre-deploy backup.** A failed/destructive migration affects production directly (see §10).
-  - *Action:* Snapshot the DB (or confirm Supabase PITR window) before running migrations on schema-changing deploys.
+- 🟡 **Gap #5 (partially closed) — auto-deploy on `main` is still not gated by CI.** Two workflows now run on every PR *and* push to `main`: `ci-deploy-render.yml` (install → `build:spec` → **`pnpm run verify`** → `pnpm test` → `pnpm run build`) and `db-integration.yml` (`sql:parse` → `prisma migrate deploy` → seed → full suite against a real Postgres). `verify` was added 2026-07-31; before that CI ran tests and build only, and `verify` had rotted (finding **E**).
+  - **What's still open:** Render's `autoDeploy: true` fires on the push independently — it does **not** wait for the workflows. A red build and a live deploy can happen concurrently.
+  - *Action:* Disable `autoDeploy` and trigger Render from the workflow on success (deploy hook), or accept and rely on the `/healthz` deploy gate + fast rollback.
+- ❌ **Gap #6 (open) — no automated pre-deploy backup.** Migrations now apply at **container boot** (corrected above), so a schema-changing deploy hits production with no snapshot first, and the step is non-fatal (finding **D**) — a failure leaves the server running against an un-migrated schema.
+  - *Mitigating:* migration SQL is genuinely exercised before production — `db-integration.yml` runs `prisma migrate deploy` against a real Postgres 15 on every PR to `main`, plus `sql:parse` as a syntax check.
+  - *Action:* Snapshot the DB (or confirm the Supabase PITR window) before schema-changing deploys, and **grep the boot log for `[boot] prisma migrate deploy failed`** after each one.
 
 ---
 
@@ -149,11 +178,20 @@ GitHub automation callers      ─┘                                  ├→ Gi
 
 ### Gaps
 
-- **Gap — metrics are exposed but not collected.** No scraper, dashboard, or retention. They reset to zero on each restart/cold start.
+- ❌ **Gap #8 (open) — metrics are exposed but not collected.** No scraper, dashboard, or retention. They reset to zero on each restart/cold start. **Ops action; nothing in the repo can close this.**
   - *Action:* Point a lightweight hosted scraper (e.g., Grafana Cloud free tier) at `/metrics`, or accept that metrics are point-in-time only and document that.
-- **Gap (bug-ish) — MCP HTTP handlers log normal flow at `logger.error`.** In `src/http/mcp-http.ts`, routine request lifecycle messages (`POST /mcp called`, `created transport`, `registering tools`, etc.) use `logger.error(...)`. Because `logger.error` is bridged to Sentry, **every normal MCP request would generate Sentry noise when a DSN is set**, and pollutes error logs/metrics interpretation.
-  - *Action:* Downgrade these to `logger.debug`/`logger.info`. Low effort, high signal-to-noise payoff.
-- **Gap — Sentry not necessarily enabled in production.** It is no-op without `SENTRY_DSN`. Confirm the DSN is actually set in Render, or accept that crashes are only visible in Render log streaming.
+- ✅ **Gap #4 (CLOSED 2026-07-31) — MCP HTTP handlers logged normal flow at `logger.error`.** All 19 routine-lifecycle calls in `src/http/mcp-http.ts` were re-levelled. The convention is now documented at `registerMcpHttp` and guarded by tests in `test/http/mcp-http.test.ts`:
+  - `debug` — routine lifecycle (`POST /mcp called`, `created transport`, `registering tools`, `request handled`).
+  - `warn` — caller-fault conditions (bad auth, missing conn id, unparseable payload). Not our failure; must not page.
+  - `error` — we failed. 6 remain, all genuine.
+  - **While fixing this, finding A surfaced:** the auth-failure branches logged the presented bearer token verbatim as `{ got: auth }`. Sentry scrubs by key name and `got` matched nothing, so a failed auth attempt shipped the credential to Sentry in the clear. Fixed alongside (#152).
+- ❌ **Gap #2 (open) — Sentry not necessarily enabled in production.** No-op without `SENTRY_DSN`. **Ops action.** Note this gap and #4 compound: enabling the DSN *before* the log-level fix would have flooded Sentry with one issue per MCP request. Safe to enable now.
+  - *Action:* Confirm/set `SENTRY_DSN` in the Doppler `prd` config, or accept that crashes are only visible in Render log streaming.
+
+### New in this pass
+
+- ✅ **Startup capability warnings (#155).** `src/capabilities.ts` logs one `warn` per unconfigured optional integration at boot (`capability disabled: github — GITHUB_TOKEN not set; …`) and `/healthz?deep=1` reports a `capabilities` map. Deliberately `warn`, not `error` — an intentionally-unconfigured integration must not page on every boot.
+- ✅ **`auth_subject_unresolved_total` (#151).** Counts verified tokens whose subject maps to no local Profile, kept distinct from `mcp_auth_failures_total` — this is not an auth failure, it is a broken identity mapping. It is the metric that would have made finding **B** visible.
 
 ---
 
@@ -190,7 +228,8 @@ GitHub automation callers      ─┘                                  ├→ Gi
 
 **Existing runbooks (verified, `docs/runbooks/`):** `deploy-render.md`, `spotify.md`, `service-role-bypass.md`, `admin-user-management.md`, `book-aggregates.md`; plus `docs/rls.md`, `docs/admin-runbook.md`, and ADRs `0002`–`0009`.
 
-- **Gap — no consolidated "service down / DB paused" incident runbook.** The pieces exist but aren't in one place. *Action:* Add a short top-level incident checklist (resume Supabase → check `/readyz` → roll back if recent deploy → check Sentry/logs).
+- ✅ **Gap #11 (CLOSED 2026-07-31) — consolidated incident runbook.** [`docs/runbooks/incident-response.md`](runbooks/incident-response.md) is now the single entry point: a 60-second triage table mapping `/healthz`, `/healthz?deep=1` and `/readyz` responses to a section, then per-cause procedures (DB paused, crash loop, config, degraded integration, Cloudflare HTML, migration trouble). It leads with what is **expected behaviour** rather than an incident — cold starts and the Supabase weekly pause — so time isn't lost chasing normal behaviour.
+  - One non-obvious behaviour it captures: readiness is set **once** at startup (`src/http/server.ts`), so a DB that recovers *after* a failed init leaves `/readyz` stuck at 503 until the service is **restarted**.
 
 ---
 
@@ -297,27 +336,49 @@ These are **informal, best-effort targets for a solo project** — *not* contrac
 | Metrics **collection** / dashboards | ❌ Gap — exposed but not scraped |
 | **Alerting / uptime monitoring** | ❌ Gap — none configured |
 | Backup/restore verified | ❌ Gap — relies on Supabase, undrilled |
-| CI gate before production deploy | ❌ Gap — autoDeploy on `main`, manual canary |
-| Dependency vuln scanning | ❌ Gap — none |
+| CI gate before production deploy | 🟡 CI runs verify + tests + migrations on every PR; Render `autoDeploy` still doesn't wait for it |
+| Dependency vuln scanning | ✅ Dependabot (npm weekly grouped, actions + docker monthly) |
 | Load/perf baseline | ❌ Gap — none captured |
+| Consolidated incident runbook | ✅ `docs/runbooks/incident-response.md` |
+| Line-ending policy / runnable `verify` | ✅ `.gitattributes` pins LF; CI enforces `verify` |
+| Startup capability warnings | ✅ `src/capabilities.ts` + `/healthz?deep=1` |
 
-### Prioritized open action items (the Gaps)
+### Prioritized open action items — as of 2026-07-31
+
+**Ops-only — nothing in the repo can close these. They are the highest-value items remaining.**
 
 | # | Priority | Gap | Action |
 |---|---|---|---|
-| 1 | **High** | No uptime/health alerting (§6) | Add UptimeRobot (free) on `/healthz` + `/readyz` with email alerts. Lowest effort, highest value. |
-| 2 | **High** | Error tracking may be inert (§5/§6) | Confirm/set `SENTRY_DSN` in Render; enable Sentry email alerts. |
-| 3 | **High** | Backup/restore unverified (§10) | Confirm Supabase backup/PITR window; document RPO; run one trial restore or `pg_dump`. |
-| 4 | **High** | `mcp-http.ts` logs normal flow at `error` → Sentry noise (§5) | Downgrade routine MCP request logs to `debug`/`info`. |
-| 5 | Medium | Auto-deploy on `main`, no CI gate (§3) | Require build + `pnpm test` + `pnpm run verify` to pass before deploy; consider preview env. |
-| 6 | Medium | No pre-migration backup; forward-only migrations (§3/§10) | Snapshot DB before schema-changing deploys; add reverse SQL for risky migrations. |
-| 7 | Medium | RLS enforcement path unverified (§9) | Add `RUN_DB_INTEGRATION` test proving owner-isolation; confirm claim propagation on the app's DB session. |
-| 8 | Medium | Metrics exposed but not collected (§5) | Point a hosted scraper (Grafana Cloud free) at `/metrics`, or document them as point-in-time only. |
-| 9 | Low | Cold-start / DB-pause degradation (§1/§7) | Optional keep-warm cron; ensure website degrades gracefully and handles Cloudflare HTML challenges. |
-| 10 | Low | No dependency vuln scanning (§9) | Enable Dependabot or scheduled `npm audit`. |
-| 11 | Low | No consolidated incident runbook (§7) | Add a one-page "service down / DB paused" checklist. |
+| 1 | **High** | No uptime/health alerting (§6) | Add UptimeRobot / cron-job.org (free) on `/healthz?deep=1` with email alerts. **Still the lowest-effort, highest-value operational improvement.** The deep variant covers Render spin-down *and* Supabase auto-pause in one ping. |
+| 2 | **High** | Error tracking inert without a DSN (§5) | Set `SENTRY_DSN` in the Doppler `prd` config. Now safe — gap #4 (per-request Sentry noise) is fixed, so this no longer floods. |
+| 3 | **High** | Backup/restore unverified (§10) | Confirm the Supabase backup/PITR window; document the real RPO; run one trial restore or `pg_dump`. |
+| — | **High** | `GITHUB_TOKEN` unset in production (#155) | Mint a PAT with **`repo` + `project`** scopes, set it in Doppler `prd`, confirm it reaches Render. The code half (boot warning + health signal) is done. |
+| 8 | Medium | Metrics exposed but not collected (§5) | Point a hosted scraper (Grafana Cloud free) at `/metrics`, or accept and document them as point-in-time only. |
+
+**Repo-addressable, still open**
+
+| # | Priority | Gap | Action |
+|---|---|---|---|
+| 5 | Medium | Render `autoDeploy` doesn't wait for CI (§3) | Disable `autoDeploy` and fire Render's deploy hook from the workflow on success — or accept, relying on the `/healthz` deploy gate + fast rollback. |
+| 6 | Medium | No pre-migration backup; boot migration is non-fatal (§3/§10, finding **D**) | Snapshot before schema-changing deploys; check the boot log for `[boot] prisma migrate deploy failed`. Consider making the step fatal *only* when the DB is reachable, so a real migration failure stops the deploy while a paused Supabase still starts. |
+| 7 | Medium | RLS enforcement path unverified (§9) | `test/integration/rls*.test.ts` exist and run under `RUN_DB_INTEGRATION` in `db-integration.yml`, but they prove the *policies*, not that the **app's own** connection is subject to them. Add a test asserting the app's pg session is non-bypassing and propagates `request.jwt.claims.*`. |
 | 12 | Low | No perf baseline / no endpoint rate limiting (§8) | Capture warm p50/p95 once; revisit rate limiting only if exposure grows. |
+
+**Closed in this pass**
+
+| # | Gap | Resolution |
+|---|---|---|
+| 4 | `mcp-http.ts` logged normal flow at `error` → Sentry noise | 19 calls re-levelled to `debug`/`warn`; convention documented + test-guarded |
+| 9 | Cold-start / DB-pause degradation | `/healthz?deep=1` + documented external keep-warm cron (#119); now also in the incident runbook |
+| 10 | No dependency vuln scanning | `.github/dependabot.yml` — grouped weekly npm, monthly actions/docker; `tsoa` pinned out (deliberate alpha) |
+| 11 | No consolidated incident runbook | `docs/runbooks/incident-response.md` |
+| A | Credential leak to Sentry | Fixed (#152) |
+| B | Silent admin downgrade | Fixed (#151) |
+| C | Contradictory migration docs | Fixed — `deploy/render.yaml` and §3 corrected against the Dockerfile |
+| E | `verify` unrunnable on Windows | `.gitattributes` pins LF; CI now runs `verify` |
 
 ---
 
 *Compiled from repository inspection on 2026-05-31: `package.json`, `deploy/render.yaml`, `Dockerfile`, `src/config.ts`, `src/index.ts`, `src/logger.ts`, `src/sentry.ts`, `src/db/index.ts`, `src/http/server.ts`, `src/http/mcp-http.ts`, `src/http/health-route.ts`, `src/http/readiness.ts`, `src/http/metrics-route.ts`, `src/http/middleware/mcp-auth.ts`, `src/http/authentication.ts`, `src/auth/jwt.ts`, `src/auth/requireAdmin.ts`, `prisma/migrations/`, and `docs/` runbooks/ADRs.*
+
+*Re-verified 2026-07-31 against the same files plus `.github/workflows/`, `.gitattributes`, `biome.json`, and `src/capabilities.ts`. Every gap was re-checked against code rather than carried forward on trust — which is how findings **C** (three sources disagreeing about when migrations run) and **E** (`verify` unrunnable on Windows) surfaced. **The lesson worth keeping: the two most serious findings this pass, A and B, were both cases where a failure was happening silently. Neither would have been found by asking "what is broken?" — only by asking "what would we not notice?"***

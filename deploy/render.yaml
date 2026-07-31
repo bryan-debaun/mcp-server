@@ -8,18 +8,32 @@
 # Command pointing at the removed `scripts/start-production.sh` is what caused the
 # status-2 crash loop; do not reintroduce it.)
 #
-# MIGRATIONS are intentionally NOT run automatically here:
-#   - Render's Pre-Deploy Command (the natural home for `migrate deploy`) requires
-#     a paid instance type, so it isn't available on this plan.
-#   - Running `migrate deploy` at container boot would defeat this server's
-#     fast-cold-start design (src/http/server.ts binds the port early and inits
-#     Prisma lazily), and the pruned prod image has no Prisma CLI.
-# For this single-user app with infrequent schema changes, apply migrations
-# out-of-band against a DIRECT (non-pooled, port 5432) connection — Supabase's
-# pooled/pgbouncer endpoint can't take the advisory locks `migrate deploy` needs:
+# MIGRATIONS run automatically at CONTAINER BOOT. This comment previously said
+# the opposite ("intentionally NOT run automatically", citing a pruned image with
+# no Prisma CLI). That is stale: the Dockerfile keeps `prisma` + `@prisma/config`
+# as prod deps so the CLI survives the prune, and its CMD is:
+#
+#   sh -c "pnpm exec prisma migrate deploy || echo '[boot] prisma migrate deploy \
+#          failed; starting anyway'; exec node dist/index.js"
+#
+# The Dockerfile is the source of truth — Render ignores buildCommand/startCommand
+# for Docker services, so CMD is what actually runs. Three places used to describe
+# this differently (here, the Dockerfile, and docs/runbooks/deploy-render.md);
+# during an incident that ambiguity is worse than either answer.
+#
+# NOTE the `|| echo` — the migrate step is deliberately NON-FATAL so a paused
+# Supabase free project doesn't crash-loop the service. The tradeoff is that a
+# genuinely failed migration still starts the server against an un-migrated
+# schema, and only a boot log line says so. Check the deploy logs for
+# '[boot] prisma migrate deploy failed' after any schema-changing deploy.
+#
+# Supabase's pooled/pgbouncer endpoint can't take the advisory locks
+# `migrate deploy` needs, so DATABASE_URL must be a DIRECT (non-pooled, port
+# 5432) connection for the boot step to succeed. To apply out-of-band instead:
 #   DATABASE_URL="<direct-url>" pnpm exec prisma migrate deploy
-# If this service is ever upgraded to a paid plan, prefer a Pre-Deploy Command:
-#   env DATABASE_URL="${DIRECT_DATABASE_URL:-$DATABASE_URL}" pnpm dlx prisma@7 migrate deploy
+#
+# SEEDING is NOT automatic (ADR-0008) — boot never seeds. Run it explicitly from
+# the Render Shell when needed: `pnpm exec prisma db seed`.
 services:
   - type: web
     name: mcp-server

@@ -63,6 +63,14 @@ jobs:
         run: pnpm exec prisma db push && pnpm exec prisma generate
       - name: Generate tsoa routes (required for tests)
         run: pnpm run build:spec
+      # Lint + typecheck. `verify` already existed in package.json but nothing
+      # ran it, so it rotted unnoticed (see .gitattributes — a missing
+      # line-ending policy made it fail on every Windows checkout while passing
+      # here). Runs after build:spec because typecheck covers the generated
+      # tsoa-routes.ts, and before tests so a formatting/type failure reports
+      # faster than the full suite.
+      - name: Verify (lint + typecheck)
+        run: pnpm run verify
       - name: Run tests
         run: pnpm test
       - name: Build

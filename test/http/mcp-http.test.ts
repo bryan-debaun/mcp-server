@@ -1,8 +1,9 @@
 import express from 'express'
 import request from 'supertest'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { config } from '../../src/config.js'
 import { registerMcpHttp } from '../../src/http/mcp-http.js'
+import { logger } from '../../src/logger.js'
 
 describe('MCP HTTP endpoints', () => {
     const origMcpApiKey = config.security.mcpApiKey
@@ -89,5 +90,55 @@ describe('MCP HTTP endpoints', () => {
             .send({})
         expect(res2.status).toBe(400)
         expect(res2.body.error).toBe('missing conn id')
+    })
+
+    // `src/sentry.ts` bridges every `logger.error` to Sentry. These handlers used
+    // to log the whole request lifecycle at `error`, so with a DSN configured
+    // every ordinary MCP request would have raised a Sentry issue — burying real
+    // failures. Guard the levels, not just the behaviour.
+    describe('log levels (ORR gap: routine flow must not reach Sentry)', () => {
+        it('logs nothing at error for a rejected (client-fault) request', async () => {
+            const errorSpy = vi
+                .spyOn(logger, 'error')
+                .mockImplementation(() => {})
+            config.security.mcpApiKey = 'testkey'
+            const app = express()
+            app.use(express.json())
+            registerMcpHttp(app)
+
+            await request(app).post('/mcp').send({}) // 401: bad auth
+            await request(app)
+                .post('/mcp/events')
+                .set('Authorization', 'Bearer testkey')
+                .send({}) // 400: missing conn id
+
+            expect(errorSpy).not.toHaveBeenCalled()
+            errorSpy.mockRestore()
+        })
+
+        it('logs a bad payload at warn, not error', async () => {
+            const errorSpy = vi
+                .spyOn(logger, 'error')
+                .mockImplementation(() => {})
+            const warnSpy = vi
+                .spyOn(logger, 'warn')
+                .mockImplementation(() => {})
+            config.security.mcpApiKey = 'testkey'
+            const app = express()
+            app.use(express.json())
+            registerMcpHttp(app)
+
+            const res = await request(app)
+                .post('/mcp/events')
+                .set('Authorization', 'Bearer testkey')
+                .set('X-MCP-Conn-Id', 'nope')
+                .send({})
+
+            expect(res.status).toBe(404)
+            expect(warnSpy).toHaveBeenCalled()
+            expect(errorSpy).not.toHaveBeenCalled()
+            errorSpy.mockRestore()
+            warnSpy.mockRestore()
+        })
     })
 })
