@@ -21,7 +21,7 @@ Every gap from the 2026-05-31 review was re-checked against the code as it stand
 | **A** | 🔴 High | **Credential leak to Sentry.** `mcp-http.ts` logged the caller's presented bearer token verbatim (`{ got: auth }`) at `logger.error` on every auth failure. `logger.error` is bridged to Sentry, and Sentry scrubs by *key name* — `got` matches none of the scrub patterns, so failed auth attempts shipped the presented key out in the clear. **Fixed (#152).** |
 | **B** | 🔴 High | **Silent admin downgrade.** The JWT subject lookup was gated on a UUID regex; a non-matching subject resolved to no profile, which reports `isAdmin: false`. Indistinguishable from an ordinary non-admin in the logs. **Fixed (#151).** |
 | **C** | 🟠 Medium | **Deployment docs contradicted themselves about migrations** — `deploy/render.yaml` said migrations are "intentionally NOT run automatically", the Dockerfile `CMD` ran `prisma migrate deploy` at boot, and §3 of this document described a third mechanism (a Render build command). During an incident, ambiguity about the most destructive operation is worse than either answer. **Fixed.** |
-| **D** | 🟠 Medium | **Boot migration is non-fatal.** `... || echo '[boot] prisma migrate deploy failed; starting anyway'`. Deliberate (a paused Supabase shouldn't crash-loop the service), but a genuinely failed migration starts the server against an **un-migrated schema**, announced only by one log line. **Documented; still an accepted risk.** |
+| **D** | 🔴 **High** (was Medium) | **Boot migration failed silently — and had been failing for a month.** Not a theoretical risk: production sat with **two unapplied migrations from 2026-06-28 to 2026-07-31** while the code needing them was live. The résumé tables from #145/#147 never existed. Cause: the boot step ran `migrate deploy` over `DATABASE_URL`, which in production is Supabase's **transaction pooler (6543)** — it cannot take the advisory locks `migrate deploy` requires — and `|| echo` swallowed the failure on every deploy. **Fixed.** |
 | **E** | 🟡 Low | **`pnpm run verify` was unrunnable on Windows.** No `.gitattributes` + `core.autocrlf=true` → CRLF working tree, while Biome's formatter defaults to LF. Every file reported as a format error locally; CI (Linux) would have passed, except CI never ran `verify`. The check rotted where nobody could see it. **Fixed.** |
 
 Findings A, B, C and E are fixed in this pass. D is documented as an accepted risk. The remaining open gaps are re-stated with current evidence in §12.
@@ -360,7 +360,7 @@ These are **informal, best-effort targets for a solo project** — *not* contrac
 | # | Priority | Gap | Action |
 |---|---|---|---|
 | 5 | Medium | Render `autoDeploy` doesn't wait for CI (§3) | Disable `autoDeploy` and fire Render's deploy hook from the workflow on success — or accept, relying on the `/healthz` deploy gate + fast rollback. |
-| 6 | Medium | No pre-migration backup; boot migration is non-fatal (§3/§10, finding **D**) | Snapshot before schema-changing deploys; check the boot log for `[boot] prisma migrate deploy failed`. Consider making the step fatal *only* when the DB is reachable, so a real migration failure stops the deploy while a paused Supabase still starts. |
+| 6 | Medium | No pre-migration backup (§3/§10) | Snapshot before schema-changing deploys. The *silent-failure* half of this gap (finding **D**) is now closed — see below — but rollback still means restore-from-backup, and no snapshot is taken automatically. |
 | 7 | Medium | RLS enforcement path unverified (§9) | `test/integration/rls*.test.ts` exist and run under `RUN_DB_INTEGRATION` in `db-integration.yml`, but they prove the *policies*, not that the **app's own** connection is subject to them. Add a test asserting the app's pg session is non-bypassing and propagates `request.jwt.claims.*`. |
 | 12 | Low | No perf baseline / no endpoint rate limiting (§8) | Capture warm p50/p95 once; revisit rate limiting only if exposure grows. |
 
@@ -375,7 +375,24 @@ These are **informal, best-effort targets for a solo project** — *not* contrac
 | A | Credential leak to Sentry | Fixed (#152) |
 | B | Silent admin downgrade | Fixed (#151) |
 | C | Contradictory migration docs | Fixed — `deploy/render.yaml` and §3 corrected against the Dockerfile |
+| D | Boot migration failing silently for a month | Fixed — see below |
 | E | `verify` unrunnable on Windows | `.gitattributes` pins LF; CI now runs `verify` |
+
+### Finding D — how it was closed
+
+Two layers, because a boot-time gate only helps when boot is where it goes wrong.
+
+**1. Boot (`scripts/docker-entrypoint.sh`).** The `CMD` one-liner became a script:
+
+- Migrates over **`DATABASE_URL_DIRECT`** (session pooler, 5432), which takes the advisory locks. Warns loudly at boot if it's unset and it has to fall back to `DATABASE_URL`.
+- **Fatal only when the database is reachable** and the migration still failed — that's a real problem, and refusing to start is safer than serving traffic against an unknown schema (Render's health-check gate keeps the previous revision live). An **unreachable** database still starts normally, so a paused Supabase project never crash-loops the service. This distinction is the whole point: the old code couldn't tell the two apart, so it treated both as survivable.
+- Escape hatches: `BOOT_MIGRATE_NONFATAL=1`, `SKIP_BOOT_MIGRATE=1`.
+
+**2. Runtime (`src/db/migration-status.ts`).** `GET /healthz?deep=1` compares migration directories on disk against `_prisma_migrations` and returns **503** naming any that are unapplied. Unlike `capabilities` — reported but never a gate — a pending migration *is* a gate: it means the running code may be talking to a schema it doesn't expect. An external monitor on the deep endpoint now alerts on exactly the condition that went unnoticed for a month.
+
+A check that cannot run reports `pending: null` with a reason, never `pending: 0`. Claiming a clean schema we failed to verify would recreate the original bug in a new place.
+
+> **Prerequisite:** `DATABASE_URL_DIRECT` must be present in the Render environment. It already exists in the Doppler `prd` config.
 
 ---
 

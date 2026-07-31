@@ -2,6 +2,7 @@ import type { Request, Response } from 'express'
 import { capabilitySummary } from '../capabilities.js'
 import { config } from '../config.js'
 import { initPrisma, prisma } from '../db/index.js'
+import { getMigrationStatus } from '../db/migration-status.js'
 import { logger } from '../logger.js'
 import { isReady } from './readiness.js'
 
@@ -50,7 +51,38 @@ export function registerHealthRoute(app: any): void {
 
         try {
             const db = await checkDatabase()
-            return res.status(200).json({ ...base, ...db, capabilities })
+
+            // Unlike capabilities, a pending migration IS a gate. It means the
+            // running code may be talking to a schema it does not expect — which
+            // is precisely the state production sat in, undetected, from
+            // 2026-06-28 to 2026-07-31 after the boot migration silently failed.
+            // Returning 503 makes an external monitor alert on it.
+            const migrations = await getMigrationStatus()
+            if (migrations.checked && migrations.pending.length > 0) {
+                logger.error(
+                    'deep /healthz: unapplied migrations detected; the running schema is not what this build expects',
+                    { pending: migrations.pending },
+                )
+                return res.status(503).json({
+                    ...base,
+                    ...db,
+                    status: 'degraded',
+                    capabilities,
+                    migrations: {
+                        pending: migrations.pending.length,
+                        names: migrations.pending,
+                    },
+                })
+            }
+
+            return res.status(200).json({
+                ...base,
+                ...db,
+                capabilities,
+                migrations: migrations.checked
+                    ? { pending: 0 }
+                    : { pending: null, reason: migrations.reason },
+            })
         } catch (err) {
             // DB is configured but unreachable — surface a 503 so an external
             // monitor alerts on a genuine outage (a paused/restoring Supabase or

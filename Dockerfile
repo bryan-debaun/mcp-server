@@ -52,8 +52,13 @@ ENV PORT=8080
 # Apply pending DB migrations on boot, then start. Render's free tier has no
 # Pre-Deploy Command, so this is how migrations reach prod automatically (#126
 # follow-up). `prisma` + `@prisma/config` are prod deps so the CLI survives the
-# prod prune; `migrate deploy` is a fast no-op when nothing is pending. It is
-# intentionally non-fatal: if the DB is unreachable at boot (e.g. a paused
-# Supabase free project) we log and start anyway so the API/health checks stay
-# up rather than crash-looping.
-CMD ["sh", "-c", "pnpm exec prisma migrate deploy || echo '[boot] prisma migrate deploy failed; starting anyway'; exec node dist/index.js"]
+# prod prune; `migrate deploy` is a fast no-op when nothing is pending.
+#
+# The logic moved into a script because it is no longer a one-liner: it migrates
+# over DATABASE_URL_DIRECT (Supabase's transaction pooler cannot take the
+# advisory locks migrate deploy needs) and distinguishes an unreachable database
+# — survivable, start anyway — from a migration that genuinely failed, which is
+# not. See scripts/docker-entrypoint.sh for the full rationale.
+# (scripts/ is already copied above; invoked via `sh` so no exec bit is needed —
+# which also avoids depending on the file mode surviving a Windows checkout.)
+CMD ["sh", "./scripts/docker-entrypoint.sh"]

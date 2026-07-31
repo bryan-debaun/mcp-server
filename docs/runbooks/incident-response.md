@@ -45,11 +45,14 @@ Read the result:
 | `deep=1` → `503 {"db":"error"}` | DB configured but unreachable — **most likely a paused Supabase** | §2 |
 | `deep=1` → `{"db":"skipped"}` | `DATABASE_URL` is unset in the environment | §4 |
 | `deep=1` → `capabilities: { "github": false, … }` | That integration's secret is missing — degraded, not down | §5 |
+| `deep=1` → `503` + `migrations: { pending: N }` | Schema is behind the running code — **migrations never applied** | §7 |
 | HTML instead of JSON | Cloudflare challenge page, not the app | §6 |
-| All 200 but a specific tool errors | Not an outage — §5 |
+| All 200 but a specific tool errors | Not an outage — a single integration is degraded | §5 |
+| Service won't start, log says `[boot] FATAL` | Migration failed against a reachable DB — **intentional refusal to start** | §7 |
 
-`/healthz?deep=1` also reports `capabilities` (#155), so a missing secret is
-visible here without reading logs.
+`/healthz?deep=1` also reports `capabilities` (#155) and unapplied `migrations`,
+so both a missing secret and a schema that's behind are visible here without
+reading logs.
 
 ---
 
@@ -127,24 +130,62 @@ Cloudflare settings for the hostname if it persists.
 
 ## 7. Migration trouble
 
-**Migrations run at container boot** — the Dockerfile `CMD` runs
-`prisma migrate deploy` before starting the server. It is **non-fatal**: if it
-fails, the log says `[boot] prisma migrate deploy failed; starting anyway` and
-the server starts **against an un-migrated schema**.
+**Migrations run at container boot** via `scripts/docker-entrypoint.sh`, over
+**`DATABASE_URL_DIRECT`** (session pooler, 5432) — not `DATABASE_URL`, which is
+the transaction pooler (6543) and cannot take the advisory locks `migrate deploy`
+needs.
 
-So after any schema-changing deploy: **grep the boot log for that line.** A
-half-deployed schema presents as confusing runtime errors, not as a down service.
+### If the service won't start after a deploy
 
-- Common cause: `DATABASE_URL` points at Supabase's **pooled/pgbouncer**
-  endpoint, which can't take the advisory locks `migrate deploy` needs. It must
-  be a **direct** connection (port 5432).
-- To apply manually: Render Shell → `pnpm exec prisma migrate deploy`. (Direct
-  connections from a laptop time out — Supabase direct is IPv6/pooler-only.)
-- **Migrations are forward-only** — there are no down-migrations. Rollback means
-  restore-from-backup, so take a snapshot before schema-changing deploys.
+Look for this in the logs:
 
-Migration SQL is exercised in CI by `.github/workflows/db-integration.yml`
-(`prisma migrate deploy` against a real Postgres) on every PR to `main`.
+```text
+[boot] FATAL: database is reachable but 'prisma migrate deploy' failed.
+[boot] Refusing to start against an un-migrated schema. Previous revision stays live.
+```
+
+**This is working as intended.** The database answered, so it isn't a paused
+project — the migration itself failed. The previous revision stays live via
+Render's health-check gate. Fix the migration and redeploy.
+
+To force a start anyway (last resort, one deploy): set `BOOT_MIGRATE_NONFATAL=1`.
+To skip migrations entirely: `SKIP_BOOT_MIGRATE=1`.
+
+An **unreachable** database logs instead and starts normally, so a paused
+Supabase project never crash-loops the service:
+
+```text
+[boot] prisma migrate deploy failed and the database is unreachable
+[boot] (paused Supabase project?) — starting anyway so health checks stay up
+```
+
+### If migrations are pending at runtime
+
+`GET /healthz?deep=1` returns **503** with the offending names:
+
+```json
+{ "status": "degraded", "migrations": { "pending": 2, "names": ["…", "…"] } }
+```
+
+This is the backstop for the failure that went unnoticed for a month: production
+sat with two unapplied migrations from 2026-06-28 to 2026-07-31 while the code
+needing them was live, because the boot step failed silently against the wrong
+pooler. Apply them (below) and the probe returns to 200.
+
+### Applying manually
+
+```sh
+DATABASE_URL="<direct-url-port-5432>" pnpm exec prisma migrate deploy
+```
+
+Run from the Render Shell if a laptop can't reach it — Supabase's true direct
+host is IPv6-only; the **session pooler on 5432** works from anywhere and takes
+the locks fine.
+
+- **Migrations are forward-only** — no down-migrations. Rollback means
+  restore-from-backup, so snapshot before schema-changing deploys.
+- Migration SQL is exercised in CI by `.github/workflows/db-integration.yml`
+  (`prisma migrate deploy` against a real Postgres) on every PR to `main`.
 
 ---
 

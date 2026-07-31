@@ -21,15 +21,24 @@
 # this differently (here, the Dockerfile, and docs/runbooks/deploy-render.md);
 # during an incident that ambiguity is worse than either answer.
 #
-# NOTE the `|| echo` — the migrate step is deliberately NON-FATAL so a paused
-# Supabase free project doesn't crash-loop the service. The tradeoff is that a
-# genuinely failed migration still starts the server against an un-migrated
-# schema, and only a boot log line says so. Check the deploy logs for
-# '[boot] prisma migrate deploy failed' after any schema-changing deploy.
+# REQUIRED ENV: DATABASE_URL_DIRECT must be set (Supabase session pooler, port
+# 5432). The entrypoint migrates over it because the TRANSACTION pooler (6543)
+# that DATABASE_URL points at cannot take the advisory locks `migrate deploy`
+# needs. That exact mismatch silently blocked every migration from 2026-06-28 to
+# 2026-07-31 — the résumé tables from #145/#147 never existed in production while
+# the code using them was live. If DATABASE_URL_DIRECT is unset the entrypoint
+# falls back to DATABASE_URL and warns loudly at boot.
 #
-# Supabase's pooled/pgbouncer endpoint can't take the advisory locks
-# `migrate deploy` needs, so DATABASE_URL must be a DIRECT (non-pooled, port
-# 5432) connection for the boot step to succeed. To apply out-of-band instead:
+# The step is fatal ONLY when the database is reachable and the migration still
+# failed — that means a real problem, and the server refuses to start rather than
+# serve traffic against a schema it doesn't understand (Render's health-check gate
+# keeps the previous revision live). An UNREACHABLE database (paused Supabase free
+# project) still starts normally, so health checks stay up.
+#
+# Escape hatches: BOOT_MIGRATE_NONFATAL=1 restores the old always-start behaviour
+# for one deploy; SKIP_BOOT_MIGRATE=1 skips migrations entirely.
+#
+# To apply out-of-band instead:
 #   DATABASE_URL="<direct-url>" pnpm exec prisma migrate deploy
 #
 # SEEDING is NOT automatic (ADR-0008) — boot never seeds. Run it explicitly from
