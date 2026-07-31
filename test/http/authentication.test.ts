@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock the auth module so we can drive verification/role-resolution outcomes
 // without real JWKS/JWTs. authentication.ts imports these named exports.
 vi.mock('../../src/auth/jwt.js', () => ({
-    verifySupabaseJwt: vi.fn(),
+    verifyAccessToken: vi.fn(),
     resolveAppRole: vi.fn(),
 }))
 
@@ -13,11 +13,11 @@ vi.mock('../../src/config.js', () => ({
     config: { security: { mcpApiKey: undefined as string | undefined } },
 }))
 
-import { resolveAppRole, verifySupabaseJwt } from '../../src/auth/jwt.js'
+import { resolveAppRole, verifyAccessToken } from '../../src/auth/jwt.js'
 import { config } from '../../src/config.js'
 import { expressAuthentication } from '../../src/http/authentication'
 
-const mockVerify = verifySupabaseJwt as unknown as ReturnType<typeof vi.fn>
+const mockVerify = verifyAccessToken as unknown as ReturnType<typeof vi.fn>
 const mockResolve = resolveAppRole as unknown as ReturnType<typeof vi.fn>
 
 const setMcpKey = (key: string | undefined) => {
@@ -29,7 +29,7 @@ const reqWith = (authorization?: string) =>
 
 const reqWithHeaders = (headers: Record<string, string>) => ({ headers }) as any
 
-describe('expressAuthentication (#117 — clean 401/403 instead of "internal error")', () => {
+describe('expressAuthentication (#117 â€” clean 401/403 instead of "internal error")', () => {
     beforeEach(() => {
         mockVerify.mockReset()
         mockResolve.mockReset()
@@ -86,12 +86,12 @@ describe('expressAuthentication (#117 — clean 401/403 instead of "internal err
     })
 })
 
-describe('expressAuthentication api_key (#117 — spec matches deployment for reads)', () => {
+describe('expressAuthentication api_key (#117 â€” spec matches deployment for reads)', () => {
     beforeEach(() => {
         setMcpKey(undefined)
     })
 
-    it('passes through (open) when MCP_API_KEY is unset — keeps CI / no-DB green', async () => {
+    it('passes through (open) when MCP_API_KEY is unset â€” keeps CI / no-DB green', async () => {
         await expect(
             expressAuthentication(reqWith(), 'api_key'),
         ).resolves.toBeUndefined()

@@ -83,42 +83,73 @@ describe('config module', () => {
             expect(config.spotify.enabled).toBe(expected)
         })
 
-        it('auth.supabaseIss is a string when set', () => {
-            if (config.auth.supabaseIss !== undefined) {
-                expect(typeof config.auth.supabaseIss).toBe('string')
-                expect(config.auth.supabaseIss.length).toBeGreaterThan(0)
+        it('auth.oidc.issuer is a string when set', () => {
+            if (config.auth.oidc.issuer !== undefined) {
+                expect(typeof config.auth.oidc.issuer).toBe('string')
+                expect(config.auth.oidc.issuer.length).toBeGreaterThan(0)
             }
         })
 
-        it('auth.supabaseJwksUrl is derived under /auth/v1 from PUBLIC_SUPABASE_URL when SUPABASE_JWKS_URL absent', () => {
+        it('auth.oidc.jwksUrl is derived under /auth/v1 from PUBLIC_SUPABASE_URL when no explicit JWKS URL is set', () => {
             if (
+                !process.env.OIDC_JWKS_URL &&
                 !process.env.SUPABASE_JWKS_URL &&
+                !process.env.OIDC_DISCOVERY_BASE &&
                 process.env.PUBLIC_SUPABASE_URL
             ) {
                 // Supabase serves JWKS under the GoTrue path, not the project root.
-                expect(config.auth.supabaseJwksUrl).toContain(
+                expect(config.auth.oidc.jwksUrl).toContain(
                     '/auth/v1/.well-known/jwks.json',
                 )
             }
         })
 
-        it('auth.supabaseIss is derived under /auth/v1 from PUBLIC_SUPABASE_URL when SUPABASE_ISS absent', () => {
-            if (!process.env.SUPABASE_ISS && process.env.PUBLIC_SUPABASE_URL) {
+        it('auth.oidc.issuer is derived under /auth/v1 from PUBLIC_SUPABASE_URL when no explicit issuer is set', () => {
+            if (
+                !process.env.OIDC_ISSUER &&
+                !process.env.SUPABASE_ISS &&
+                !process.env.OIDC_DISCOVERY_BASE &&
+                process.env.PUBLIC_SUPABASE_URL
+            ) {
                 // Token `iss` is `https://<ref>.supabase.co/auth/v1`, not the bare root.
-                expect(config.auth.supabaseIss).toMatch(/\/auth\/v1$/)
+                expect(config.auth.oidc.issuer).toMatch(/\/auth\/v1$/)
             }
         })
 
-        it('auth.supabaseAud defaults to "authenticated" when SUPABASE_AUD is unset', () => {
-            if (!process.env.SUPABASE_AUD) {
-                expect(config.auth.supabaseAud).toBe('authenticated')
+        it('auth.oidc.audience defaults to "authenticated" when unset', () => {
+            if (!process.env.OIDC_AUDIENCE && !process.env.SUPABASE_AUD) {
+                expect(config.auth.oidc.audience).toBe('authenticated')
             }
         })
 
-        it('auth.supabaseServiceRoleKey normalizes SUPABASE_SERVICE_ROLE_KEY and SUPABASE_SECRET_KEY aliases', () => {
-            if (config.auth.supabaseServiceRoleKey !== undefined) {
-                expect(typeof config.auth.supabaseServiceRoleKey).toBe('string')
+        it('auth.serviceRoleKey normalizes SUPABASE_SERVICE_ROLE_KEY and SUPABASE_SECRET_KEY aliases', () => {
+            if (config.auth.serviceRoleKey !== undefined) {
+                expect(typeof config.auth.serviceRoleKey).toBe('string')
             }
+        })
+
+        // --- #150: provider-neutral OIDC config ----------------------------
+
+        it('auth.oidc.roleClaimPaths defaults to the historical hardcoded paths', () => {
+            if (!process.env.OIDC_ROLE_CLAIM_PATH) {
+                expect(config.auth.oidc.roleClaimPaths).toEqual([
+                    'app_metadata.role',
+                    'user_role',
+                ])
+            }
+        })
+
+        it('exposes no supabase-prefixed identifier on config.auth (#150 acceptance)', () => {
+            const walk = (obj: any, path = 'auth'): string[] =>
+                Object.entries(obj).flatMap(([key, value]) => [
+                    ...(/supabase/i.test(key) ? [`${path}.${key}`] : []),
+                    ...(value &&
+                    typeof value === 'object' &&
+                    !Array.isArray(value)
+                        ? walk(value, `${path}.${key}`)
+                        : []),
+                ])
+            expect(walk(config.auth)).toEqual([])
         })
     })
 })

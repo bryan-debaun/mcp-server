@@ -63,6 +63,19 @@ export const mcpAuthFailuresTotal = new Counter({
     help: 'Total number of MCP API auth failures',
 })
 
+/**
+ * Tokens that verified but whose subject matched no local Profile (#151).
+ *
+ * Deliberately separate from `mcp_auth_failures_total`: this is not an auth
+ * failure — the request proceeds as a non-admin. It is the signal that an
+ * identity mapping is broken, which is exactly the condition that used to
+ * silently downgrade an admin with no distinguishable trace.
+ */
+export const authSubjectUnresolvedTotal = new Counter({
+    name: 'auth_subject_unresolved_total',
+    help: 'Verified tokens whose subject could not be mapped to a local Profile',
+})
+
 // Book aggregate metrics
 export const bookAggregateUpdateFailuresTotal = new Counter({
     name: 'book_aggregate_update_failures_total',

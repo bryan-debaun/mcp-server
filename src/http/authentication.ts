@@ -1,5 +1,5 @@
 import { Request } from 'express'
-import { resolveAppRole, verifySupabaseJwt } from '../auth/jwt.js'
+import { resolveAppRole, verifyAccessToken } from '../auth/jwt.js'
 import { config } from '../config.js'
 
 /** Build an error carrying an HTTP status so the global handler emits a clean 4xx. */
@@ -50,17 +50,17 @@ export async function expressAuthentication(
 
         let decoded
         try {
-            decoded = await verifySupabaseJwt(token)
+            decoded = await verifyAccessToken(token)
         } catch {
-            // verifySupabaseJwt logs the underlying cause (bad signature, JWKS
+            // verifyAccessToken logs the underlying cause (bad signature, JWKS
             // fetch, expired, etc.). Surface a clean 401 instead of letting a jose
             // throw fall through to the generic 'internal error' handler (#117).
             throw authError('Invalid or expired token', 401)
         }
 
         // Resolve the application role the same way as the Express middleware:
-        // a token-baked app role (app_metadata.role) wins, otherwise the local
-        // Profile (by id, then email). The Supabase top-level `role` claim is
+        // a token-baked app role wins, otherwise the local Profile (by
+        // issuer+subject, then email). The Supabase top-level `role` claim is
         // the Postgres role ('authenticated') — NOT an app role — so checking it
         // directly (the previous behavior) always failed admin scope checks.
         const { role, isAdmin } = await resolveAppRole(decoded)

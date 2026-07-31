@@ -88,28 +88,35 @@ export async function runSeed(prismaClient?: any) {
 
     console.log('Seeding DB...')
 
-    // Generate UUIDs for profiles (matching Supabase Auth format)
+    // Generate surrogate ids for profiles.
     const crypto = await import('crypto')
-    // Bryan's Profile.id MUST equal his Supabase Auth user.id for JWT admin auth
-    // to resolve him as admin (see issue #90). Supply it via ADMIN_SUPABASE_UUID.
-    const adminSupabaseUuid = process.env.ADMIN_SUPABASE_UUID
-    if (!adminSupabaseUuid) {
+    // The identity-provider subject for Bryan's admin profile. Since #151 this
+    // lands in `Profile.externalId` rather than being forced onto `Profile.id`,
+    // so the surrogate key and the provider subject are no longer the same
+    // value and reconciling them is a column update rather than a re-key (#90).
+    const adminExternalId = process.env.ADMIN_SUPABASE_UUID
+    if (!adminExternalId) {
         console.warn(
-            'ADMIN_SUPABASE_UUID not set — using a random UUID for the admin Profile. ' +
-                'JWT admin auth will not match the Supabase user until this is set and any ' +
-                'existing prod row is reconciled (see issue #90).',
+            'ADMIN_SUPABASE_UUID not set — seeding the admin Profile without an ' +
+                'externalId. JWT admin auth will fall back to the email claim until ' +
+                'this is set (see issues #90 and #151).',
         )
     }
-    const bryanUuid = adminSupabaseUuid ?? crypto.randomUUID()
+    const bryanUuid = crypto.randomUUID()
     const adminUuid = crypto.randomUUID()
 
-    // Create Bryan's admin profile
-    // NOTE: In production, this ID should match the Supabase Auth user.id
+    // Create Bryan's admin profile. `issuer` is left NULL — the seed does not
+    // know which issuer will mint the token, and the auth path matches a
+    // NULL-issuer row on externalId alone.
     const bryanAdmin = await db.profile.upsert({
         where: { email: 'brn.dbn@gmail.com' },
-        update: { isAdmin: true },
+        update: {
+            isAdmin: true,
+            ...(adminExternalId ? { externalId: adminExternalId } : {}),
+        },
         create: {
             id: bryanUuid,
+            externalId: adminExternalId ?? null,
             email: 'brn.dbn@gmail.com',
             name: 'Bryan DeBaun',
             isAdmin: true,

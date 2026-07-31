@@ -54,13 +54,29 @@ enum BetMarket {
 
 // Minimal profile linked to Supabase Auth user
 model Profile {
-  id        String   @id // UUID from Supabase Auth user.id
+  // Local surrogate key. Historically this doubled as the Supabase Auth user.id,
+  // which coupled identity to one provider's id format — see issue #151.
+  id String @id
+
+  // The identity that owns this profile, attributed to the issuer that minted it.
+  // `externalId` is an OPAQUE string: Supabase mints UUIDs, Logto mints short
+  // alphanumeric ids, and nothing may assume a shape. Both are nullable so a
+  // profile can exist before anyone has signed in as it (seeded/admin-created),
+  // and so pre-migration rows can carry `externalId` with `issuer` still unknown.
+  issuer     String? @map("issuer")
+  externalId String? @map("external_id")
+
   email     String   @unique
   name      String?
   isAdmin   Boolean  @default(false) @map("is_admin")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // One profile per identity per issuer. Postgres treats NULLs as distinct, so
+  // this constrains attributed identities without blocking profiles that have
+  // no linked identity yet.
+  @@unique([issuer, externalId])
+  @@index([externalId])
   @@index([isAdmin])
 }
 
