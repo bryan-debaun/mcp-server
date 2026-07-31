@@ -96,13 +96,32 @@ const envSchema = z.object({
     // ── Database ──────────────────────────────────────────────────────────
     DATABASE_URL: z.string().url().optional(),
 
-    // ── Auth / Supabase ───────────────────────────────────────────────────
-    // JWKS URL: prefer explicit; derive from PUBLIC_SUPABASE_URL as fallback
+    // ── Auth / OIDC ───────────────────────────────────────────────────────
+    // Provider-neutral names (#150). The mechanism was always vendor-agnostic —
+    // OIDC discovery + JWKS + standard claims — only the naming was Supabase's.
+    // The legacy `SUPABASE_*` spellings are still accepted so the Render env can
+    // be renamed across a deploy boundary without an auth outage; the new name
+    // wins, and a warning fires while only the legacy one is set.
+    OIDC_JWKS_URL: z.string().url().optional(),
+    OIDC_ISSUER: z.string().optional(),
+    OIDC_AUDIENCE: z.string().optional(),
+    // Where to run OIDC discovery. Explicit, provider-neutral form; falls back to
+    // `PUBLIC_SUPABASE_URL + /auth/v1` (GoTrue's base) when unset.
+    OIDC_DISCOVERY_BASE: z.string().url().optional(),
+    // Comma-separated dotted claim paths searched in order for an application
+    // role. Default reproduces the previous hardcoded behaviour exactly.
+    OIDC_ROLE_CLAIM_PATH: z.string().optional(),
+
+    // Legacy aliases — retained for one deploy, then droppable (#150).
     SUPABASE_JWKS_URL: z.string().url().optional(),
-    PUBLIC_SUPABASE_URL: z.string().url().optional(),
     SUPABASE_ISS: z.string().optional(),
     SUPABASE_AUD: z.string().optional(),
-    // Service role key — accept either alias
+
+    // Supabase project URL — still the input we derive discovery from today, and
+    // genuinely Supabase's own name for it, so it keeps its spelling.
+    PUBLIC_SUPABASE_URL: z.string().url().optional(),
+    // Service role key — accept either alias. Not part of token verification;
+    // this is the bearer shortcut #152 tracks replacing with client_credentials.
     SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
     SUPABASE_SECRET_KEY: z.string().optional(),
     // Anon / publishable key — accept either alias
@@ -170,22 +189,62 @@ const env = result.data
 // Derived / normalized values
 // ---------------------------------------------------------------------------
 
+// ── OIDC (#150) ────────────────────────────────────────────────────────────
+// Each setting accepts the provider-neutral name first and the legacy
+// Supabase-prefixed name second, so both can coexist for one deploy.
+const oidcJwksUrlFromEnv = env.OIDC_JWKS_URL ?? env.SUPABASE_JWKS_URL
+const oidcIssuerFromEnv = env.OIDC_ISSUER ?? env.SUPABASE_ISS
+const oidcAudienceFromEnv = env.OIDC_AUDIENCE ?? env.SUPABASE_AUD
+
+/** Legacy env names still in use — reported at boot so the rename can finish. */
+export const legacyAuthEnvNames: string[] = [
+    env.OIDC_JWKS_URL === undefined && env.SUPABASE_JWKS_URL !== undefined
+        ? 'SUPABASE_JWKS_URL → OIDC_JWKS_URL'
+        : undefined,
+    env.OIDC_ISSUER === undefined && env.SUPABASE_ISS !== undefined
+        ? 'SUPABASE_ISS → OIDC_ISSUER'
+        : undefined,
+    env.OIDC_AUDIENCE === undefined && env.SUPABASE_AUD !== undefined
+        ? 'SUPABASE_AUD → OIDC_AUDIENCE'
+        : undefined,
+].filter((v): v is string => v !== undefined)
+
 // Supabase's GoTrue auth service lives under `/auth/v1`, so both the issuer and
 // the JWKS endpoint are derived from `PUBLIC_SUPABASE_URL + /auth/v1` — NOT the
 // project root. (The token's `iss` is `https://<ref>.supabase.co/auth/v1` and the
 // JWKS lives at `<iss>/.well-known/jwks.json`; deriving from the bare root yields
 // a 404 JWKS and an issuer mismatch — both surface as opaque 401s.)
-const supabaseAuthBase: string | undefined = env.PUBLIC_SUPABASE_URL
-    ? `${env.PUBLIC_SUPABASE_URL.replace(/\/$/, '')}/auth/v1`
-    : undefined
+// `OIDC_DISCOVERY_BASE` overrides this for any non-Supabase issuer.
+const oidcDiscoveryBase: string | undefined =
+    env.OIDC_DISCOVERY_BASE ??
+    (env.PUBLIC_SUPABASE_URL
+        ? `${env.PUBLIC_SUPABASE_URL.replace(/\/$/, '')}/auth/v1`
+        : undefined)
 
-/** Resolved JWKS URL: explicit var wins; derived from `<supabase>/auth/v1` otherwise. */
-const supabaseJwksUrl: string | undefined =
-    env.SUPABASE_JWKS_URL ??
-    (supabaseAuthBase ? `${supabaseAuthBase}/.well-known/jwks.json` : undefined)
+/** Resolved JWKS URL: explicit var wins; derived from the discovery base otherwise. */
+const oidcJwksUrl: string | undefined =
+    oidcJwksUrlFromEnv ??
+    (oidcDiscoveryBase
+        ? `${oidcDiscoveryBase}/.well-known/jwks.json`
+        : undefined)
 
-/** Resolved issuer: explicit SUPABASE_ISS wins; fallback to `<supabase>/auth/v1`. */
-const supabaseIss: string | undefined = env.SUPABASE_ISS ?? supabaseAuthBase
+/** Resolved issuer: explicit var wins; fallback to the discovery base. */
+const oidcIssuer: string | undefined = oidcIssuerFromEnv ?? oidcDiscoveryBase
+
+/**
+ * Dotted claim paths searched in order for an application role.
+ *
+ * The default reproduces the previous hardcoded behaviour: `app_metadata.role`
+ * (admin-controlled, the standard Supabase RBAC location) then a top-level
+ * `user_role` claim from a custom access-token hook. A different provider can
+ * point this at, say, `scope` or a namespaced claim without a code change.
+ */
+const oidcRoleClaimPaths: string[] = (
+    env.OIDC_ROLE_CLAIM_PATH ?? 'app_metadata.role,user_role'
+)
+    .split(',')
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0)
 
 /** Service role key: prefer the canonical name; accept legacy alias. */
 const supabaseServiceRoleKey: string | undefined =
@@ -239,22 +298,30 @@ export const config = {
     },
 
     auth: {
-        // Derived (or explicit) JWKS URL / issuer — used as the fallback when
-        // OpenID discovery is unavailable. The `*FromEnv` flags let the auth layer
-        // know whether the operator pinned these explicitly (in which case they win
-        // over discovery).
-        supabaseJwksUrl,
-        supabaseIss,
-        supabaseJwksUrlFromEnv: Boolean(env.SUPABASE_JWKS_URL),
-        supabaseIssFromEnv: Boolean(env.SUPABASE_ISS),
-        // `<project>/auth/v1` — the GoTrue base; OpenID discovery and the derived
-        // JWKS/issuer all hang off this.
-        supabaseAuthBase,
-        // Supabase access tokens carry `aud: 'authenticated'` by default; allow an
-        // explicit override but don't require operators to set it.
-        supabaseAud: env.SUPABASE_AUD ?? 'authenticated',
-        supabaseServiceRoleKey,
-        supabaseAnonKey,
+        // Provider-neutral OIDC verification parameters (#150). Nothing in here
+        // is Supabase-specific: OIDC discovery + JWKS + standard claims already
+        // *is* the vendor-agnostic interface, so pointing at a different issuer
+        // is an env change rather than a code change.
+        oidc: {
+            // Derived (or explicit) JWKS URL / issuer — the fallback when OIDC
+            // discovery is unavailable. The `*FromEnv` flags tell the auth layer
+            // whether the operator pinned these explicitly (in which case they
+            // win over discovery).
+            jwksUrl: oidcJwksUrl,
+            issuer: oidcIssuer,
+            jwksUrlFromEnv: Boolean(oidcJwksUrlFromEnv),
+            issuerFromEnv: Boolean(oidcIssuerFromEnv),
+            // Base for `/.well-known/openid-configuration`.
+            discoveryBase: oidcDiscoveryBase,
+            // Supabase access tokens carry `aud: 'authenticated'` by default;
+            // allow an explicit override but don't require operators to set it.
+            audience: oidcAudienceFromEnv ?? 'authenticated',
+            roleClaimPaths: oidcRoleClaimPaths,
+        },
+        // Not part of token verification — the shared-secret bearer shortcut that
+        // #152 tracks replacing with a real client_credentials grant.
+        serviceRoleKey: supabaseServiceRoleKey,
+        anonKey: supabaseAnonKey,
     },
 
     spotify: {

@@ -15,7 +15,7 @@ Overview
 Supabase Auth account cleanup (recommended manual steps)
 
 - Deleting a user locally does NOT remove the Supabase Auth account. To remove Supabase Auth account:
-  1. Use Supabase Admin API: `DELETE ${SUPABASE_ISS}/auth/v1/admin/users/:uid` using the service role key.
+  1. Use Supabase Admin API: `DELETE ${PUBLIC_SUPABASE_URL}/auth/v1/admin/users/:uid` using the service role key. (This is the project **root** URL — the previous `${SUPABASE_ISS}` form double-appended `/auth/v1`, since the issuer already ends in it.)
   2. Verify any webhooks or third-party integrations are cleaned up.
   3. If you need to coordinate downstream cleanup (ratings, invites, etc.), follow the project-specific procedures described in the data retention policy.
 

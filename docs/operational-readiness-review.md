@@ -115,8 +115,8 @@ GitHub automation callers      ─┘                                  ├→ Gi
 |---|---|---|
 | `DATABASE_URL` | Postgres connection (Prisma) | All DB features (stub fallback if absent) |
 | `MCP_API_KEY` | MCP gateway key (Bearer or `X-Mcp-Api-Key`) | Gating MCP + DB-dependent REST routes |
-| `SUPABASE_JWKS_URL` / `PUBLIC_SUPABASE_URL` | JWT verification (JWKS) | Admin REST auth |
-| `SUPABASE_ISS`, `SUPABASE_AUD` | JWT `iss`/`aud` validation | Admin REST auth |
+| `OIDC_JWKS_URL` / `PUBLIC_SUPABASE_URL` | JWT verification (JWKS) | Admin REST auth |
+| `OIDC_ISSUER`, `OIDC_AUDIENCE` | JWT `iss`/`aud` validation | Admin REST auth |
 | `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_SECRET_KEY`) | Service-role bypass identity | Server-to-server admin |
 | `INTERNAL_ADMIN_KEY`, `ADMIN_IP_ALLOWLIST` | Harden service-role bypass | Service-role admin path |
 | `GITHUB_TOKEN` | Octokit (Issues/Projects) | GitHub tools |

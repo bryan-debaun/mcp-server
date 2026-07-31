@@ -23,22 +23,35 @@ Set these in Render Dashboard > Environment > Environment Variables (secure):
 - `MCP_API_KEY` (optional; for protected control endpoints used by internal tools)
 - `NODE_ENV=production`
 
-Supabase / Auth-related (required for admin & JWT validation):
+Auth / OIDC (required for admin & JWT validation):
 
 - `DATABASE_URL` (Postgres connection string used by Prisma)
+- `OIDC_JWKS_URL` (JWKS endpoint used to validate access tokens)
+- `OIDC_ISSUER` (expected JWT `iss`)
+- `OIDC_AUDIENCE` (expected JWT `aud` / client id)
+- `OIDC_DISCOVERY_BASE` (optional — where discovery runs when the two above are unset; defaults to `PUBLIC_SUPABASE_URL` + `/auth/v1`)
+- `OIDC_ROLE_CLAIM_PATH` (optional — comma-separated dotted claim paths searched for an app role; defaults to `app_metadata.role,user_role`)
+
+Supabase-specific (project access, not token verification):
+
+- `PUBLIC_SUPABASE_URL` (project URL; discovery is derived from this when `OIDC_DISCOVERY_BASE` is unset)
 - `SUPABASE_SECRET_KEY` (preferred server/service role key) — fallback: `SUPABASE_SERVICE_ROLE_KEY`
-- `PUBLIC_SUPABASE_URL` (preferred issuer / public URL) — fallback: `SUPABASE_ISS`
-- `SUPABASE_JWKS_URL` (JWKS endpoint used to validate Supabase-issued JWTs)
-- `SUPABASE_AUD` (expected JWT audience / client id)
 - `PUBLIC_SUPABASE_PUBLISHABLE_KEY` (preferred publishable/anon key) — fallback: `SUPABASE_ANON_KEY`
+
+> **Renaming the auth vars (#150).** The legacy `SUPABASE_JWKS_URL` / `SUPABASE_ISS` /
+> `SUPABASE_AUD` spellings are still accepted, and the new `OIDC_*` name wins when both
+> are present. To rename without an auth outage: **set the `OIDC_*` vars alongside the
+> existing ones, deploy, confirm auth still works, then delete the legacy vars in a
+> second deploy.** While only a legacy name is set the server logs a warning at boot
+> naming the exact rename, so the leftovers are easy to find.
 
 Add these to the Render service environment and to GitHub Actions secrets (for CI jobs that run DB migrations and integration tests). For local development, use `.env` files and the local Postgres from `docker-compose.yml` with seeded data.
 
 JWT middleware and test fixtures
 
-- The codebase provides a JWT middleware that validates Supabase-issued JWTs using the JWKS endpoint and verifies `iss` and `aud` claims.
+- The codebase provides a JWT middleware that validates issuer-signed access tokens using the JWKS endpoint and verifies `iss` and `aud` claims. Resolution is standard OIDC discovery first, with the explicit env pins as an escape hatch — nothing in the verification path is provider-specific.
 - For tests, we generate an ephemeral RSA key pair and stub the JWKS endpoint so tests can sign and validate tokens without network access.
-- Ensure `SUPABASE_JWKS_URL`, `SUPABASE_AUD`, and `SUPABASE_ISS` are set for CI so the middleware tests run in the DB Integration job or unit tests.
+- Ensure `OIDC_JWKS_URL`, `OIDC_AUDIENCE`, and `OIDC_ISSUER` are set for CI so the middleware tests run in the DB Integration job or unit tests.
 
 Build & Start
 -------------
@@ -135,8 +148,8 @@ Secrets & Token Management
 
 Supabase JWT / JWKS configuration
 
-- Store Supabase-related secrets in Render: `SUPABASE_JWKS_URL`, `SUPABASE_AUD`, `PUBLIC_SUPABASE_URL` (or `SUPABASE_ISS`), `SUPABASE_SECRET_KEY` (or `SUPABASE_SERVICE_ROLE_KEY`), and `DATABASE_URL`.
-- Configure the JWT middleware to validate tokens using the JWKS endpoint (`SUPABASE_JWKS_URL`) and by verifying `aud` and `iss` claims against `SUPABASE_AUD` and `SUPABASE_ISS`.
+- Store auth + Supabase secrets in Render: `OIDC_JWKS_URL`, `OIDC_AUDIENCE`, `OIDC_ISSUER` (or `PUBLIC_SUPABASE_URL` to derive them), `SUPABASE_SECRET_KEY` (or `SUPABASE_SERVICE_ROLE_KEY`), and `DATABASE_URL`.
+- Configure the JWT middleware to validate tokens using the JWKS endpoint (`OIDC_JWKS_URL`) and by verifying `aud` and `iss` claims against `OIDC_AUDIENCE` and `OIDC_ISSUER`.
 - For local development and tests, include a mock JWKS JSON file (e.g., `test/fixtures/mock-jwks.json`) and helper utilities to generate test tokens signed with a test key (do **not** commit private keys). Tests should exercise authorized vs unauthorized flows using these fixtures.
 - The `SUPABASE_SERVICE_ROLE_KEY` is highly sensitive (server-only). Use it for admin CLI operations or server-to-server calls only; never expose it in client code or logs. When rotating the service role key: update Render secrets, update CI secrets, and redeploy; verify any long-lived sessions/tokens are revoked as part of rotation.
 - Add the required GitHub Actions secrets (for example, `DATABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`) so CI jobs can run migrations and integration tests against ephemeral test databases.

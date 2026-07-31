@@ -11,6 +11,6 @@ output "service_role_key" {
 }
 
 output "jwks_url" {
-  description = "JWKS endpoint for Supabase JWT validation (SUPABASE_JWKS_URL)"
+  description = "JWKS endpoint for access-token validation (OIDC_JWKS_URL)"
   value       = "https://<your-project>.supabase.co/.well-known/jwks.json"
 }

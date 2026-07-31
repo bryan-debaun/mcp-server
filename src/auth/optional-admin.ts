@@ -1,8 +1,8 @@
 import type { Request } from 'express'
-import { resolveAppRole, verifySupabaseJwt } from './jwt.js'
+import { resolveAppRole, verifyAccessToken } from './jwt.js'
 
 /**
- * Best-effort check of whether a request carries a valid **admin** Supabase JWT.
+ * Best-effort check of whether a request carries a valid **admin** access token.
  *
  * Used by endpoints gated by the MCP gateway key (`@Security('api_key')`) that
  * want to *additionally* unlock admin-only views (e.g. draft articles) when an
@@ -16,7 +16,7 @@ export async function requestIsAdmin(req: Request): Promise<boolean> {
     const auth = req.headers.authorization
     if (!auth || !auth.startsWith('Bearer ')) return false
     try {
-        const payload = await verifySupabaseJwt(auth.slice('Bearer '.length))
+        const payload = await verifyAccessToken(auth.slice('Bearer '.length))
         const { isAdmin } = await resolveAppRole(payload)
         return isAdmin
     } catch {

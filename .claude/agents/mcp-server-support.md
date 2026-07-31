@@ -89,7 +89,7 @@ Use the Grep/Glob tools (not raw Select-String) to locate where an env var, rout
 
 | Scenario | What to check |
 |----------|---------------|
-| Auth issue | `src/auth/jwt.ts`, `src/http/middleware/mcp-auth.ts`, `SUPABASE_JWKS_URL` |
+| Auth issue | `src/auth/jwt.ts`, `src/http/middleware/mcp-auth.ts`, `OIDC_JWKS_URL` |
 | Magic-link broken | `src/auth/magic-link.ts`, `src/http/controllers/MagicLinkController.ts`, `MAGIC_LINK_JWT_SECRET` |
 | MCP tool not found | `src/tools/index.ts` (registration), `src/server.ts`, tool schema `description` field |
 | Route returns 404 | `src/http/server.ts` (registration order), `registerDbDependentRoutes()` timing |
