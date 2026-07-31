@@ -143,6 +143,17 @@ const envSchema = z.object({
         .optional()
         .default('https://api.the-odds-api.com/v4'),
 
+    // ── OAuth Protected Resource Metadata (RFC 9728, #152) ────────────────
+    // Public origin of this deployment. Pin it in production so the advertised
+    // resource identifier is stable rather than derived from the Host header.
+    PUBLIC_BASE_URL: z.string().url().optional(),
+    // Canonical resource identifier. Defaults to the derived origin + /mcp.
+    OAUTH_RESOURCE_IDENTIFIER: z.string().url().optional(),
+    // Comma-separated authorization server issuers. Defaults to the OIDC issuer.
+    OAUTH_AUTHORIZATION_SERVERS: csvArray,
+    // Comma-separated scopes to advertise.
+    OAUTH_SCOPES_SUPPORTED: csvArray,
+
     // ── GitHub ────────────────────────────────────────────────────────────
     GITHUB_TOKEN: z.string().optional(),
 
@@ -337,6 +348,16 @@ export const config = {
         apiKey: env.ODDS_API_KEY,
         baseUrl: env.ODDS_API_BASE,
         enabled: Boolean(env.ODDS_API_KEY),
+    },
+
+    // RFC 9728 Protected Resource Metadata (#152). Every value is configuration
+    // so the advertised AS and resource identifier are never hardcoded — they
+    // follow whichever authorization server ADR 0001 Stage 2 lands on.
+    oauth: {
+        publicBaseUrl: env.PUBLIC_BASE_URL,
+        resourceIdentifier: env.OAUTH_RESOURCE_IDENTIFIER,
+        authorizationServers: env.OAUTH_AUTHORIZATION_SERVERS,
+        scopesSupported: env.OAUTH_SCOPES_SUPPORTED,
     },
 
     github: {

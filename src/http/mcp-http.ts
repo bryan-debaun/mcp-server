@@ -3,6 +3,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { Application, Request, Response } from 'express'
 import { config } from '../config.js'
 import { logger } from '../logger.js'
+import { wwwAuthenticateValue } from './protected-resource-metadata.js'
 
 // Simple newline-delimited JSON HTTP stream transport
 export class HttpStreamTransport {
@@ -213,6 +214,27 @@ export class SseServerTransport {
     }
 }
 
+/**
+ * 401 with the RFC 9728 `resource_metadata` pointer (#152), so a standards-based
+ * MCP client can discover how to authenticate instead of seeing an opaque 401.
+ * Mirrors `mcpAuthMiddleware`; these handlers gate on `MCP_API_KEY` themselves.
+ */
+function rejectUnauthorized(req: Request, res: Response): void {
+    try {
+        res.set(
+            'WWW-Authenticate',
+            wwwAuthenticateValue(req, {
+                error: 'invalid_token',
+                description:
+                    'Missing or invalid credentials for the MCP resource',
+            }),
+        )
+    } catch {
+        /* header construction must never turn a 401 into a 500 */
+    }
+    res.status(401).json({ error: 'unauthorized' })
+}
+
 // Register endpoints on the Express app
 export function registerMcpHttp(app: Application): void {
     const base = '/mcp'
@@ -227,10 +249,12 @@ export function registerMcpHttp(app: Application): void {
             if (mcpKey) {
                 const auth = (req.headers.authorization || '').toString()
                 if (auth !== `Bearer ${mcpKey}`) {
-                    logger.error('mcp-http: POST /mcp auth failed', {
-                        got: auth,
+                    // Never log the presented credential (see mcp-auth.ts).
+                    logger.warn('mcp-http: POST /mcp auth failed', {
+                        path: req.path,
+                        ip: req.ip,
                     })
-                    res.status(401).json({ error: 'unauthorized' })
+                    rejectUnauthorized(req, res)
                     return
                 }
             }
@@ -282,10 +306,12 @@ export function registerMcpHttp(app: Application): void {
             if (mcpKey) {
                 const auth = (req.headers.authorization || '').toString()
                 if (auth !== `Bearer ${mcpKey}`) {
-                    logger.error('mcp-http: GET /mcp auth failed', {
-                        got: auth,
+                    // Never log the presented credential (see mcp-auth.ts).
+                    logger.warn('mcp-http: GET /mcp auth failed', {
+                        path: req.path,
+                        ip: req.ip,
                     })
-                    res.status(401).json({ error: 'unauthorized' })
+                    rejectUnauthorized(req, res)
                     return
                 }
             }
@@ -345,10 +371,12 @@ export function registerMcpHttp(app: Application): void {
             if (mcpKey) {
                 const auth = (req.headers.authorization || '').toString()
                 if (auth !== `Bearer ${mcpKey}`) {
-                    logger.error('mcp-http: POST /mcp/events auth failed', {
-                        got: auth,
+                    // Never log the presented credential (see mcp-auth.ts).
+                    logger.warn('mcp-http: POST /mcp/events auth failed', {
+                        path: req.path,
+                        ip: req.ip,
                     })
-                    res.status(401).json({ error: 'unauthorized' })
+                    rejectUnauthorized(req, res)
                     return
                 }
             }
