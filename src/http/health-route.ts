@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express'
+import { capabilitySummary } from '../capabilities.js'
 import { config } from '../config.js'
 import { initPrisma, prisma } from '../db/index.js'
 import { logger } from '../logger.js'
@@ -29,7 +30,8 @@ async function checkDatabase(): Promise<{
 export function registerHealthRoute(app: any): void {
     // Liveness probe — always returns 200 to indicate the process is alive.
     // `?deep=1` additionally exercises the DB (keep-alive for Render + Supabase,
-    // #119); the default form stays dependency-free for Render's own health check.
+    // #119) and reports optional-integration state (#155); the default form stays
+    // dependency-free and minimal for Render's own health check.
     app.get('/healthz', async (req: Request, res: Response) => {
         const base = {
             status: 'ok',
@@ -40,9 +42,15 @@ export function registerHealthRoute(app: any): void {
         const deep = req.query.deep === '1' || req.query.deep === 'true'
         if (!deep) return res.status(200).json(base)
 
+        // Unconfigured optional integrations are reported but never change the
+        // status code: the server is genuinely functional without them, and
+        // failing the probe here would take the whole service down over a
+        // missing GITHUB_TOKEN. This is a visibility signal, not a gate.
+        const capabilities = capabilitySummary()
+
         try {
             const db = await checkDatabase()
-            return res.status(200).json({ ...base, ...db })
+            return res.status(200).json({ ...base, ...db, capabilities })
         } catch (err) {
             // DB is configured but unreachable — surface a 503 so an external
             // monitor alerts on a genuine outage (a paused/restoring Supabase or
@@ -51,9 +59,12 @@ export function registerHealthRoute(app: any): void {
                 'deep /healthz DB check failed',
                 (err as any)?.message ?? err,
             )
-            return res
-                .status(503)
-                .json({ ...base, status: 'degraded', db: 'error' })
+            return res.status(503).json({
+                ...base,
+                status: 'degraded',
+                db: 'error',
+                capabilities,
+            })
         }
     })
 

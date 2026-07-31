@@ -76,3 +76,52 @@ describe('GET /healthz?deep=1 (#119 keep-alive deep check)', () => {
         expect(res.body).toMatchObject({ db: 'skipped' })
     })
 })
+
+describe('GET /healthz?deep=1 capability reporting (#155)', () => {
+    const ORIGINAL_GITHUB_TOKEN = config.github.token
+    const setGithubToken = (t: string | undefined) => {
+        ;(config as any).github.token = t
+    }
+
+    beforeEach(() => {
+        mockQueryRaw.mockReset()
+        mockInitPrisma.mockClear()
+        setDbUrl(undefined)
+    })
+    afterEach(() => {
+        setDbUrl(ORIGINAL_DB_URL)
+        setGithubToken(ORIGINAL_GITHUB_TOKEN)
+    })
+
+    it('reports github: false when GITHUB_TOKEN is unset', async () => {
+        setGithubToken(undefined)
+        const res = await request(makeApp()).get('/healthz?deep=1').expect(200)
+        expect(res.body.capabilities).toMatchObject({ github: false })
+    })
+
+    it('reports github: true when GITHUB_TOKEN is set', async () => {
+        setGithubToken('ghp_test')
+        const res = await request(makeApp()).get('/healthz?deep=1').expect(200)
+        expect(res.body.capabilities).toMatchObject({ github: true })
+    })
+
+    it('stays 200 with a missing capability — degraded is not unhealthy', async () => {
+        setGithubToken(undefined)
+        await request(makeApp()).get('/healthz?deep=1').expect(200)
+    })
+
+    it('still reports capabilities alongside a 503 DB failure', async () => {
+        setDbUrl('postgres://example')
+        setGithubToken(undefined)
+        mockQueryRaw.mockRejectedValueOnce(new Error('connection refused'))
+        const res = await request(makeApp()).get('/healthz?deep=1').expect(503)
+        expect(res.body).toMatchObject({ status: 'degraded', db: 'error' })
+        expect(res.body.capabilities).toMatchObject({ github: false })
+    })
+
+    it('keeps the shallow probe free of capability detail (Render gate stays minimal)', async () => {
+        setGithubToken(undefined)
+        const res = await request(makeApp()).get('/healthz').expect(200)
+        expect(res.body).not.toHaveProperty('capabilities')
+    })
+})
