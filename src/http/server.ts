@@ -11,6 +11,7 @@ import {
 } from './metrics-route.js'
 import { auditAdminCatalogMutations } from './middleware/audit.js'
 import { registerPlaybackRoute } from './playback-route.js'
+import { registerProtectedResourceMetadata } from './protected-resource-metadata.js'
 import { registerSwaggerRoute } from './swagger-route.js'
 import { RegisterRoutes } from './tsoa-routes.js'
 
@@ -52,6 +53,10 @@ export async function createHttpApp(): Promise<express.Application> {
     })
 
     registerHealthRoute(app)
+    // RFC 9728 discovery (#152). Registered here, before `mcpAuthMiddleware` is
+    // installed by `registerDbDependentRoutes`, so the document describing how to
+    // authenticate is not itself behind the gate it describes.
+    registerProtectedResourceMetadata(app)
     registerPlaybackRoute(app)
     registerMetricsRoute(app)
     // Book/author catalog routes are served by the TSOA controllers (RegisterRoutes below)
@@ -170,6 +175,10 @@ export function createBasicApp(): express.Application {
 
     // Minimal publicly safe routes (liveness, readiness, playback, metrics)
     registerHealthRoute(app)
+    // RFC 9728 discovery (#152). Registered here, before `mcpAuthMiddleware` is
+    // installed by `registerDbDependentRoutes`, so the document describing how to
+    // authenticate is not itself behind the gate it describes.
+    registerProtectedResourceMetadata(app)
     registerPlaybackRoute(app)
     registerMetricsRoute(app)
 

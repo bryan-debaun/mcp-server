@@ -2,6 +2,25 @@ import type { NextFunction, Request, Response } from 'express'
 import { config } from '../../config.js'
 import { logger } from '../../logger.js'
 import { mcpAuthFailuresTotal } from '../metrics-route.js'
+import { wwwAuthenticateValue } from '../protected-resource-metadata.js'
+
+/**
+ * Reject with a 401 that tells a standards-based client where to look (#152).
+ *
+ * RFC 9728 §5.1: a protected resource signals its metadata location via the
+ * `resource_metadata` parameter on `WWW-Authenticate`. Without this a conformant
+ * MCP client sees an opaque 401 and has no way to discover how to authenticate.
+ */
+function unauthorized(req: Request, res: Response) {
+    res.set(
+        'WWW-Authenticate',
+        wwwAuthenticateValue(req, {
+            error: 'invalid_token',
+            description: 'Missing or invalid credentials for the MCP resource',
+        }),
+    )
+    return res.status(401).json({ error: 'Unauthorized' })
+}
 
 export function mcpAuthMiddleware(
     req: Request,
@@ -32,7 +51,7 @@ export function mcpAuthMiddleware(
         } catch {
             /* noop */
         }
-        return res.status(401).json({ error: 'Unauthorized' })
+        return unauthorized(req, res)
     } catch (err) {
         logger.error('mcp-auth: unexpected error', err)
         // Fail closed: treat as unauthorized
@@ -41,6 +60,13 @@ export function mcpAuthMiddleware(
         } catch {
             /* noop */
         }
-        return res.status(401).json({ error: 'Unauthorized' })
+        // `unauthorized()` builds a URL from request headers, so guard it here —
+        // this branch already means something unexpected happened, and a header
+        // failure must not escalate a 401 into an unhandled 500.
+        try {
+            return unauthorized(req, res)
+        } catch {
+            return res.status(401).json({ error: 'Unauthorized' })
+        }
     }
 }
