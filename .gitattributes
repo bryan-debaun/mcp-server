@@ -1,0 +1,21 @@
+# Normalize line endings.
+#
+# Without this, a Windows checkout with `core.autocrlf=true` (the Git for Windows
+# default) writes CRLF into the working tree, while Biome's formatter defaults to
+# `lineEnding: "lf"`. The result is that `pnpm run verify` reports every source
+# file as a format error on Windows and passes on Linux — so the check is
+# effectively unrunnable on the primary dev machine while looking fine in CI.
+#
+# `eol=lf` forces LF in the working tree on every platform regardless of
+# autocrlf, which is what the formatter, the Docker build, and CI all expect.
+* text=auto eol=lf
+
+# Binary — never touch these.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
