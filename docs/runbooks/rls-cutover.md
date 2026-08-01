@@ -1,8 +1,20 @@
 # RLS cutover — switching the app to a non-bypassing database role
 
-> **Status: not yet performed in production.** The migration and application
-> code are merged and inert; this runbook is the deliberate step that turns
-> enforcement on.
+> **Status: PERFORMED 2026-08-01.** Production now connects as `mcp_app` and RLS
+> is enforcing. Verified end to end:
+>
+> ```text
+> active DB connections by role:  mcp_app  1 conns
+> non-admin write   -> refused by policy
+> admin write       -> allowed (create + delete via MCP tool, round-tripped)
+> catalog read      -> unaffected
+> /healthz?deep=1   -> status ok, migrations pending 0
+> ```
+>
+> Kept as a runbook because the steps are the same if the credential is ever
+> rotated, and because the rollback below is the live procedure if enforcement
+> ever needs to come off in a hurry. The previous connection string is stored in
+> Doppler as **`DATABASE_URL_ROLLBACK`**.
 
 ## Why there is a cutover at all
 
@@ -137,13 +149,17 @@ automatically a value in Render.
 
 One value, one restart:
 
-```
-DATABASE_URL = <the original postgres pooled URL>
+```sh
+# the pre-cutover postgres URL, preserved in Doppler at cutover time
+doppler secrets get DATABASE_URL_ROLLBACK --project bad-mcp --config prd --plain
+# set that value as DATABASE_URL, then redeploy/restart
 ```
 
 `postgres` still owns the tables and still has `BYPASSRLS`, so it bypasses every
-policy exactly as before. **Keep the original URL somewhere you can paste it
-from** — that is the entire rollback plan, and it is instant.
+policy exactly as before. That is the entire rollback plan, and it is instant.
+
+Do not delete `DATABASE_URL_ROLLBACK` — reconstructing the original credential
+under pressure is exactly the wrong thing to be doing mid-incident.
 
 Nothing in the schema needs reverting: the policies are inert against a
 bypassing role.

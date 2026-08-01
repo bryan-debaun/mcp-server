@@ -403,7 +403,7 @@ These are **informal, best-effort targets for a solo project** — *not* contrac
 
 | Topic | Decision needed |
 |---|---|
-| **RLS** (§9) | **Decided: make it real.** Built and merged, currently inert pending a credential cutover — see [`docs/runbooks/rls-cutover.md`](runbooks/rls-cutover.md). |
+| ~~**RLS** (§9)~~ | **Done 2026-08-01.** Made real and cut over — production connects as `mcp_app` and RLS is enforcing. |
 | **Deploy gating** (§3) | The workflow now gates deploys, but it only takes effect once Auto-Deploy is turned **off** in the Render dashboard and `RENDER_DEPLOY_HOOK_URL` is set. Until then Render still deploys on push and the gate is inert. |
 | **Rate limiting** (§8) | Still none. Relies on `MCP_API_KEY` + Cloudflare. Fine at current exposure; revisit if the surface widens. |
 
