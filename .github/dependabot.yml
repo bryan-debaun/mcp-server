@@ -1,0 +1,54 @@
+version: 2
+
+# Dependency update + vulnerability scanning (ORR gap: no dependency scanning).
+#
+# Grouped and batched deliberately. This is a solo project: a dozen individual
+# PRs a week is how Dependabot gets muted, and a muted bot is worse than none —
+# it looks like coverage while providing none.
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    versioning-strategy: increase
+    labels:
+      - 'project:mcp-server'
+      - 'type:chore'
+    groups:
+      # Patch/minor across the board in one PR — CI (verify + tests + build) is
+      # the gate, and reviewing these individually has no payoff.
+      minor-and-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # tsoa is pinned to a v7 alpha on purpose (see tsoa.json / the ORR).
+      # Route + OpenAPI generation is load-bearing, so bumps here are a
+      # deliberate, tested change rather than an automated one.
+      - dependency-name: '@tsoa/runtime'
+      - dependency-name: tsoa
+    # Majors still arrive as individual PRs — those genuinely need reading.
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels:
+      - 'project:mcp-server'
+      - 'type:chore'
+    groups:
+      actions:
+        patterns:
+          - '*'
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly
+    labels:
+      - 'project:mcp-server'
+      - 'type:chore'

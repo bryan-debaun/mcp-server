@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+﻿import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { Application, Request, Response } from 'express'
 import { config } from '../config.js'
@@ -235,14 +235,28 @@ function rejectUnauthorized(req: Request, res: Response): void {
     res.status(401).json({ error: 'unauthorized' })
 }
 
-// Register endpoints on the Express app
+/**
+ * Register endpoints on the Express app.
+ *
+ * **Log levels matter here.** `src/sentry.ts` bridges every `logger.error` to
+ * Sentry, so anything logged at `error` on the normal request path becomes a
+ * Sentry issue per request once a DSN is set — drowning real failures and
+ * skewing error-rate readings. These handlers previously logged the entire
+ * request lifecycle (`POST /mcp called`, `created transport`, `registering
+ * tools`, `request handled`) at `error`. The convention now:
+ *
+ *   - `debug` — routine lifecycle, useful only when actively debugging.
+ *   - `warn`  — the caller did something wrong (bad auth, missing conn id,
+ *               unparseable payload). Not our failure; must not page.
+ *   - `error` — we failed. Genuinely worth a Sentry issue.
+ */
 export function registerMcpHttp(app: Application): void {
     const base = '/mcp'
 
     // POST /mcp -> MCP Streamable HTTP transport (bidirectional JSON-RPC over HTTP)
     app.post(base, async (req: Request, res: Response) => {
         try {
-            logger.error(
+            logger.debug(
                 `mcp-http: POST /mcp called authPresent=${!!req.headers.authorization}`,
             )
             const mcpKey = config.security.mcpApiKey
@@ -262,7 +276,7 @@ export function registerMcpHttp(app: Application): void {
             const transport = new StreamableHTTPServerTransport({
                 sessionIdGenerator: undefined,
             })
-            logger.error(
+            logger.debug(
                 'mcp-http: POST /mcp created StreamableHTTPServerTransport',
             )
 
@@ -270,11 +284,11 @@ export function registerMcpHttp(app: Application): void {
             const { registerTools } = await import('../tools/index.js')
             const serverInstance: McpServer = mod.createServer()
             registerTools(serverInstance)
-            logger.error('mcp-http: POST /mcp registering tools and connecting')
+            logger.debug('mcp-http: POST /mcp registering tools and connecting')
             try {
                 await serverInstance.connect(transport as any)
                 await transport.handleRequest(req as any, res as any, req.body)
-                logger.error('mcp-http: mcp http request handled')
+                logger.debug('mcp-http: mcp http request handled')
             } catch (err) {
                 logger.error('mcp-http: mcp http connect/handle failed', err)
                 try {
@@ -299,7 +313,7 @@ export function registerMcpHttp(app: Application): void {
 
     app.get(base, async (req: Request, res: Response) => {
         try {
-            logger.error(
+            logger.debug(
                 `mcp-http: GET /mcp called authPresent=${!!req.headers.authorization}`,
             )
             const mcpKey = config.security.mcpApiKey
@@ -318,7 +332,7 @@ export function registerMcpHttp(app: Application): void {
 
             const connId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
             const transport = new SseServerTransport(res, connId)
-            logger.error('mcp-http: GET /mcp created SseServerTransport', {
+            logger.debug('mcp-http: GET /mcp created SseServerTransport', {
                 connId,
             })
             sseMap.set(connId, transport)
@@ -329,12 +343,12 @@ export function registerMcpHttp(app: Application): void {
                 const { registerTools } = await import('../tools/index.js')
                 const serverInstance: McpServer = mod.createServer()
                 registerTools(serverInstance)
-                logger.error(
+                logger.debug(
                     'mcp-http: GET /mcp registering tools and connecting',
                 )
                 try {
                     await serverInstance.connect(transport as any)
-                    logger.error('mcp-http: mcp sse connected', { connId })
+                    logger.debug('mcp-http: mcp sse connected', { connId })
                 } catch (err) {
                     logger.error('mcp-http: mcp sse connect failed', err)
                     transport.close()
@@ -364,7 +378,7 @@ export function registerMcpHttp(app: Application): void {
     // POST /mcp/events -> used by SSE clients to send messages back to server
     app.post(`${base}/events`, async (req: Request, res: Response) => {
         try {
-            logger.error('mcp-http: POST /mcp/events called', {
+            logger.debug('mcp-http: POST /mcp/events called', {
                 connIdHeader: req.headers['x-mcp-conn-id'],
             })
             const mcpKey = config.security.mcpApiKey
@@ -383,22 +397,19 @@ export function registerMcpHttp(app: Application): void {
 
             const connId = req.headers['x-mcp-conn-id']?.toString() || ''
             if (!connId) {
-                logger.error('mcp-http: missing conn id for /mcp/events')
+                logger.warn('mcp-http: missing conn id for /mcp/events')
                 return res.status(400).json({ error: 'missing conn id' })
             }
             const transport = sseMap.get(connId)
             if (!transport) {
-                logger.error(
-                    'mcp-http: connection not found for connId',
-                    connId,
-                )
+                logger.warn('mcp-http: connection not found for connId', connId)
                 return res.status(404).json({ error: 'connection not found' })
             }
 
             // Accept newline-delimited JSON body
             try {
                 const body = (req as any).body
-                logger.error('mcp-http: /mcp/events received body', {
+                logger.debug('mcp-http: /mcp/events received body', {
                     bodyType: Array.isArray(body) ? 'array' : typeof body,
                 })
                 // Support both single object and arrays
@@ -409,7 +420,7 @@ export function registerMcpHttp(app: Application): void {
                 }
                 res.status(204).end()
             } catch (err) {
-                logger.error('mcp-http: invalid payload for /mcp/events', err)
+                logger.warn('mcp-http: invalid payload for /mcp/events', err)
                 res.status(400).json({ error: 'invalid payload' })
             }
         } catch (err) {

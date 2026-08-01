@@ -8,18 +8,41 @@
 # Command pointing at the removed `scripts/start-production.sh` is what caused the
 # status-2 crash loop; do not reintroduce it.)
 #
-# MIGRATIONS are intentionally NOT run automatically here:
-#   - Render's Pre-Deploy Command (the natural home for `migrate deploy`) requires
-#     a paid instance type, so it isn't available on this plan.
-#   - Running `migrate deploy` at container boot would defeat this server's
-#     fast-cold-start design (src/http/server.ts binds the port early and inits
-#     Prisma lazily), and the pruned prod image has no Prisma CLI.
-# For this single-user app with infrequent schema changes, apply migrations
-# out-of-band against a DIRECT (non-pooled, port 5432) connection — Supabase's
-# pooled/pgbouncer endpoint can't take the advisory locks `migrate deploy` needs:
+# MIGRATIONS run automatically at CONTAINER BOOT. This comment previously said
+# the opposite ("intentionally NOT run automatically", citing a pruned image with
+# no Prisma CLI). That is stale: the Dockerfile keeps `prisma` + `@prisma/config`
+# as prod deps so the CLI survives the prune, and its CMD is:
+#
+#   sh -c "pnpm exec prisma migrate deploy || echo '[boot] prisma migrate deploy \
+#          failed; starting anyway'; exec node dist/index.js"
+#
+# The Dockerfile is the source of truth — Render ignores buildCommand/startCommand
+# for Docker services, so CMD is what actually runs. Three places used to describe
+# this differently (here, the Dockerfile, and docs/runbooks/deploy-render.md);
+# during an incident that ambiguity is worse than either answer.
+#
+# REQUIRED ENV: DATABASE_URL_DIRECT must be set (Supabase session pooler, port
+# 5432). The entrypoint migrates over it because the TRANSACTION pooler (6543)
+# that DATABASE_URL points at cannot take the advisory locks `migrate deploy`
+# needs. That exact mismatch silently blocked every migration from 2026-06-28 to
+# 2026-07-31 — the résumé tables from #145/#147 never existed in production while
+# the code using them was live. If DATABASE_URL_DIRECT is unset the entrypoint
+# falls back to DATABASE_URL and warns loudly at boot.
+#
+# The step is fatal ONLY when the database is reachable and the migration still
+# failed — that means a real problem, and the server refuses to start rather than
+# serve traffic against a schema it doesn't understand (Render's health-check gate
+# keeps the previous revision live). An UNREACHABLE database (paused Supabase free
+# project) still starts normally, so health checks stay up.
+#
+# Escape hatches: BOOT_MIGRATE_NONFATAL=1 restores the old always-start behaviour
+# for one deploy; SKIP_BOOT_MIGRATE=1 skips migrations entirely.
+#
+# To apply out-of-band instead:
 #   DATABASE_URL="<direct-url>" pnpm exec prisma migrate deploy
-# If this service is ever upgraded to a paid plan, prefer a Pre-Deploy Command:
-#   env DATABASE_URL="${DIRECT_DATABASE_URL:-$DATABASE_URL}" pnpm dlx prisma@7 migrate deploy
+#
+# SEEDING is NOT automatic (ADR-0008) — boot never seeds. Run it explicitly from
+# the Render Shell when needed: `pnpm exec prisma db seed`.
 services:
   - type: web
     name: mcp-server
@@ -27,7 +50,17 @@ services:
     plan: starter
     branch: main
     dockerfilePath: ./Dockerfile
-    autoDeploy: true
+    # Deploys are gated on CI (ORR gap #5): `.github/workflows/ci-deploy-render.yml`
+    # triggers a deploy hook only after verify + tests + build + db-integration
+    # all pass for the commit. With autoDeploy on, Render fires on the push
+    # itself and waits for nothing, so a red build could deploy.
+    #
+    # NOTE: this line only binds if the service is managed by this blueprint. A
+    # service created through the dashboard ignores it — turn Auto-Deploy OFF in
+    # Render -> bad-mcp -> Settings, and add the Deploy Hook URL as the repo
+    # secret RENDER_DEPLOY_HOOK_URL. Until that secret exists the workflow's
+    # deploy step is a no-op that warns, so nothing breaks in the meantime.
+    autoDeploy: false
     healthCheckPath: /healthz
     envVars:
       - key: NODE_ENV

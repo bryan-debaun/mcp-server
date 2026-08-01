@@ -63,7 +63,82 @@ jobs:
         run: pnpm exec prisma db push && pnpm exec prisma generate
       - name: Generate tsoa routes (required for tests)
         run: pnpm run build:spec
+      # Lint + typecheck. `verify` already existed in package.json but nothing
+      # ran it, so it rotted unnoticed (see .gitattributes — a missing
+      # line-ending policy made it fail on every Windows checkout while passing
+      # here). Runs after build:spec because typecheck covers the generated
+      # tsoa-routes.ts, and before tests so a formatting/type failure reports
+      # faster than the full suite.
+      - name: Verify (lint + typecheck)
+        run: pnpm run verify
       - name: Run tests
         run: pnpm test
       - name: Build
         run: pnpm run build
+
+  # Gate production deploys on CI (ORR gap #5).
+  #
+  # Render's `autoDeploy` fires on the push itself and does not wait for any of
+  # this, so a red build and a live deploy could happen concurrently. Turning
+  # autoDeploy off and triggering from here makes CI an actual gate.
+  #
+  # SETUP REQUIRED (see deploy/render.yaml):
+  #   1. Render dashboard -> bad-mcp -> Settings -> turn Auto-Deploy OFF.
+  #      `autoDeploy: false` in render.yaml only binds if the service is managed
+  #      by the blueprint; a dashboard-created service ignores it.
+  #   2. Create a Deploy Hook (same Settings page) and store the URL as the
+  #      repo secret RENDER_DEPLOY_HOOK_URL.
+  #
+  # Until the secret exists this job is a no-op that warns, so merging this
+  # change cannot accidentally stop deploys from happening.
+  deploy:
+    needs: test-and-build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      # Checked first so that, while the secret is unset, this job neither waits
+      # nor can fail. Otherwise a red db-integration would fail *this* job too
+      # and put a confusing X on main for a deploy that was never going to
+      # happen (Render's own autoDeploy is still doing the deploying).
+      - name: Is the deploy hook configured?
+        id: hook
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::RENDER_DEPLOY_HOOK_URL is not set — deploy gating is inactive. If Render Auto-Deploy is still ON this is harmless (Render deploys on push); if you have turned it OFF, nothing is deploying. See deploy/render.yaml."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # test-and-build is a `needs:` dependency, but db-integration lives in its
+      # own workflow and runs concurrently — and it is the job that would catch a
+      # broken migration. Deploying without it would miss exactly the failure
+      # class that left production un-migrated for a month.
+      - name: Wait for DB Integration to pass for this commit
+        if: steps.hook.outputs.configured == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for i in $(seq 1 60); do
+            conclusion=$(gh api \
+              "repos/${{ github.repository }}/commits/${{ github.sha }}/check-runs?per_page=100" \
+              --jq '[.check_runs[] | select(.name == "db-integration")] | first | .conclusion // "pending"' \
+              2>/dev/null || echo "pending")
+            case "$conclusion" in
+              success) echo "db-integration passed"; exit 0 ;;
+              pending|null|"") echo "waiting for db-integration ($i/60)"; sleep 10 ;;
+              *) echo "::error::db-integration concluded '$conclusion' — not deploying"; exit 1 ;;
+            esac
+          done
+          echo "::error::timed out waiting for db-integration"
+          exit 1
+
+      - name: Trigger Render deploy
+        if: steps.hook.outputs.configured == 'true'
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          curl -fsS -X POST "$HOOK" > /dev/null
+          echo "Render deploy triggered for ${{ github.sha }}"
