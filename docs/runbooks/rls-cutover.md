@@ -33,7 +33,25 @@ path keeps its single round-trip.
 
 ## Preconditions
 
-- [ ] `20260801120000_enforce_rls` applied in production
+> [!WARNING]
+> **The migration must be applied to production before step 1 will work.**
+> `mcp_app` is created by `20260801120000_enforce_rls`. Until that migration has
+> run, the role does not exist and step 1 fails with:
+>
+> ```text
+> ERROR:  role "mcp_app" does not exist
+> ```
+>
+> That migration ships with the application code that propagates claims, so the
+> order is: **merge → deploy (the boot entrypoint applies it) → then cut over.**
+> Confirm before starting:
+>
+> ```sql
+> SELECT rolname FROM pg_roles WHERE rolname = 'mcp_app';   -- expect 1 row
+> ```
+
+- [ ] `20260801120000_enforce_rls` applied in production (see the warning above)
+- [ ] The application code that sets `request.jwt.claims.*` is **deployed** — cutting over without it means every write is refused
 - [ ] A snapshot exists: `pnpm run db:snapshot` (see gap #6)
 - [ ] You can reach the database directly (`DATABASE_URL_DIRECT`)
 
@@ -42,13 +60,21 @@ path keeps its single round-trip.
 **1. Give `mcp_app` a password.** It was created `NOLOGIN` on purpose so no
 credential ever entered the repo or migration history.
 
+Run this in the **Supabase dashboard → SQL Editor** (it executes as `postgres`,
+so it has the rights), or over `DATABASE_URL_DIRECT` with any SQL client:
+
 ```sql
--- over DATABASE_URL_DIRECT, as postgres
 ALTER ROLE mcp_app LOGIN PASSWORD '<generate a long random password>';
 ```
 
 Generate it with `openssl rand -base64 32` or Doppler's generator. Do not reuse
 the `postgres` password.
+
+> [!NOTE]
+> **The password is not a standalone environment variable.** Nothing reads a
+> `DB_PASSWORD`/`MCP_PASSWORD`-style value — Prisma takes a single connection
+> string, so the password lives *inside* `DATABASE_URL` (step 2). A separate var
+> will simply be ignored.
 
 **2. Build the new connection strings.** Same host/database as today, only the
 credentials change. Supabase's pooler expects `<role>.<project-ref>`:
