@@ -123,17 +123,30 @@ async function dumpViaDocker() {
     // Match the image to the server, or pg_dump aborts on version mismatch.
     // PG_DUMP_IMAGE overrides for anything unusual.
     const major = await serverMajorVersion()
-    const image =
-        process.env.PG_DUMP_IMAGE ??
-        (major ? `postgres:${major}-alpine` : 'postgres:17-alpine')
+    const image = process.env.PG_DUMP_IMAGE ?? 'postgres:15-alpine'
     process.stdout.write(
-        `server major version: ${major ?? 'unknown'} — using ${image}\n`,
+        `server major version: ${major ?? 'unknown'} — using ${image} + apk postgresql${major ?? 17}-client\n`,
     )
+
+    // Rather than `postgres:<major>-alpine` (which needs a registry pull that is
+    // not always available — Docker Hub's CDN refused it repeatedly on the
+    // primary dev machine), run whatever postgres image is already local and
+    // `apk add` the client matching the SERVER's major version. pg_dump refuses
+    // to dump a server newer than itself, so the version has to match; apk goes
+    // via a different CDN, which is the point.
+    //
+    // The image's own binaries shadow the installed ones, hence the explicit
+    // /usr/libexec path and LD_LIBRARY_PATH (otherwise psql/pg_dump link against
+    // the image's older libpq and fail on missing symbols).
+    const inner = [
+        `apk add --no-cache postgresql${major ?? 17}-client >/dev/null 2>&1`,
+        `LD_LIBRARY_PATH=/usr/lib /usr/libexec/postgresql${major ?? 17}/pg_dump ${DUMP_ARGS.join(' ')} "$PGURL"`,
+    ].join('\n')
 
     const out = createWriteStream(outFile)
     const child = spawn(
         'docker',
-        ['run', '--rm', '-i', image, 'pg_dump', ...DUMP_ARGS, url as string],
+        ['run', '--rm', '-i', '-e', `PGURL=${url}`, image, 'sh', '-c', inner],
         { stdio: ['ignore', 'pipe', 'inherit'] },
     )
     child.stdout.pipe(out)

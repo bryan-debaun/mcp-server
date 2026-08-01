@@ -1,0 +1,81 @@
+name: Uptime Monitor
+
+# ORR gap #1 — the highest value/effort item on the list, and the one that would
+# have caught the month of unapplied migrations far sooner.
+#
+# Deliberately GitHub Actions rather than UptimeRobot/cron-job.org: no external
+# account to create or remember, the schedule lives in the repo next to the thing
+# it watches, and GitHub already emails the repo owner when a scheduled workflow
+# fails. That last part is the entire alerting mechanism — no extra wiring.
+#
+# It doubles as the keep-warm ping from #119: `?deep=1` touches the database, so
+# one request holds off BOTH Render's ~15min spin-down and Supabase's 7-day
+# auto-pause.
+#
+# Known limits, stated rather than discovered later:
+#   * GitHub's cron is best-effort and can lag by several minutes under load, so
+#     treat ~10min as "roughly every 10-20 minutes". Fine for keep-warm and for
+#     noticing an outage; not a latency SLO instrument.
+#   * Scheduled workflows are disabled automatically after 60 days with no repo
+#     activity. A repo you have stopped touching stops being monitored — worth
+#     knowing before trusting it.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # so you can prove it works without waiting for the cron
+
+concurrency:
+  group: uptime-monitor
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      BASE: https://bad-mcp.onrender.com
+    steps:
+      - name: Probe /healthz?deep=1
+        id: probe
+        run: |
+          # Generous timeout: a cold Render instance legitimately takes ~30-60s
+          # to answer, and treating that as an outage would make this cry wolf
+          # every idle period.
+          body=$(mktemp)
+          code=$(curl -s -o "$body" -w '%{http_code}' --max-time 120 "$BASE/healthz?deep=1" || echo 000)
+          echo "http_code=$code" >> "$GITHUB_OUTPUT"
+          echo "### Health probe" >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          head -c 2000 "$body" >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$code" != "200" ]; then
+            echo "::error::/healthz?deep=1 returned $code"
+            # Name the usual suspects so the failure email is actionable on its
+            # own, without needing to open the runbook first.
+            echo "  - 503 with db:error      -> Supabase project paused or unreachable"
+            echo "  - 503 with migrations    -> schema behind the code; check Render's Docker Command field is empty"
+            echo "  - 000 / timeout          -> service down, or a cold start slower than 120s"
+            echo "  - HTML instead of JSON   -> Cloudflare challenge page, not the app"
+            echo "See docs/runbooks/incident-response.md"
+            exit 1
+          fi
+          echo "OK ($code)"
+
+      # Metrics are exposed but nothing scrapes them (gap #8). This is not a
+      # time-series database, but capturing the counters in the run summary gives
+      # ~90 days of history in the Actions UI for free — enough to answer "when
+      # did auth failures start climbing?", which is what the gap was really about.
+      - name: Snapshot key counters
+        if: always() && steps.probe.outputs.http_code == '200'
+        run: |
+          m=$(curl -s --max-time 60 "$BASE/metrics" || true)
+          {
+            echo "### Counters"
+            echo '```'
+            echo "$m" | grep -E '^(auth_subject_unresolved_total|mcp_auth_failures_total|service_role_bypass_total|http_requests_total\{.*status="5) ' || echo '(none non-zero)'
+            echo '```'
+            echo "_Counters reset on every restart/cold start — read them as 'since last boot', not cumulative._"
+          } >> "$GITHUB_STEP_SUMMARY"
