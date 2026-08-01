@@ -97,6 +97,11 @@ register.registerMetric(invitesAcceptedTotal)
 register.registerMetric(serviceRoleBypassTotal)
 register.registerMetric(adminDebugRequestsTotal)
 register.registerMetric(mcpAuthFailuresTotal)
+// Every metric above must appear here or it increments in memory and is never
+// served. `test/http/metrics-registration.test.ts` enforces that, because this
+// counter — added for #151 to make a silent failure visible — was itself
+// silently invisible for want of this one line.
+register.registerMetric(authSubjectUnresolvedTotal)
 register.registerMetric(bookAggregateUpdateFailuresTotal)
 register.registerMetric(bookAggregatesLastBackfillTimestamp)
 

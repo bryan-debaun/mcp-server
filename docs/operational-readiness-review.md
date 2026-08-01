@@ -10,8 +10,16 @@ Every gap from the 2026-05-31 review was re-checked against the code as it stand
 
 | | Count | |
 |---|---|---|
-| ✅ **Closed** | 8 | #4 (Sentry log noise), #5 (CI-gated deploys), #6 (snapshot tooling), #7 (RLS — *verified, and the answer was bad*), #9 (cold-start keep-alive), #10 (Dependabot), #11 (incident runbook), #12 (perf baseline) |
-| ❌ **Still open** | 4 | #1, #2, #3, #8 — **all ops actions.** Nothing in the repo can close them. |
+| ✅ **Closed** | 11 | #1 (uptime alerting), #2 (Sentry enabled), #3 (restore drilled), #4 (Sentry log noise), #5 (CI-gated deploys), #6 (snapshot tooling), #7 (RLS — *verified inert, then made real*), #9 (cold-start keep-alive), #10 (Dependabot), #11 (incident runbook), #12 (perf baseline) |
+| 🟡 **Partially closed** | 1 | #8 — counters are captured per-probe in the monitor's job summary (~90 days of history); no time-series database |
+
+**On "nothing in the repo can close them".** An earlier revision of this summary wrote off #1, #2, #3 and #8 as ops-only. Three of the four turned out to be closable in-repo after all:
+
+- **#1** — a scheduled GitHub Actions probe needs no external monitoring account, and GitHub's own failed-workflow email *is* the alert.
+- **#3** — the drill just needed doing; see §10.
+- **#8** — a real TSDB still needs an account, but the counters that mattered are now captured per run.
+
+Worth noting because "that's an ops problem" was doing real work as an excuse.
 
 **Gap #7 deserves calling out.** It was listed as "migrations present, enforcement path unverified". Verifying it found that RLS is **not an active control at all** — the app's role owns every table, no table uses `FORCE`, the production role carries `BYPASSRLS`, most tables have RLS disabled outright, and the RLS test files were empty skipped stubs. Three independent bypasses. See §9; the posture is now pinned by a test so it cannot drift silently again.
 
@@ -198,17 +206,24 @@ GitHub automation callers      ─┘                                  ├→ Gi
 
 ## 6. Alerting & on-call
 
-**Status: Gap (largely absent) — stated honestly.**
+**Status (2026-08-01): implemented.** The 2026-05-31 review recorded this as "largely absent — Bryan notices, or the website breaks and Bryan notices." That is no longer the case.
 
-- **No alerting is configured.** There is no paging, no email/Slack alert, no uptime monitor wired today. The deploy runbook *suggests* an external monitor (UptimeRobot/Pingdom) on `/healthz`, but this is a recommendation, not an implemented control.
-- **On-call** is "Bryan notices, or the website breaks and Bryan notices." There is no rotation (solo project) and no escalation path — which is acceptable for a personal project but should be acknowledged.
-- **Detection today is reactive:** failures typically surface as website data errors or manual checks.
+| Signal | Mechanism | Alert path |
+|---|---|---|
+| Service down / unreachable | `.github/workflows/uptime-monitor.yml` probes `/healthz?deep=1` every ~10 min | GitHub emails the repo owner when a scheduled workflow fails |
+| DB unreachable / paused Supabase | same probe — `?deep=1` runs `SELECT 1` | as above, with `db: error` in the run summary |
+| Schema behind the code | same probe — 503 when migrations are pending | as above, naming the pending migrations |
+| Unhandled errors | Sentry (`SENTRY_DSN` set in production) | Sentry issue alerts |
 
-### Gaps / actions (prioritized)
+**Why GitHub Actions rather than UptimeRobot.** No external account to create or remember, the schedule lives beside the thing it watches, and GitHub's failed-workflow email *is* the alerting mechanism — nothing extra to wire. It also doubles as the #119 keep-warm ping, so one job holds off both Render's spin-down and Supabase's 7-day auto-pause.
 
-- **Gap — no uptime/health alerting.** *Action:* Add a free external monitor (UptimeRobot) hitting `/healthz` and `/readyz` with email alerts. **(Highest-value, lowest-effort operational improvement.)**
-- **Gap — no error alerting.** *Action:* Set `SENTRY_DSN` in Render and enable Sentry issue alerts to email.
-- **Gap — no DB-pause / cold-start awareness.** *Action:* Optionally schedule a periodic keep-warm ping (cron) to mitigate Supabase auto-pause and Render spin-down, **or** explicitly accept cold starts and ensure the website degrades gracefully.
+**Limits, stated rather than discovered later:**
+
+- GitHub's cron is best-effort and can lag by several minutes; treat the cadence as "roughly every 10–20 minutes". Enough to notice an outage and keep the service warm; **not** a latency SLO instrument.
+- **Scheduled workflows are auto-disabled after 60 days of repository inactivity.** A repo you stop touching stops being monitored — fine for an active project, a real trap for a dormant one.
+- Detection, not diagnosis. The email says something is wrong and points at the incident runbook. There is still no paging, no escalation, no rotation — correct for a solo project, but worth saying rather than implying.
+
+**On-call** remains "Bryan, best-effort". What changed is that Bryan now finds out from a monitor rather than from the website breaking.
 
 ---
 
@@ -329,7 +344,30 @@ GitHub automation callers      ─┘                                  ├→ Gi
 
 ### Backup / restore
 
-- **Relies entirely on Supabase's managed backups** for the underlying Postgres. **No application-level backup/export job exists in this repo.**
+- **Relies on Supabase's managed backups** for durability, plus `pnpm run db:snapshot` for an on-demand logical dump before risky changes.
+
+#### ✅ Restore drill — performed 2026-08-01
+
+The gap said "unverified and undrilled". It has now been drilled end to end, against real production data:
+
+1. **Dumped** production with `pg_dump` 17.10 (matching the 17.6 server) — 290KB, 6,667 lines, all 11 tables.
+2. **Restored** into a genuinely separate PostgreSQL **17.10** server. Zero `ERROR` or `FATAL` lines.
+3. **Verified** by comparing row counts table-by-table:
+
+   ```text
+   Article|2   Author|2   Bet|13   Book|3   BookAuthor|3   ContentCreator|3
+   Movie|3     Profile|7  Resume|0  ResumeDownloadRequest|0  VideoGame|3
+
+   diff production restored → IDENTICAL
+   ```
+
+   A dump that restores without errors still proves nothing if rows are missing; the diff is the actual evidence.
+
+The dump was deleted immediately afterwards — it contains real data and `backups/` is gitignored precisely so one never gets committed.
+
+**What this does and does not establish.** It establishes that a complete, restorable logical backup can be produced on demand and that the restore path works. It does **not** establish an RPO: that still depends on Supabase's managed backup/PITR window, which is a dashboard fact this repo cannot read. Until that window is confirmed, treat RPO as "whenever you last ran `db:snapshot`".
+
+> **Environment note.** `pg_dump` isn't installed on the primary dev machine and Docker Hub's CDN would not serve `postgres:17-alpine` across ~13 attempts. `db:snapshot` therefore runs whatever postgres image is already local and `apk add`s the client matching the *server's* major version — apk uses a different CDN. It also sets `LD_LIBRARY_PATH` explicitly, since the image's own `libpq` otherwise shadows the installed one and `psql`/`pg_dump` fail on missing symbols.
 
 ### Gaps
 
@@ -350,12 +388,13 @@ These are **informal, best-effort targets for a solo project** — *not* contrac
 |---|---|---|
 | Availability | "Up when needed; best-effort" | Render `starter` spin-down + Supabase auto-pause mean **cold starts and idle pauses are expected**, not incidents |
 | Cold-start latency | Tolerated, not bounded | Website must handle slow first request after idle |
-| Warm latency | No committed number | Histogram exists; baseline not yet captured (§8) |
-| Data durability | Defer to Supabase managed backups | Not yet verified (§10) |
+| Warm latency | No committed number | Baseline captured 2026-07-31 (§8): static ~50ms, catalog reads p50 180–307ms |
+| Data durability | Supabase managed backups + on-demand `db:snapshot` | **Restore drilled 2026-08-01** — row counts identical (§10) |
 | RTO (recovery time) | "Manual, minutes-to-hours" | Roll back via Render revision; resume Supabase manually |
-| RPO (data loss) | Defer to Supabase backup window | **Unverified** — confirm window (§10) |
+| RPO (data loss) | Defer to Supabase backup window | **Still unconfirmed** — the window is a dashboard fact this repo can't read. Until then, treat RPO as "since the last `db:snapshot`" (§10) |
+| Detection time | ~10–20 min | Scheduled probe on `/healthz?deep=1`; GitHub emails on failure (§6) |
 
-**Honest summary:** the realistic posture is "best-effort, owner-monitored, degrade-gracefully." The website should be built to tolerate this host being slow, cold, or briefly unavailable.
+**Honest summary:** the realistic posture is "best-effort, owner-monitored, degrade-gracefully" — with the meaningful change since 2026-05-31 being that "owner-monitored" now means *a monitor* rather than *noticing*. The website should still be built to tolerate this host being slow, cold, or briefly unavailable.
 
 ---
 
@@ -368,44 +407,41 @@ These are **informal, best-effort targets for a solo project** — *not* contrac
 | Health (`/healthz`) + readiness (`/readyz`) probes | ✅ Implemented |
 | Structured logging (pino) | ✅ Implemented |
 | Metrics endpoint (`/metrics`, prom-client) | ✅ Exposed |
-| Error tracking (Sentry) | ⚠️ Code wired; **active only if `SENTRY_DSN` set** |
+| Error tracking (Sentry) | ✅ `SENTRY_DSN` set in production; per-request log noise fixed first (§5) |
 | Fail-fast env validation (zod) | ✅ Implemented |
-| Layered auth (MCP key + Supabase JWT + hardened service-role) | ✅ Implemented |
-| RLS on data tables | ❌ **Not an active control** — verified inert; posture pinned by test (§9) |
+| Layered auth (MCP key + OIDC JWT + hardened service-role) | ✅ Implemented |
+| RLS on data tables | ✅ **Enforcing since 2026-08-01** — app connects as non-bypassing `mcp_app`; writes require an admin claim (§9) |
+| Uptime alerting | ✅ Scheduled probe + GitHub failure email (§6) |
+| Backup restore verified | ✅ Drilled 2026-08-01, row counts identical (§10) |
 | Pre-migration snapshot tooling | ✅ `pnpm run db:snapshot` |
 | Warm latency baseline | ✅ Captured 2026-07-31 (§8) |
 | Secrets in env, scrubbed from telemetry | ✅ Implemented |
 | Deploy + rollback path | ✅ Documented (Render revision / git revert) |
-| Migrations automated | ✅ At deploy; ⚠️ no pre-migration backup |
-| Metrics **collection** / dashboards | ❌ Gap — exposed but not scraped |
-| **Alerting / uptime monitoring** | ❌ Gap — none configured |
-| Backup/restore verified | ❌ Gap — relies on Supabase, undrilled |
-| CI gate before production deploy | 🟡 CI runs verify + tests + migrations on every PR; Render `autoDeploy` still doesn't wait for it |
+| Migrations automated | ✅ At container boot, fatal on real failure; ⚠️ snapshot still manual |
+| Metrics **collection** / dashboards | 🟡 Counters captured per probe in the monitor's job summary (~90d); no TSDB |
 | Dependency vuln scanning | ✅ Dependabot (npm weekly grouped, actions + docker monthly) |
-| Load/perf baseline | ❌ Gap — none captured |
 | Consolidated incident runbook | ✅ `docs/runbooks/incident-response.md` |
 | Line-ending policy / runnable `verify` | ✅ `.gitattributes` pins LF; CI enforces `verify` |
 | Startup capability warnings | ✅ `src/capabilities.ts` + `/healthz?deep=1` |
 
-### Prioritized open action items — as of 2026-07-31
+### Remaining open items — as of 2026-08-01
 
-**Ops-only — nothing in the repo can close these. They are the highest-value items remaining.**
+Every gap from the original review is closed or partially closed. What is left is narrower:
 
-| # | Priority | Gap | Action |
+| # | Priority | Item | Why it is still open |
 |---|---|---|---|
-| 1 | **High** | No uptime/health alerting (§6) | Add UptimeRobot / cron-job.org (free) on `/healthz?deep=1` with email alerts. **Still the lowest-effort, highest-value operational improvement.** The deep variant covers Render spin-down *and* Supabase auto-pause in one ping. |
-| 2 | **High** | Error tracking inert without a DSN (§5) | Set `SENTRY_DSN` in the Doppler `prd` config. Now safe — gap #4 (per-request Sentry noise) is fixed, so this no longer floods. |
-| 3 | **High** | Backup/restore unverified (§10) | Confirm the Supabase backup/PITR window; document the real RPO; run one trial restore or `pg_dump`. |
-| — | **High** | `GITHUB_TOKEN` unset in production (#155) | Mint a PAT with **`repo` + `project`** scopes, set it in Doppler `prd`, confirm it reaches Render. The code half (boot warning + health signal) is done. |
-| 8 | Medium | Metrics exposed but not collected (§5) | Point a hosted scraper (Grafana Cloud free) at `/metrics`, or accept and document them as point-in-time only. |
+| 8 | Medium | No time-series metrics (§5) | Counters are captured in each monitor run's job summary — ~90 days of history in the Actions UI, enough to answer "when did auth failures start climbing?". A real TSDB (Grafana Cloud free tier) needs an account only the owner can create. |
+| 3a | Medium | **RPO unconfirmed** (§10) | The restore path is drilled and verified, but Supabase's backup/PITR window is a dashboard fact this repo cannot read. Until confirmed, RPO is "since the last `db:snapshot`". |
+| 6 | Low | Pre-migration snapshot is manual (§10) | `pnpm run db:snapshot` exists but nothing runs it automatically before a schema-changing deploy. |
+| 12 | Low | No rate limiting (§8) | Relies on `MCP_API_KEY` + Cloudflare. Fine at current exposure; revisit if the surface widens. |
 
-**Open decisions (not gaps — deliberate choices left to the owner)**
+**Open decisions (deliberate choices, not gaps)**
 
-| Topic | Decision needed |
+| Topic | Status |
 |---|---|
 | ~~**RLS** (§9)~~ | **Done 2026-08-01.** Made real and cut over — production connects as `mcp_app` and RLS is enforcing. |
-| **Deploy gating** (§3) | The workflow now gates deploys, but it only takes effect once Auto-Deploy is turned **off** in the Render dashboard and `RENDER_DEPLOY_HOOK_URL` is set. Until then Render still deploys on push and the gate is inert. |
-| **Rate limiting** (§8) | Still none. Relies on `MCP_API_KEY` + Cloudflare. Fine at current exposure; revisit if the surface widens. |
+| ~~**Deploy gating** (§3)~~ | **Done 2026-08-01.** Auto-Deploy off in the Render dashboard, `RENDER_DEPLOY_HOOK_URL` set; the gate fired correctly on its first real merge, waiting for `db-integration` before triggering. |
+| **Scheduled-workflow decay** | GitHub disables cron workflows after 60 days of repo inactivity. A repo you stop touching stops being monitored — acceptable for an actively-developed project, worth remembering if this one goes quiet. |
 
 **Closed in this pass**
 
