@@ -117,6 +117,22 @@ Then exercise one **write** through an MCP tool (e.g. `update-movie`) — that i
 the path this change actually alters. A write failing with `row-level security`
 means claims are not reaching the database; roll back and investigate.
 
+**A successful write does NOT prove the cutover worked.** `postgres` bypasses
+every policy, so writes succeed either way. The decisive check is *which role the
+app is actually connected as* — run this over `DATABASE_URL_DIRECT`:
+
+```sql
+SELECT usename, count(*) AS conns
+FROM pg_stat_activity
+WHERE datname = current_database() AND usename IS NOT NULL
+GROUP BY usename ORDER BY usename;
+```
+
+Expect `mcp_app` to appear. If you only see `postgres`, the new `DATABASE_URL`
+has not reached the running process — env vars are read once at startup, so a
+Doppler change needs a **deploy or restart**, and a value in Doppler is not
+automatically a value in Render.
+
 ## Rollback
 
 One value, one restart:
