@@ -449,6 +449,75 @@ describe('JWT middleware', () => {
         }
     })
 
+    // ADR 0001 question 4: can authorization ride the standard, audience-scoped
+    // `scope` claim instead of a bespoke `app_metadata.role`? It can — but only
+    // because the claim is read as a SET. `scope` is space-delimited by
+    // specification, and an equality check would have demoted every admin the
+    // moment a second permission was granted.
+    describe('scope-style claims (#153 Q4)', () => {
+        const withClaimPath = async (
+            paths: string[],
+            payload: any,
+        ): Promise<any> => {
+            const { resolveAppRole } = await import('../../src/auth/jwt.js')
+            const orig = config.auth.oidc.roleClaimPaths
+            const p = (await import('../../src/db/index.js')) as any
+            p.prisma.profile = { findMany: vi.fn(), findUnique: vi.fn() }
+            try {
+                config.auth.oidc.roleClaimPaths = paths
+                return await resolveAppRole(payload)
+            } finally {
+                config.auth.oidc.roleClaimPaths = orig
+            }
+        }
+
+        it('resolves admin from a single-value scope', async () => {
+            const r = await withClaimPath(['scope'], { scope: 'admin' })
+            expect(r).toMatchObject({ role: 'admin', isAdmin: true })
+        })
+
+        // The regression this fix exists for.
+        it('resolves admin from a MULTI-value scope', async () => {
+            const r = await withClaimPath(['scope'], {
+                scope: 'admin read:books write:books',
+            })
+            expect(r).toMatchObject({ role: 'admin', isAdmin: true })
+        })
+
+        it('does not grant admin when the scope set lacks it', async () => {
+            const r = await withClaimPath(['scope'], {
+                scope: 'read:books write:books',
+            })
+            expect(r.isAdmin).toBe(false)
+        })
+
+        it('treats a single non-admin scope as that role', async () => {
+            const r = await withClaimPath(['scope'], { scope: 'editor' })
+            expect(r).toMatchObject({ role: 'editor', isAdmin: false })
+        })
+
+        it('accepts an array-valued claim (providers differ)', async () => {
+            const r = await withClaimPath(['roles'], {
+                roles: ['reader', 'admin'],
+            })
+            expect(r).toMatchObject({ role: 'admin', isAdmin: true })
+        })
+
+        it('still reads app_metadata.role unchanged', async () => {
+            const r = await withClaimPath(['app_metadata.role'], {
+                app_metadata: { role: 'admin' },
+            })
+            expect(r).toMatchObject({ role: 'admin', isAdmin: true })
+        })
+
+        it('ignores extra whitespace in a delimited claim', async () => {
+            const r = await withClaimPath(['scope'], {
+                scope: '  read:books   admin  ',
+            })
+            expect(r).toMatchObject({ role: 'admin', isAdmin: true })
+        })
+    })
+
     it('grants admin from app_metadata.role in the token without any DB lookup (hybrid)', async () => {
         const token = await new SignJWT({
             role: 'authenticated',
