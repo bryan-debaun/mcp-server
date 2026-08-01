@@ -1,8 +1,20 @@
 # RLS cutover — switching the app to a non-bypassing database role
 
-> **Status: not yet performed in production.** The migration and application
-> code are merged and inert; this runbook is the deliberate step that turns
-> enforcement on.
+> **Status: PERFORMED 2026-08-01.** Production now connects as `mcp_app` and RLS
+> is enforcing. Verified end to end:
+>
+> ```text
+> active DB connections by role:  mcp_app  1 conns
+> non-admin write   -> refused by policy
+> admin write       -> allowed (create + delete via MCP tool, round-tripped)
+> catalog read      -> unaffected
+> /healthz?deep=1   -> status ok, migrations pending 0
+> ```
+>
+> Kept as a runbook because the steps are the same if the credential is ever
+> rotated, and because the rollback below is the live procedure if enforcement
+> ever needs to come off in a hurry. The previous connection string is stored in
+> Doppler as **`DATABASE_URL_ROLLBACK`**.
 
 ## Why there is a cutover at all
 
@@ -117,17 +129,37 @@ Then exercise one **write** through an MCP tool (e.g. `update-movie`) — that i
 the path this change actually alters. A write failing with `row-level security`
 means claims are not reaching the database; roll back and investigate.
 
+**A successful write does NOT prove the cutover worked.** `postgres` bypasses
+every policy, so writes succeed either way. The decisive check is *which role the
+app is actually connected as* — run this over `DATABASE_URL_DIRECT`:
+
+```sql
+SELECT usename, count(*) AS conns
+FROM pg_stat_activity
+WHERE datname = current_database() AND usename IS NOT NULL
+GROUP BY usename ORDER BY usename;
+```
+
+Expect `mcp_app` to appear. If you only see `postgres`, the new `DATABASE_URL`
+has not reached the running process — env vars are read once at startup, so a
+Doppler change needs a **deploy or restart**, and a value in Doppler is not
+automatically a value in Render.
+
 ## Rollback
 
 One value, one restart:
 
-```
-DATABASE_URL = <the original postgres pooled URL>
+```sh
+# the pre-cutover postgres URL, preserved in Doppler at cutover time
+doppler secrets get DATABASE_URL_ROLLBACK --project bad-mcp --config prd --plain
+# set that value as DATABASE_URL, then redeploy/restart
 ```
 
 `postgres` still owns the tables and still has `BYPASSRLS`, so it bypasses every
-policy exactly as before. **Keep the original URL somewhere you can paste it
-from** — that is the entire rollback plan, and it is instant.
+policy exactly as before. That is the entire rollback plan, and it is instant.
+
+Do not delete `DATABASE_URL_ROLLBACK` — reconstructing the original credential
+under pressure is exactly the wrong thing to be doing mid-incident.
 
 Nothing in the schema needs reverting: the policies are inert against a
 bypassing role.
