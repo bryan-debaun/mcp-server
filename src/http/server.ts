@@ -10,6 +10,7 @@ import {
     registerMetricsRoute,
 } from './metrics-route.js'
 import { auditAdminCatalogMutations } from './middleware/audit.js'
+import { dbContextMiddleware } from './middleware/db-context.js'
 import { registerPlaybackRoute } from './playback-route.js'
 import { registerProtectedResourceMetadata } from './protected-resource-metadata.js'
 import { registerSwaggerRoute } from './swagger-route.js'
@@ -22,6 +23,9 @@ export async function createHttpApp(): Promise<express.Application> {
     const app = express()
     app.use(cors())
     app.use(express.json())
+    // Opens the per-request DB identity scope. Must precede every auth gate —
+    // they fill it in, they do not create it.
+    app.use(dbContextMiddleware)
 
     // Diagnostic request logging to help debug hosting/proxy issues
     app.use((req, res, next) => {
@@ -143,6 +147,9 @@ export function createBasicApp(): express.Application {
     const app = express()
     app.use(cors())
     app.use(express.json())
+    // Opens the per-request DB identity scope. Must precede every auth gate —
+    // they fill it in, they do not create it.
+    app.use(dbContextMiddleware)
 
     // Diagnostic request logging to help debug hosting/proxy issues
     app.use((req, res, next) => {

@@ -295,9 +295,18 @@ GitHub automation callers      ─┘                                  ├→ Gi
 
   This is not necessarily the wrong design: authorization is enforced in the application layer (OIDC JWT → `resolveAppRole` → `requireAdmin`, plus the MCP gateway key), and for a single-user service that is a defensible place for it to live. The single-user simplification that removed the policies was a deliberate decision. **What was wrong was the belief that a second layer existed.** An inert control you trust is worse than one you know you don't have.
 
-  Pinned by `test/integration/rls-enforcement.test.ts` (gated on `RUN_DB_INTEGRATION`), which asserts the real posture and fails loudly if it ever changes — so the next person to enable RLS finds out whether it actually applies instead of assuming.
+  **Resolved 2026-08-01 — RLS is now a real control.** Built, merged, and inert until a credential cutover ([`docs/runbooks/rls-cutover.md`](runbooks/rls-cutover.md)):
 
-  **Open decision (not taken here):** either commit to making RLS real — a non-owner role without `BYPASSRLS`, `FORCE ROW LEVEL SECURITY`, policies restored on the catalog tables, and `request.jwt.claims.*` propagated per session — or drop the four remaining policy sets so nothing implies protection that isn't there. Today's half-state is the worst of both.
+  - **`20260801120000_enforce_rls`** creates `mcp_app` — a non-owner, `NOBYPASSRLS` role with data privileges but **no DDL** — and sets `ENABLE` + **`FORCE ROW LEVEL SECURITY`** with a uniform policy pair on every table: `USING (true)` for SELECT, `role = 'admin'` for writes. FORCE is deliberate: without it, ownership alone silently reopens everything, which is how this became inert the first time.
+  - **`src/db/with-request-claims.ts`** wraps write operations in a transaction that `set_config`s `request.jwt.claims.*` first. `is_local => true` scopes the setting to that transaction so it cannot bleed across a pooled connection — load-bearing on Supabase's transaction pooler.
+  - **Reads are not wrapped.** Catalog reads are public and are the hot path (`/api/books` p50 307ms, already DB-round-trip bound); carrying identity on them would cost two extra round-trips per page load for no security gain. Writes are where an authorization bug costs something.
+  - Identity is established by whichever gate resolves it — `jwtMiddleware`, TSOA's `expressAuthentication`, `mcpAuthMiddleware`, and a wrapper around MCP tool handlers in `createServer()`. The MCP gateway key and service-role path map to admin claims, preserving today's behaviour exactly; what changes is that a **user JWT can no longer write without genuinely resolving to admin.**
+
+  Why the migration alone couldn't do it: `postgres` owns every table *and* carries `BYPASSRLS`. No `ALTER TABLE` overrides that — enforcement requires connecting as a different role, i.e. a credential rotation. Hence a runbook rather than a deploy.
+
+  `test/integration/rls-enforcement.test.ts` now asserts enforcement rather than pinning inertness, and connects **as `mcp_app`** — testing as the owner would pass vacuously, which is precisely the trap the original setup fell into.
+
+  > **One footgun, found by the spike and pinned by a test.** Prisma operations are lazy, so `runWithDbContext(ctx, () => db.x.create(…))` without an inner `await` executes *after* the scope exits and loses its claims. It fails closed, but silently.
 - **Secrets:** see §4 — env-only, scrubbed from Sentry, not logged.
 - **Error responses:** global handler returns generic `internal error` in production (no stack/message leakage).
 - **Admin debug endpoints:** hard-blocked in production regardless of `ADMIN_DEBUG_ENABLED` (verified `index.ts`).
@@ -394,7 +403,7 @@ These are **informal, best-effort targets for a solo project** — *not* contrac
 
 | Topic | Decision needed |
 |---|---|
-| **RLS** (§9) | Either make it real (non-owner role, `FORCE`, restored policies, per-session claims) or drop the four remaining policy sets. The current half-state implies protection that does not exist. For a single-user app with app-layer authz, **dropping them is the honest cheaper option** — but that is a call, not a cleanup. |
+| **RLS** (§9) | **Decided: make it real.** Built and merged, currently inert pending a credential cutover — see [`docs/runbooks/rls-cutover.md`](runbooks/rls-cutover.md). |
 | **Deploy gating** (§3) | The workflow now gates deploys, but it only takes effect once Auto-Deploy is turned **off** in the Render dashboard and `RENDER_DEPLOY_HOOK_URL` is set. Until then Render still deploys on push and the gate is inert. |
 | **Rate limiting** (§8) | Still none. Relies on `MCP_API_KEY` + Cloudflare. Fine at current exposure; revisit if the surface widens. |
 

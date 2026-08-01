@@ -2,6 +2,10 @@ import { NextFunction, Request, Response } from 'express'
 import { createRemoteJWKSet, type JWTPayload, jwtVerify } from 'jose'
 import { config, legacyAuthEnvNames } from '../config.js'
 import { prisma } from '../db/index.js'
+import {
+    setDbContextClaims,
+    TRUSTED_SERVICE_CONTEXT,
+} from '../db/request-context.js'
 import { authSubjectUnresolvedTotal } from '../http/metrics-route.js'
 import { logger } from '../logger.js'
 
@@ -284,6 +288,15 @@ async function resolveUserAuthz(req: any, payload: any) {
     req.user.role = role
     req.user.isAdmin = isAdmin
     if (localUserId !== undefined) req.user.localUserId = localUserId
+
+    // Hand the resolved identity to the database layer so RLS policies can see
+    // it. `role` here is the *application* role, which is what the policies key
+    // on — deliberately not the Postgres role claim.
+    setDbContextClaims({
+        role,
+        email: typeof payload?.email === 'string' ? payload.email : undefined,
+        sub: payload?.sub ? String(payload.sub) : undefined,
+    })
 }
 
 export async function jwtMiddleware(
@@ -309,6 +322,10 @@ export async function jwtMiddleware(
                     role: 'admin',
                     service: true,
                 }
+                // `requireAdmin` still demands INTERNAL_ADMIN_KEY + an allowlisted
+                // IP before this path can do anything; granting admin claims here
+                // keeps the DB layer consistent with that existing decision.
+                setDbContextClaims(TRUSTED_SERVICE_CONTEXT)
                 return next()
             }
 

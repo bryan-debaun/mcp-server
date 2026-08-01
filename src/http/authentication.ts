@@ -1,6 +1,10 @@
 import { Request } from 'express'
 import { resolveAppRole, verifyAccessToken } from '../auth/jwt.js'
 import { config } from '../config.js'
+import {
+    setDbContextClaims,
+    TRUSTED_SERVICE_CONTEXT,
+} from '../db/request-context.js'
 
 /** Build an error carrying an HTTP status so the global handler emits a clean 4xx. */
 function authError(message: string, status: number): Error {
@@ -20,10 +24,16 @@ function authenticateApiKey(request: Request): { apiKey: true } | undefined {
     if (!mcpKey) return undefined // not configured → open, like the middleware
 
     const auth = (request.headers.authorization || '').toString()
-    if (auth === `Bearer ${mcpKey}`) return { apiKey: true }
+    if (auth === `Bearer ${mcpKey}`) {
+        setDbContextClaims(TRUSTED_SERVICE_CONTEXT)
+        return { apiKey: true }
+    }
 
     const headerKey = (request.headers['x-mcp-api-key'] || '').toString()
-    if (headerKey && headerKey === mcpKey) return { apiKey: true }
+    if (headerKey && headerKey === mcpKey) {
+        setDbContextClaims(TRUSTED_SERVICE_CONTEXT)
+        return { apiKey: true }
+    }
 
     throw authError('Unauthorized', 401)
 }
@@ -74,6 +84,21 @@ export async function expressAuthentication(
         }
         // Attach the resolved user to the request so controllers can read it.
         ;(request as any).user = Object.assign({}, decoded, { role, isAdmin })
+
+        // …and to the database layer, so RLS policies see the same decision the
+        // scope check above just made. Set after the scope check on purpose: a
+        // caller rejected with 403 never reaches a query anyway, and leaving the
+        // context empty on that path keeps the two from disagreeing.
+        setDbContextClaims({
+            role,
+            email:
+                typeof (decoded as any)?.email === 'string'
+                    ? (decoded as any).email
+                    : undefined,
+            sub: (decoded as any)?.sub
+                ? String((decoded as any).sub)
+                : undefined,
+        })
         return (request as any).user
     }
 

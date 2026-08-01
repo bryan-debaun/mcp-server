@@ -1,5 +1,9 @@
 import type { NextFunction, Request, Response } from 'express'
 import { config } from '../../config.js'
+import {
+    setDbContextClaims,
+    TRUSTED_SERVICE_CONTEXT,
+} from '../../db/request-context.js'
 import { logger } from '../../logger.js'
 import { mcpAuthFailuresTotal } from '../metrics-route.js'
 import { wwwAuthenticateValue } from '../protected-resource-metadata.js'
@@ -39,10 +43,21 @@ export function mcpAuthMiddleware(
         //      callers (e.g. the website) whose Authorization header already
         //      carries a Supabase user JWT for jwtMiddleware/TSOA admin auth.
         const auth = (req.headers.authorization || '').toString()
-        if (auth === `Bearer ${mcpKey}`) return next()
+        if (auth === `Bearer ${mcpKey}`) {
+            setDbContextClaims(TRUSTED_SERVICE_CONTEXT)
+            return next()
+        }
 
         const apiKeyHeader = (req.headers['x-mcp-api-key'] || '').toString()
-        if (apiKeyHeader && apiKeyHeader === mcpKey) return next()
+        if (apiKeyHeader && apiKeyHeader === mcpKey) {
+            // NOTE: this form is the website presenting the gateway key
+            // *alongside* a user JWT. The JWT path runs later and overwrites
+            // these claims with the real user's, which is the intended
+            // precedence — a user token must not be silently upgraded to admin
+            // just because the caller also knows the gateway key.
+            setDbContextClaims(TRUSTED_SERVICE_CONTEXT)
+            return next()
+        }
 
         // Auth failed — never log the presented credential value.
         logger.error('mcp-auth: auth failed', { path: req.path, ip: req.ip })
