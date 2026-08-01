@@ -55,3 +55,6 @@ npm-debug.log*
 
 # Temporary debugging/testing scripts
 tmp/
+
+# Local DB snapshots (real data - never commit)
+backups/

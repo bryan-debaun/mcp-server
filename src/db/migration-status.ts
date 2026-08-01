@@ -41,22 +41,29 @@ function migrationsOnDisk(): string[] {
         .sort()
 }
 
-/** Migration names Prisma records as successfully applied. */
+/**
+ * Migration names Prisma records as successfully applied.
+ *
+ * Uses `$queryRaw` (tagged template), NOT `$queryRawUnsafe`: `src/db/index.ts`
+ * forwards only `$queryRaw`/`$executeRaw`/`$transaction`/`$disconnect` onto the
+ * shared `prisma` object. Calling `$queryRawUnsafe` here would hit `undefined`,
+ * this module would report `checked: false` forever, and the health gate would
+ * silently never fire — the precise failure mode it exists to catch.
+ */
 async function appliedMigrations(): Promise<string[]> {
     // Only rows that finished and were not rolled back count as applied — a
     // partially-applied migration must show up as pending, not as done.
-    const rows = (await prisma.$queryRawUnsafe(
-        `SELECT migration_name FROM _prisma_migrations
-         WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL`,
-    )) as Array<{ migration_name: string }>
+    const rows = (await prisma.$queryRaw`
+        SELECT migration_name FROM _prisma_migrations
+        WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL
+    `) as Array<{ migration_name: string }>
     return rows.map((r) => r.migration_name)
 }
 
 export async function getMigrationStatus(): Promise<MigrationStatus> {
-    // `prisma` may be a no-op stub when DATABASE_URL is unset — its
-    // `$queryRawUnsafe` throws rather than returning rows, and there is nothing
-    // meaningful to report about a database that isn't configured.
-    if (typeof prisma.$queryRawUnsafe !== 'function') {
+    // `prisma` is an empty object until `initPrisma()` runs, and a no-op stub
+    // when DATABASE_URL is unset. Neither can answer this question.
+    if (typeof prisma.$queryRaw !== 'function') {
         return { checked: false, pending: [], reason: 'no database client' }
     }
 

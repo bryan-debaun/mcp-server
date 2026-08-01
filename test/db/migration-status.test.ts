@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+﻿import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../src/db/index.js', () => ({
-    prisma: { $queryRawUnsafe: vi.fn() },
+    prisma: { $queryRaw: vi.fn() },
 }))
 
 vi.mock('node:fs', async (orig) => {
@@ -13,7 +13,7 @@ import { readdirSync } from 'node:fs'
 import { prisma } from '../../src/db/index.js'
 import { getMigrationStatus } from '../../src/db/migration-status.js'
 
-const mockQuery = prisma.$queryRawUnsafe as unknown as ReturnType<typeof vi.fn>
+const mockQuery = prisma.$queryRaw as unknown as ReturnType<typeof vi.fn>
 const mockReaddir = readdirSync as unknown as ReturnType<typeof vi.fn>
 
 /** `readdirSync(..., { withFileTypes: true })` shape. */
@@ -66,7 +66,7 @@ describe('getMigrationStatus', () => {
         expect(sql).toContain('rolled_back_at IS NULL')
     })
 
-    // Never claim a clean schema we failed to verify — that is the silent
+    // Never claim a clean schema we failed to verify â€” that is the silent
     // success this module exists to prevent.
     it('reports checked:false (not "no pending") when the query fails', async () => {
         mockReaddir.mockReturnValue(dirs('20260101_a'))
@@ -88,13 +88,13 @@ describe('getMigrationStatus', () => {
     })
 
     it('reports checked:false against the DB-less stub client', async () => {
-        ;(prisma as any).$queryRawUnsafe = undefined
+        ;(prisma as any).$queryRaw = undefined
         const status = await getMigrationStatus()
         expect(status).toMatchObject({
             checked: false,
             reason: 'no database client',
         })
-        ;(prisma as any).$queryRawUnsafe = mockQuery
+        ;(prisma as any).$queryRaw = mockQuery
     })
 
     it('ignores non-directory entries in the migrations folder', async () => {

@@ -10,9 +10,10 @@ Every gap from the 2026-05-31 review was re-checked against the code as it stand
 
 | | Count | |
 |---|---|---|
-| ✅ **Closed** | 3 | #4 (Sentry log noise), #9 (cold-start keep-alive documented), #11 (incident runbook) |
-| 🟡 **Partially closed** | 2 | #5 (CI gate — now runs `verify`, but Render's `autoDeploy` still doesn't wait for it), #7 (RLS — tests exist; enforcement path still unproven) |
-| ❌ **Still open** | 7 | #1, #2, #3, #6, #8, #10, #12 — of which #1/#2/#3/#8 are **ops actions only**, nothing in the repo can close them |
+| ✅ **Closed** | 8 | #4 (Sentry log noise), #5 (CI-gated deploys), #6 (snapshot tooling), #7 (RLS — *verified, and the answer was bad*), #9 (cold-start keep-alive), #10 (Dependabot), #11 (incident runbook), #12 (perf baseline) |
+| ❌ **Still open** | 4 | #1, #2, #3, #8 — **all ops actions.** Nothing in the repo can close them. |
+
+**Gap #7 deserves calling out.** It was listed as "migrations present, enforcement path unverified". Verifying it found that RLS is **not an active control at all** — the app's role owns every table, no table uses `FORCE`, the production role carries `BYPASSRLS`, most tables have RLS disabled outright, and the RLS test files were empty skipped stubs. Three independent bypasses. See §9; the posture is now pinned by a test so it cannot drift silently again.
 
 **Five findings were added that the original review missed.** Two were live defects:
 
@@ -243,8 +244,25 @@ GitHub automation callers      ─┘                                  ├→ Gi
 
 ### Gaps
 
-- **Gap — no load/perf baseline.** The `http_request_duration_seconds` histogram exists but no numbers have been captured. No documented throughput/latency expectations.
-  - *Action:* Capture a one-time baseline (warm) for a few representative REST + MCP calls; record p50/p95 in this doc.
+- ✅ **Gap #12 (CLOSED 2026-07-31) — warm latency baseline captured.**
+
+  Measured against production, warmed first so this is steady state and not a cold start. n=12 sequential per endpoint from a home connection, so these include real internet + Cloudflare latency — they are an *operator's* view, not server-side timings.
+
+  | Endpoint | p50 (ms) | p95 (ms) |
+  |---|---|---|
+  | `GET /healthz` | 53 | 77 |
+  | `GET /healthz?deep=1` | 129 | 389 |
+  | `GET /readyz` | 51 | 414 |
+  | `GET /metrics` | 66 | 93 |
+  | `GET /.well-known/oauth-protected-resource/mcp` | 51 | 68 |
+  | `GET /api/books` | 307 | 644 |
+  | `GET /api/movies` | 180 | 308 |
+
+  Reading it: static/liveness routes sit around **~50ms**, which is essentially network round-trip — the server adds almost nothing. DB-backed catalog reads are **3–6× that**, and `/healthz?deep=1` (a single `SELECT 1`) costs ~80ms over the shallow probe, which is the Supabase round-trip. So catalog latency is dominated by database time, not application work — worth knowing before optimising anything in this repo.
+  
+  `/api/books` p95 of 644ms is the number to watch: it's the endpoint `bryandebaun.dev` depends on, and it's the slowest thing here.
+
+  **These are point-in-time, not monitored.** Nothing scrapes `/metrics` (gap #8), so there is no trend and no alert if this doubles. Re-capture with `PERF_BASE`/`MCP_API_KEY` if you want a fresh read after a change.
 - **Gap — per-connection MCP server creation** could be costly under load. *Action:* Acceptable now; revisit only if concurrency grows.
 - **Gap — no rate limiting on the service's own endpoints.** Relies on `MCP_API_KEY` + Cloudflare. *Action:* Acceptable for now; note as a future consideration if exposed more broadly.
 
@@ -264,7 +282,22 @@ GitHub automation callers      ─┘                                  ├→ Gi
 ### Other controls
 
 - **Input validation:** zod on env and tool/DTO schemas; tsoa validates REST DTOs.
-- **RLS (verified `prisma/migrations/.../enable_rls`):** RLS enabled on `Role`, `Profile`/`User`, `Invite`, `AccessRequest`, `AuditLog`, `Author`, `Book`, `BookAuthor`, `Rating` with owner-by-email / admin-override / public-read-lookup policies driven by `request.jwt.claims.*`. CI checklist in `docs/rls.md` requires RLS in new table migrations.
+- **RLS — ❌ NOT an active control (corrected 2026-07-31).** The previous revision of this document claimed RLS was enabled on `Role`, `Profile`/`User`, `Invite`, `AccessRequest`, `AuditLog`, `Author`, `Book`, `BookAuthor`, `Rating` as defence-in-depth. Verified against production, that is **false on every count**:
+
+  | Claim | Reality |
+  |---|---|
+  | RLS enabled on the catalog tables | **7 of 11 tables have RLS disabled and zero policies.** `20260219163147_simplify_single_user` deliberately dropped them. Only `Article`, `Bet`, `Resume`, `ResumeDownloadRequest` still have RLS on. |
+  | Policies constrain access | **No table uses `FORCE ROW LEVEL SECURITY`** — no migration in this repo ever has. The app connects as `postgres`, which **owns every table**, and owners bypass RLS without FORCE. |
+  | …at minimum the role is constrained | The production role also carries **`rolbypassrls = true`**, which skips policies regardless of ownership or FORCE. |
+  | "exercised by `test/rls/**` and `test/integration/rls*`" | `test/integration/rls*.test.ts` are **empty `describe.skip` stubs with the test bodies deleted**. `test/rls/**` are SQL/migration *lint* tests — they never open a connection. There were **zero** RLS enforcement tests. |
+
+  Three independent bypasses, any one sufficient. **RLS provides no protection for this application's connection.**
+
+  This is not necessarily the wrong design: authorization is enforced in the application layer (OIDC JWT → `resolveAppRole` → `requireAdmin`, plus the MCP gateway key), and for a single-user service that is a defensible place for it to live. The single-user simplification that removed the policies was a deliberate decision. **What was wrong was the belief that a second layer existed.** An inert control you trust is worse than one you know you don't have.
+
+  Pinned by `test/integration/rls-enforcement.test.ts` (gated on `RUN_DB_INTEGRATION`), which asserts the real posture and fails loudly if it ever changes — so the next person to enable RLS finds out whether it actually applies instead of assuming.
+
+  **Open decision (not taken here):** either commit to making RLS real — a non-owner role without `BYPASSRLS`, `FORCE ROW LEVEL SECURITY`, policies restored on the catalog tables, and `request.jwt.claims.*` propagated per session — or drop the four remaining policy sets so nothing implies protection that isn't there. Today's half-state is the worst of both.
 - **Secrets:** see §4 — env-only, scrubbed from Sentry, not logged.
 - **Error responses:** global handler returns generic `internal error` in production (no stack/message leakage).
 - **Admin debug endpoints:** hard-blocked in production regardless of `ADMIN_DEBUG_ENABLED` (verified `index.ts`).
@@ -329,7 +362,9 @@ These are **informal, best-effort targets for a solo project** — *not* contrac
 | Error tracking (Sentry) | ⚠️ Code wired; **active only if `SENTRY_DSN` set** |
 | Fail-fast env validation (zod) | ✅ Implemented |
 | Layered auth (MCP key + Supabase JWT + hardened service-role) | ✅ Implemented |
-| RLS on data tables | ✅ Migrations present; ⚠️ enforcement path unverified |
+| RLS on data tables | ❌ **Not an active control** — verified inert; posture pinned by test (§9) |
+| Pre-migration snapshot tooling | ✅ `pnpm run db:snapshot` |
+| Warm latency baseline | ✅ Captured 2026-07-31 (§8) |
 | Secrets in env, scrubbed from telemetry | ✅ Implemented |
 | Deploy + rollback path | ✅ Documented (Render revision / git revert) |
 | Migrations automated | ✅ At deploy; ⚠️ no pre-migration backup |
@@ -355,14 +390,13 @@ These are **informal, best-effort targets for a solo project** — *not* contrac
 | — | **High** | `GITHUB_TOKEN` unset in production (#155) | Mint a PAT with **`repo` + `project`** scopes, set it in Doppler `prd`, confirm it reaches Render. The code half (boot warning + health signal) is done. |
 | 8 | Medium | Metrics exposed but not collected (§5) | Point a hosted scraper (Grafana Cloud free) at `/metrics`, or accept and document them as point-in-time only. |
 
-**Repo-addressable, still open**
+**Open decisions (not gaps — deliberate choices left to the owner)**
 
-| # | Priority | Gap | Action |
-|---|---|---|---|
-| 5 | Medium | Render `autoDeploy` doesn't wait for CI (§3) | Disable `autoDeploy` and fire Render's deploy hook from the workflow on success — or accept, relying on the `/healthz` deploy gate + fast rollback. |
-| 6 | Medium | No pre-migration backup (§3/§10) | Snapshot before schema-changing deploys. The *silent-failure* half of this gap (finding **D**) is now closed — see below — but rollback still means restore-from-backup, and no snapshot is taken automatically. |
-| 7 | Medium | RLS enforcement path unverified (§9) | `test/integration/rls*.test.ts` exist and run under `RUN_DB_INTEGRATION` in `db-integration.yml`, but they prove the *policies*, not that the **app's own** connection is subject to them. Add a test asserting the app's pg session is non-bypassing and propagates `request.jwt.claims.*`. |
-| 12 | Low | No perf baseline / no endpoint rate limiting (§8) | Capture warm p50/p95 once; revisit rate limiting only if exposure grows. |
+| Topic | Decision needed |
+|---|---|
+| **RLS** (§9) | Either make it real (non-owner role, `FORCE`, restored policies, per-session claims) or drop the four remaining policy sets. The current half-state implies protection that does not exist. For a single-user app with app-layer authz, **dropping them is the honest cheaper option** — but that is a call, not a cleanup. |
+| **Deploy gating** (§3) | The workflow now gates deploys, but it only takes effect once Auto-Deploy is turned **off** in the Render dashboard and `RENDER_DEPLOY_HOOK_URL` is set. Until then Render still deploys on push and the gate is inert. |
+| **Rate limiting** (§8) | Still none. Relies on `MCP_API_KEY` + Cloudflare. Fine at current exposure; revisit if the surface widens. |
 
 **Closed in this pass**
 
@@ -377,6 +411,12 @@ These are **informal, best-effort targets for a solo project** — *not* contrac
 | C | Contradictory migration docs | Fixed — `deploy/render.yaml` and §3 corrected against the Dockerfile |
 | D | Boot migration failing silently for a month | Fixed — see below |
 | E | `verify` unrunnable on Windows | `.gitattributes` pins LF; CI now runs `verify` |
+| 5 | Deploys not gated on CI | Workflow triggers Render's deploy hook after `verify` + tests + build + db-integration pass. **Needs Auto-Deploy off + `RENDER_DEPLOY_HOOK_URL` to take effect.** |
+| 6 | No pre-migration snapshot | `pnpm run db:snapshot` — refuses the transaction pooler, matches `pg_dump` to the server's major version, deletes partial output rather than leaving a file that looks like a backup |
+| 7 | RLS enforcement unverified | Verified — it is **inert**. Posture pinned by `test/integration/rls-enforcement.test.ts` (§9) |
+| 12 | No perf baseline | Captured (§8) |
+| F | `getMigrationStatus` used `$queryRawUnsafe`, which `src/db/index.ts` never forwards | Would have reported `checked: false` forever, so the health gate could never fire — a silent failure inside the fix for a silent failure. Caught by running it against a real database; now covered by `test/integration/migration-status.test.ts`, since the mocked test agreed with the bug |
+| G | 3 schema drift items (`Article`/`Bet` index names, `Profile_new_pkey`) | `20260731170000_align_index_names_with_schema`; `migrate diff` now reports **no difference** |
 
 ### Finding D — how it was closed
 

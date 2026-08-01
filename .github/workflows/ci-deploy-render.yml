@@ -75,3 +75,56 @@ jobs:
         run: pnpm test
       - name: Build
         run: pnpm run build
+
+  # Gate production deploys on CI (ORR gap #5).
+  #
+  # Render's `autoDeploy` fires on the push itself and does not wait for any of
+  # this, so a red build and a live deploy could happen concurrently. Turning
+  # autoDeploy off and triggering from here makes CI an actual gate.
+  #
+  # SETUP REQUIRED (see deploy/render.yaml):
+  #   1. Render dashboard -> bad-mcp -> Settings -> turn Auto-Deploy OFF.
+  #      `autoDeploy: false` in render.yaml only binds if the service is managed
+  #      by the blueprint; a dashboard-created service ignores it.
+  #   2. Create a Deploy Hook (same Settings page) and store the URL as the
+  #      repo secret RENDER_DEPLOY_HOOK_URL.
+  #
+  # Until the secret exists this job is a no-op that warns, so merging this
+  # change cannot accidentally stop deploys from happening.
+  deploy:
+    needs: test-and-build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      # test-and-build is a `needs:` dependency, but db-integration lives in its
+      # own workflow and runs concurrently — and it is the job that would catch a
+      # broken migration. Deploying without it would miss exactly the failure
+      # class that left production un-migrated for a month.
+      - name: Wait for DB Integration to pass for this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for i in $(seq 1 60); do
+            conclusion=$(gh api \
+              "repos/${{ github.repository }}/commits/${{ github.sha }}/check-runs?per_page=100" \
+              --jq '[.check_runs[] | select(.name == "db-integration")] | first | .conclusion // "pending"' \
+              2>/dev/null || echo "pending")
+            case "$conclusion" in
+              success) echo "db-integration passed"; exit 0 ;;
+              pending|null|"") echo "waiting for db-integration ($i/60)"; sleep 10 ;;
+              *) echo "::error::db-integration concluded '$conclusion' — not deploying"; exit 1 ;;
+            esac
+          done
+          echo "::error::timed out waiting for db-integration"
+          exit 1
+
+      - name: Trigger Render deploy
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::warning::RENDER_DEPLOY_HOOK_URL is not set — skipping. If Render Auto-Deploy is still ON this is harmless (Render deployed already); if you have turned it OFF, nothing is deploying. See deploy/render.yaml."
+            exit 0
+          fi
+          curl -fsS -X POST "$HOOK" > /dev/null
+          echo "Render deploy triggered for ${{ github.sha }}"

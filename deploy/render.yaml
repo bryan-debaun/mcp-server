@@ -50,7 +50,17 @@ services:
     plan: starter
     branch: main
     dockerfilePath: ./Dockerfile
-    autoDeploy: true
+    # Deploys are gated on CI (ORR gap #5): `.github/workflows/ci-deploy-render.yml`
+    # triggers a deploy hook only after verify + tests + build + db-integration
+    # all pass for the commit. With autoDeploy on, Render fires on the push
+    # itself and waits for nothing, so a red build could deploy.
+    #
+    # NOTE: this line only binds if the service is managed by this blueprint. A
+    # service created through the dashboard ignores it — turn Auto-Deploy OFF in
+    # Render -> bad-mcp -> Settings, and add the Deploy Hook URL as the repo
+    # secret RENDER_DEPLOY_HOOK_URL. Until that secret exists the workflow's
+    # deploy step is a no-op that warns, so nothing breaks in the meantime.
+    autoDeploy: false
     healthCheckPath: /healthz
     envVars:
       - key: NODE_ENV
