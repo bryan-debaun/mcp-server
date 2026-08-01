@@ -1,20 +1,26 @@
 #!/bin/sh
 # Container entrypoint: apply pending migrations, then start the server.
 #
-# This was a one-line `CMD` that ran `prisma migrate deploy || echo '...'`. Two
-# things were wrong with it, and together they hid a month of missing migrations
-# in production (see the operational readiness review, finding D):
+# ⚠️ THIS SCRIPT ONLY RUNS IF RENDER'S DASHBOARD "DOCKER COMMAND" IS EMPTY.
 #
-#   1. It ran against `DATABASE_URL`, which in production is Supabase's
+# That field (Settings → Deploy → Docker Command) overrides the Dockerfile CMD
+# *and* ENTRYPOINT. It was set to `node dist/index.js`, and that — not the pooler,
+# not the error handling — is why migrations sat unapplied from 2026-06-28 to
+# 2026-07-31 while the code needing them was live. The boot migration never
+# executed at all. Not "executed and failed": never ran.
+#
+# If migrations stop applying again, check that field FIRST. `/healthz?deep=1`
+# reports pending migrations so the symptom is visible, but the cause is only
+# visible in the dashboard.
+#
+# The previous inline CMD also had two genuine weaknesses, fixed below, which
+# would have bitten the moment it did run:
+#
+#   1. It migrated over `DATABASE_URL`, which in production is Supabase's
 #      TRANSACTION pooler (port 6543). That pooler cannot take the advisory locks
-#      `migrate deploy` requires, so the step failed on every single deploy.
-#   2. The `|| echo` swallowed that failure unconditionally, so the server always
-#      started — against an un-migrated schema — and the only trace was one log
-#      line nobody was reading.
-#
-# The result: migrations from #145 and #147 sat unapplied from 2026-06-28 to
-# 2026-07-31 while the code that needed them was live. The résumé features had no
-# backing tables the whole time.
+#      `migrate deploy` requires.
+#   2. `|| echo` swallowed failure unconditionally, so the server would start
+#      against an un-migrated schema with one log line as the only trace.
 #
 # Fixes here:
 #   - Migrate over `DATABASE_URL_DIRECT` (the session pooler, port 5432) when it

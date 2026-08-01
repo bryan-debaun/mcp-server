@@ -167,10 +167,18 @@ Supabase project never crash-loops the service:
 { "status": "degraded", "migrations": { "pending": 2, "names": ["…", "…"] } }
 ```
 
-This is the backstop for the failure that went unnoticed for a month: production
-sat with two unapplied migrations from 2026-06-28 to 2026-07-31 while the code
-needing them was live, because the boot step failed silently against the wrong
-pooler. Apply them (below) and the probe returns to 200.
+**Check Render → `bad-mcp` → Settings → Deploy → Docker Command FIRST.** It must
+be **empty**. Anything in that field overrides the Dockerfile `CMD` *and*
+`ENTRYPOINT`, so `scripts/docker-entrypoint.sh` never runs and no migration is
+ever attempted — you will see no `[boot]` lines in the deploy log at all, which
+is the tell.
+
+That is exactly what happened from 2026-06-28 to 2026-07-31: the field held
+`node dist/index.js`, migrations silently accumulated, and the résumé tables
+from #145/#147 never existed in production while the code using them was live.
+
+If the field is empty and migrations are still pending, read the `[boot]` lines
+and continue below.
 
 ### Applying manually
 

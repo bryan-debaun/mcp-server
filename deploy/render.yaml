@@ -3,31 +3,34 @@
 # This is a Docker service: the image is built from ./Dockerfile, which already
 # runs `pnpm run build` (prisma generate -> tsoa routes -> tsc -> seed compile)
 # and ships a pruned, production-only node_modules. For Docker services Render
-# IGNORES `buildCommand`/`startCommand` — the Dockerfile drives the build and its
-# `CMD ["node","dist/index.js"]` is the start command. (A stale dashboard Start
-# Command pointing at the removed `scripts/start-production.sh` is what caused the
-# status-2 crash loop; do not reintroduce it.)
+# IGNORES `buildCommand`/`startCommand` in this file — the Dockerfile drives both.
+# (A stale dashboard command pointing at the removed `scripts/start-production.sh`
+# is what caused the status-2 crash loop; do not reintroduce it.)
 #
-# MIGRATIONS run automatically at CONTAINER BOOT. This comment previously said
-# the opposite ("intentionally NOT run automatically", citing a pruned image with
-# no Prisma CLI). That is stale: the Dockerfile keeps `prisma` + `@prisma/config`
-# as prod deps so the CLI survives the prune, and its CMD is:
+# ⚠️ THE DASHBOARD "DOCKER COMMAND" FIELD MUST BE EMPTY.
 #
-#   sh -c "pnpm exec prisma migrate deploy || echo '[boot] prisma migrate deploy \
-#          failed; starting anyway'; exec node dist/index.js"
+# Render → bad-mcp → Settings → Deploy → Docker Command overrides the Dockerfile
+# CMD *and* ENTRYPOINT outright. It was set to `node dist/index.js`, which meant
+# the boot migration step never executed — not "executed and failed", never ran.
+# That is why migrations sat unapplied from 2026-06-28 to 2026-07-31 while the
+# code needing them was live. Confirmed 2026-08-01; the field is now cleared.
 #
-# The Dockerfile is the source of truth — Render ignores buildCommand/startCommand
-# for Docker services, so CMD is what actually runs. Three places used to describe
-# this differently (here, the Dockerfile, and docs/runbooks/deploy-render.md);
-# during an incident that ambiguity is worse than either answer.
+# The blueprint cannot protect you here: a dashboard value silently wins over
+# everything in this file and in the Dockerfile. If migrations ever stop applying
+# again, check that field FIRST. `/healthz?deep=1` reports pending migrations, so
+# the symptom is visible — but the cause is only visible in the dashboard.
 #
-# REQUIRED ENV: DATABASE_URL_DIRECT must be set (Supabase session pooler, port
-# 5432). The entrypoint migrates over it because the TRANSACTION pooler (6543)
-# that DATABASE_URL points at cannot take the advisory locks `migrate deploy`
-# needs. That exact mismatch silently blocked every migration from 2026-06-28 to
-# 2026-07-31 — the résumé tables from #145/#147 never existed in production while
-# the code using them was live. If DATABASE_URL_DIRECT is unset the entrypoint
-# falls back to DATABASE_URL and warns loudly at boot.
+# MIGRATIONS run automatically at CONTAINER BOOT, via the Dockerfile CMD, which
+# runs scripts/docker-entrypoint.sh — PROVIDED the dashboard override above is
+# empty. Verified end-to-end against the built production image: given a
+# reachable database the entrypoint applies every pending migration correctly.
+#
+# REQUIRED ENV: DATABASE_URL_DIRECT (Supabase session pooler, port 5432). The
+# entrypoint migrates over it because the TRANSACTION pooler (6543) that
+# DATABASE_URL points at cannot take the advisory locks `migrate deploy` needs.
+# That is a real hazard but it is NOT what caused the 2026-06/07 outage — the
+# command simply never ran. If DATABASE_URL_DIRECT is unset the entrypoint falls
+# back to DATABASE_URL and warns loudly at boot.
 #
 # The step is fatal ONLY when the database is reachable and the migration still
 # failed — that means a real problem, and the server refuses to start rather than
