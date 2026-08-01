@@ -155,14 +155,42 @@ function readClaimPath(payload: any, path: string): unknown {
  * Which claims to consult is configuration (`OIDC_ROLE_CLAIM_PATH`), defaulting
  * to `app_metadata.role` then `user_role` — the previous hardcoded behaviour.
  *
+ * **Claim values are treated as a space-delimited set, not an opaque string.**
+ * That matters because the standard OAuth `scope` claim is a list, and ADR 0001
+ * wants authorization to be able to ride it instead of a bespoke custom claim.
+ * The earlier implementation returned the raw value and `resolveAppRole` did an
+ * equality check, so `scope: "admin"` resolved as admin but
+ * `scope: "admin read:books"` did not — it would have worked until the day a
+ * second permission was added, then silently demoted every admin.
+ *
+ * Resolution within a claim:
+ *   1. If the set contains `admin`, that wins — an admin grant should not be
+ *      hidden by whatever else is alongside it.
+ *   2. Otherwise a single value is the role (preserves `app_metadata.role`).
+ *   3. Otherwise ambiguous — fall through to the next claim, then to the local
+ *      Profile. Picking arbitrarily from a multi-valued set would be a guess.
+ *
  * NOTE: Supabase always sets a top-level `role` claim, but it is the Postgres
  * role (`anon` | `authenticated` | `service_role`) — NOT an application role, so
  * it is deliberately absent from the default paths.
  */
 function roleFromToken(payload: any): string | undefined {
     for (const path of config.auth.oidc.roleClaimPaths) {
-        const value = readClaimPath(payload, path)
-        if (typeof value === 'string' && value.length > 0) return value
+        const raw = readClaimPath(payload, path)
+
+        // Some providers emit the claim as an array rather than a delimited
+        // string; normalise both to the same set.
+        const values = Array.isArray(raw)
+            ? raw.filter((v): v is string => typeof v === 'string')
+            : typeof raw === 'string'
+              ? raw.split(/\s+/)
+              : []
+
+        const set = values.map((v) => v.trim()).filter((v) => v.length > 0)
+        if (set.length === 0) continue
+
+        if (set.includes('admin')) return 'admin'
+        if (set.length === 1) return set[0]
     }
     return undefined
 }
