@@ -96,11 +96,28 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
+      # Checked first so that, while the secret is unset, this job neither waits
+      # nor can fail. Otherwise a red db-integration would fail *this* job too
+      # and put a confusing X on main for a deploy that was never going to
+      # happen (Render's own autoDeploy is still doing the deploying).
+      - name: Is the deploy hook configured?
+        id: hook
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::RENDER_DEPLOY_HOOK_URL is not set — deploy gating is inactive. If Render Auto-Deploy is still ON this is harmless (Render deploys on push); if you have turned it OFF, nothing is deploying. See deploy/render.yaml."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
       # test-and-build is a `needs:` dependency, but db-integration lives in its
       # own workflow and runs concurrently — and it is the job that would catch a
       # broken migration. Deploying without it would miss exactly the failure
       # class that left production un-migrated for a month.
       - name: Wait for DB Integration to pass for this commit
+        if: steps.hook.outputs.configured == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -119,12 +136,9 @@ jobs:
           exit 1
 
       - name: Trigger Render deploy
+        if: steps.hook.outputs.configured == 'true'
         env:
           HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
-          if [ -z "$HOOK" ]; then
-            echo "::warning::RENDER_DEPLOY_HOOK_URL is not set — skipping. If Render Auto-Deploy is still ON this is harmless (Render deployed already); if you have turned it OFF, nothing is deploying. See deploy/render.yaml."
-            exit 0
-          fi
           curl -fsS -X POST "$HOOK" > /dev/null
           echo "Render deploy triggered for ${{ github.sha }}"
