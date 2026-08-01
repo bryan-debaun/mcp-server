@@ -1,120 +1,183 @@
-﻿import { afterAll, describe, expect, it } from 'vitest'
-import { initPrisma, prisma } from '../../src/db'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaClient } from '@prisma/client'
+import pg from 'pg'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import {
+    runWithDbContext,
+    TRUSTED_SERVICE_CONTEXT,
+} from '../../src/db/request-context.js'
+import { withRequestClaims } from '../../src/db/with-request-claims.js'
 
 const RUN_DB_TESTS = process.env.RUN_DB_INTEGRATION === 'true'
 
 /**
- * Does Row-Level Security actually apply to the connection **the application
- * uses**? (Operational readiness review, gap #7.)
+ * Does RLS actually stop a non-admin writing? (ORR gap #7.)
  *
- * The review listed RLS as a defence-in-depth control, "migrations present,
- * enforcement path unverified". Verifying it turned up that RLS is **not an
- * active control for this application** â€” for three independent reasons, any one
- * of which is sufficient on its own:
+ * The previous version of this file pinned the *broken* posture, because at the
+ * time RLS enforced nothing: the app owned every table, carried `BYPASSRLS`, and
+ * no table used FORCE. `20260801120000_enforce_rls` plus the claim-propagating
+ * Prisma extension changed that, so this now asserts enforcement.
  *
- *   1. The app connects as `postgres`, which **owns** every table. In Postgres
- *      the table owner bypasses RLS unless `FORCE ROW LEVEL SECURITY` is set â€”
- *      and no migration in this repo has ever used FORCE.
- *   2. That role also carries `rolbypassrls` in production, which skips policies
- *      regardless of ownership or FORCE.
- *   3. Most tables don't have RLS enabled at all any more. The single-user
- *      simplification (`20260219163147_simplify_single_user`) deliberately
- *      dropped policies and disabled RLS on the catalog tables.
- *
- * None of that is necessarily wrong: authorization for this service is enforced
- * in the application layer (OIDC JWT + `requireAdmin` + the MCP gateway key),
- * and for a single-user app that is a defensible place for it to live. What was
- * wrong was *believing* RLS was a second layer when it is inert.
- *
- * So this test does not assert that RLS works. It **pins the real posture** so
- * it cannot drift silently, and so that anyone who later enables RLS and assumes
- * they are protected gets a loud failure pointing them here instead of a false
- * sense of security.
+ * Crucially it connects as **`mcp_app`**, not as the migration owner. Testing
+ * this as `postgres` would pass vacuously — the owner sails past every policy,
+ * which is the exact trap the original setup fell into.
  */
-describe('RLS enforcement posture (ORR gap #7)', () => {
+const OWNER_URL = process.env.DATABASE_URL ?? ''
+const APP_PASSWORD = 'rls_test_app_password'
+
+function appUrl(): string {
+    const u = new URL(OWNER_URL)
+    u.username = 'mcp_app'
+    u.password = APP_PASSWORD
+    return u.toString()
+}
+
+describe('RLS enforcement (ORR gap #7)', () => {
     if (!RUN_DB_TESTS) {
         it.skip('skipped - requires RUN_DB_INTEGRATION=true', () => {})
         return
     }
 
+    let base: PrismaClient
+    let db: any
+
+    beforeAll(async () => {
+        // Give the (NOLOGIN) app role a password for the duration of the test.
+        // Production does this once during cutover; here it keeps the test
+        // self-contained and avoids putting a credential in the migration.
+        const owner = new pg.Client({ connectionString: OWNER_URL })
+        await owner.connect()
+        await owner.query(`ALTER ROLE mcp_app LOGIN PASSWORD '${APP_PASSWORD}'`)
+        await owner.end()
+
+        base = new PrismaClient({
+            adapter: new PrismaPg({ connectionString: appUrl() }),
+        })
+        db = withRequestClaims(base)
+    })
+
     afterAll(async () => {
-        await initPrisma()
-        if (typeof prisma.$disconnect === 'function') {
-            await prisma.$disconnect()
-        }
+        await base?.$disconnect()
+        const owner = new pg.Client({ connectionString: OWNER_URL })
+        await owner.connect()
+        await owner.query('ALTER ROLE mcp_app NOLOGIN')
+        await owner.end()
     })
 
-    it('reports whether the app connection can bypass RLS', async () => {
-        await initPrisma()
-
-        const [role] = (await prisma.$queryRaw`SELECT current_user AS role,
-                    (SELECT rolsuper     FROM pg_roles WHERE rolname = current_user) AS is_superuser,
-                    (SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user) AS has_bypassrls`) as Array<{
-            role: string
-            is_superuser: boolean
-            has_bypassrls: boolean
-        }>
-
-        const tables = (await prisma.$queryRaw`SELECT c.relname AS name,
-                    pg_get_userbyid(c.relowner) AS owner,
-                    c.relrowsecurity      AS rls_enabled,
-                    c.relforcerowsecurity AS rls_forced
-             FROM pg_class c
-             JOIN pg_namespace n ON n.oid = c.relnamespace
-             WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relname !~ '^_'`) as Array<{
-            name: string
-            owner: string
-            rls_enabled: boolean
-            rls_forced: boolean
-        }>
-
-        expect(tables.length).toBeGreaterThan(0)
-
-        const ownsTables = tables.some((t) => t.owner === role.role)
-        const bypassesAsOwner = ownsTables && tables.some((t) => !t.rls_forced)
-        const bypasses =
-            role.is_superuser || role.has_bypassrls || bypassesAsOwner
-
-        // Pinning the *current* answer. If this ever fails, RLS enforcement has
-        // changed â€” which is a good thing, but it means the security section of
-        // docs/operational-readiness-review.md is now wrong and must be updated
-        // to stop describing RLS as inert. Do not "fix" this by flipping the
-        // expectation without reading Â§9.
-        expect(bypasses).toBe(true)
+    it('connects as a role that cannot bypass RLS', async () => {
+        const [row] = (await base.$queryRaw`
+            SELECT current_user AS role,
+                   (SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user) AS bypass
+        `) as Array<{ role: string; bypass: boolean }>
+        expect(row.role).toBe('mcp_app')
+        expect(row.bypass).toBe(false)
     })
 
-    it('has no table using FORCE ROW LEVEL SECURITY', async () => {
-        await initPrisma()
-        const forced = (await prisma.$queryRaw`SELECT c.relname AS name
-             FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-             WHERE n.nspname = 'public' AND c.relkind = 'r'
-               AND c.relforcerowsecurity = true`) as Array<{ name: string }>
+    it('has RLS enabled AND forced on every application table', async () => {
+        const rows = (await base.$queryRaw`
+            SELECT c.relname AS name, c.relrowsecurity AS enabled, c.relforcerowsecurity AS forced
+            FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relname NOT LIKE '\\_%'
+        `) as Array<{ name: string; enabled: boolean; forced: boolean }>
 
-        // Without FORCE, an owner-connected app is never subject to its own
-        // policies. This is the single change that would matter most if RLS is
-        // ever meant to become a real control.
-        expect(forced.map((t) => t.name)).toEqual([])
+        expect(rows.length).toBeGreaterThan(0)
+        // FORCE matters: without it, pointing the app back at an owner role
+        // silently reopens everything.
+        expect(rows.filter((r) => !r.enabled).map((r) => r.name)).toEqual([])
+        expect(rows.filter((r) => !r.forced).map((r) => r.name)).toEqual([])
     })
 
-    it('policies that exist do not constrain the app connection', async () => {
-        await initPrisma()
-        const withPolicies =
-            (await prisma.$queryRaw`SELECT c.relname AS name, count(p.oid)::int AS policies
-             FROM pg_class c
-             JOIN pg_namespace n ON n.oid = c.relnamespace
-             LEFT JOIN pg_policy p ON p.polrelid = c.oid
-             WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relname !~ '^_'
-             GROUP BY c.relname HAVING count(p.oid) > 0`) as Array<{
-                name: string
-                policies: number
-            }>
+    it('allows reads without any identity (public catalog, fast path)', async () => {
+        await expect(db.movie.findMany({ take: 1 })).resolves.toBeDefined()
+    })
 
-        // Documented, not asserted to be empty: some tables genuinely do carry
-        // policies (Article, Bet, Resume, ResumeDownloadRequest in production).
-        // They are simply never evaluated for this connection. Whoever wrote
-        // them was reasonably expecting protection that isn't there.
-        for (const t of withPolicies) {
-            expect(t.policies).toBeGreaterThan(0)
-        }
+    it('BLOCKS a write with no identity', async () => {
+        await expect(
+            db.movie.create({
+                data: { title: 'no-context', status: 'NOT_STARTED' },
+            }),
+        ).rejects.toThrow(/row-level security/i)
+    })
+
+    // The bug class this exists for: an authorization slip that lets a
+    // non-admin through the application layer still cannot write.
+    it('BLOCKS a write from a non-admin identity', async () => {
+        await expect(
+            runWithDbContext(
+                { role: 'user', email: 'someone@example.com' },
+                async () =>
+                    await db.movie.create({
+                        data: { title: 'non-admin', status: 'NOT_STARTED' },
+                    }),
+            ),
+        ).rejects.toThrow(/row-level security/i)
+    })
+
+    it('ALLOWS a write from an admin identity', async () => {
+        const created = await runWithDbContext(
+            { role: 'admin', email: 'brn.dbn@gmail.com' },
+            async () =>
+                await db.movie.create({
+                    data: { title: 'admin-write', status: 'NOT_STARTED' },
+                }),
+        )
+        expect(created?.id).toBeDefined()
+
+        await runWithDbContext(
+            { role: 'admin', email: 'brn.dbn@gmail.com' },
+            async () => await db.movie.delete({ where: { id: created.id } }),
+        )
+    })
+
+    it('ALLOWS a write from the trusted service context (MCP gateway key)', async () => {
+        const created = await runWithDbContext(
+            { ...TRUSTED_SERVICE_CONTEXT },
+            async () =>
+                await db.movie.create({
+                    data: { title: 'service-write', status: 'NOT_STARTED' },
+                }),
+        )
+        expect(created?.id).toBeDefined()
+        await runWithDbContext(
+            { ...TRUSTED_SERVICE_CONTEXT },
+            async () => await db.movie.delete({ where: { id: created.id } }),
+        )
+    })
+
+    it('does not leak claims to the next call once the scope exits', async () => {
+        await runWithDbContext(
+            { role: 'admin', email: 'brn.dbn@gmail.com' },
+            async () =>
+                await db.movie.create({
+                    data: { title: 'scoped', status: 'NOT_STARTED' },
+                }),
+        )
+        // Same connection, no scope — must be refused again.
+        await expect(
+            db.movie.create({
+                data: { title: 'after-scope', status: 'NOT_STARTED' },
+            }),
+        ).rejects.toThrow(/row-level security/i)
+    })
+
+    // Regression guard for the footgun found during the spike: Prisma promises
+    // are lazy, so a context callback that returns without awaiting executes
+    // outside the scope and loses its claims.
+    it('loses claims when the callback does not await (documented footgun)', async () => {
+        await expect(
+            runWithDbContext(
+                { role: 'admin', email: 'brn.dbn@gmail.com' },
+                () =>
+                    db.movie.create({
+                        data: { title: 'unawaited', status: 'NOT_STARTED' },
+                    }),
+            ),
+        ).rejects.toThrow(/row-level security/i)
+    })
+
+    it('denies schema modification to the app role', async () => {
+        await expect(
+            base.$executeRawUnsafe('CREATE TABLE rls_should_fail (id int)'),
+        ).rejects.toThrow(/permission denied/i)
     })
 })

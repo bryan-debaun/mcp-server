@@ -1,5 +1,6 @@
 import { config } from '../config.js'
 import { logger } from '../logger.js'
+import { withRequestClaims } from './with-request-claims.js'
 
 // `prisma` is captured by reference by importers. `initPrisma()` populates it
 // with either a real PrismaClient (model accessors + raw helpers forwarded) or,
@@ -97,6 +98,12 @@ export async function initPrisma() {
             const adapter = new PrismaPg({ connectionString: dbUrl })
             const real = new PrismaClient({ adapter })
 
+            // Identity-carrying client: writes run inside a transaction that
+            // sets `request.jwt.claims.*` first, so RLS policies can evaluate
+            // who is acting. Reads deliberately skip this — see
+            // `IDENTITY_REQUIRED_OPERATIONS`.
+            const scoped = withRequestClaims(real)
+
             // Forward the raw helpers and model accessors onto the shared `prisma`
             // object. Direct assignment keeps each model reassignable by tests.
             prisma.$queryRaw = (...args: any[]) => real.$queryRaw(...args)
@@ -106,7 +113,7 @@ export async function initPrisma() {
                 real.$disconnect ? real.$disconnect() : Promise.resolve()
 
             for (const name of MODEL_NAMES) {
-                if (name in real) prisma[name] = (real as any)[name]
+                if (name in scoped) prisma[name] = (scoped as any)[name]
             }
 
             logger.info('PrismaClient initialized successfully')
