@@ -9,14 +9,13 @@
           "description": "Request id to approve"
         },
         "adminNote": {
-          "type": "string",
-          "description": "Optional internal admin note"
+          "description": "Optional internal admin note",
+          "type": "string"
         }
       },
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -26,18 +25,19 @@
       "type": "object",
       "properties": {
         "source": {
+          "description": "Restrict to one source",
           "type": "string",
           "enum": [
             "INTUITION",
             "AI_ASSISTED"
-          ],
-          "description": "Restrict to one source"
+          ]
         },
         "sport": {
-          "type": "string",
-          "description": "Restrict to one sport"
+          "description": "Restrict to one sport",
+          "type": "string"
         },
         "market": {
+          "description": "Restrict to one market",
           "type": "string",
           "enum": [
             "moneyline",
@@ -45,19 +45,17 @@
             "total",
             "prop",
             "parlay"
-          ],
-          "description": "Restrict to one market"
+          ]
         },
         "from": {
-          "type": "string",
-          "description": "Only bets placed on/after (ISO 8601)"
+          "description": "Only bets placed on/after (ISO 8601)",
+          "type": "string"
         },
         "to": {
-          "type": "string",
-          "description": "Only bets placed on/before (ISO 8601)"
+          "description": "Only bets placed on/before (ISO 8601)",
+          "type": "string"
         }
       },
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -67,36 +65,34 @@
       "type": "object",
       "properties": {
         "legs": {
+          "minItems": 2,
           "type": "array",
           "items": {
             "type": "object",
             "properties": {
               "label": {
-                "type": "string",
-                "description": "Leg label (e.g. \"Celtics ML\")"
+                "description": "Leg label (e.g. \"Celtics ML\")",
+                "type": "string"
               },
               "oddsAmerican": {
                 "type": "number",
                 "description": "Leg American odds"
               },
               "fairProb": {
-                "type": "number",
-                "description": "Fair win prob (0..1) — enables combined EV"
+                "description": "Fair win prob (0..1) — enables combined EV",
+                "type": "number"
               }
             },
             "required": [
               "oddsAmerican"
-            ],
-            "additionalProperties": false
+            ]
           },
-          "minItems": 2,
           "description": "Two or more parlay legs"
         }
       },
       "required": [
         "legs"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -118,9 +114,11 @@
         "projectNumber": {
           "type": "integer",
           "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
           "description": "Project number (e.g., 2 for Project #2)"
         },
         "updates": {
+          "minItems": 1,
           "type": "array",
           "items": {
             "type": "object",
@@ -128,14 +126,22 @@
               "issueNumber": {
                 "type": "integer",
                 "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
                 "description": "Issue number"
               },
               "fields": {
                 "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
                 "additionalProperties": {
-                  "type": [
-                    "string",
-                    "number"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    }
                   ]
                 },
                 "description": "Map of field names to values"
@@ -144,10 +150,8 @@
             "required": [
               "issueNumber",
               "fields"
-            ],
-            "additionalProperties": false
+            ]
           },
-          "minItems": 1,
           "description": "Array of updates, each with issueNumber and fields"
         }
       },
@@ -157,7 +161,6 @@
         "projectNumber",
         "updates"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -174,18 +177,18 @@
         "issueNumber": {
           "type": "integer",
           "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
           "description": "Issue number"
         },
         "comment": {
-          "type": "string",
-          "description": "Comment to add before closing"
+          "description": "Comment to add before closing",
+          "type": "string"
         }
       },
       "required": [
         "repo",
         "issueNumber"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -203,31 +206,31 @@
           "description": "Article title"
         },
         "summary": {
-          "type": "string",
-          "description": "Short summary / excerpt"
+          "description": "Short summary / excerpt",
+          "type": "string"
         },
         "body": {
           "type": "string",
           "description": "Article body (Markdown source)"
         },
         "status": {
+          "description": "Publication status (draft | published); defaults to draft",
           "type": "string",
           "enum": [
             "draft",
             "published"
-          ],
-          "description": "Publication status (draft | published); defaults to draft"
+          ]
         },
         "tags": {
+          "description": "Tags",
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "description": "Tags"
+          }
         },
         "publishedAt": {
-          "type": "string",
-          "description": "Publication date (ISO 8601); set when publishing"
+          "description": "Publication date (ISO 8601); set when publishing",
+          "type": "string"
         }
       },
       "required": [
@@ -235,7 +238,6 @@
         "title",
         "body"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -249,18 +251,17 @@
           "description": "Author name"
         },
         "bio": {
-          "type": "string",
-          "description": "Author biography"
+          "description": "Author biography",
+          "type": "string"
         },
         "website": {
-          "type": "string",
-          "description": "Author website URL"
+          "description": "Author website URL",
+          "type": "string"
         }
       },
       "required": [
         "name"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -274,8 +275,8 @@
           "description": "Sport (e.g. NBA, NFL)"
         },
         "league": {
-          "type": "string",
-          "description": "League/competition"
+          "description": "League/competition",
+          "type": "string"
         },
         "event": {
           "type": "string",
@@ -297,11 +298,13 @@
           "description": "What was bet (team / over / player prop)"
         },
         "line": {
-          "type": "number",
-          "description": "Spread/total line, if applicable"
+          "description": "Spread/total line, if applicable",
+          "type": "number"
         },
         "oddsAmerican": {
           "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991,
           "description": "American odds (e.g. -110, +150)"
         },
         "stake": {
@@ -310,8 +313,8 @@
           "description": "Amount risked"
         },
         "book": {
-          "type": "string",
-          "description": "Sportsbook (default DraftKings)"
+          "description": "Sportsbook (default DraftKings)",
+          "type": "string"
         },
         "source": {
           "type": "string",
@@ -322,26 +325,27 @@
           "description": "INTUITION (gut) or AI_ASSISTED"
         },
         "placedAt": {
-          "type": "string",
-          "description": "Placement time (ISO 8601)"
+          "description": "Placement time (ISO 8601)",
+          "type": "string"
         },
         "aiModel": {
-          "type": "string",
-          "description": "AI model, if AI_ASSISTED"
+          "description": "AI model, if AI_ASSISTED",
+          "type": "string"
         },
         "aiRationale": {
-          "type": "string",
-          "description": "AI reasoning captured at decision time"
+          "description": "AI reasoning captured at decision time",
+          "type": "string"
         },
         "aiEstProb": {
-          "type": "number",
-          "description": "AI's estimated win probability (0..1)"
+          "description": "AI's estimated win probability (0..1)",
+          "type": "number"
         },
         "aiEV": {
-          "type": "number",
-          "description": "AI's estimated EV at placement"
+          "description": "AI's estimated EV at placement",
+          "type": "number"
         },
         "legs": {
+          "description": "Parlay legs (market=parlay)",
           "type": "array",
           "items": {
             "type": "object",
@@ -355,25 +359,25 @@
                 "description": "Leg selection"
               },
               "oddsAmerican": {
+                "description": "Leg American odds (optional; SGPs omit it)",
                 "type": "integer",
-                "description": "Leg American odds (optional; SGPs omit it)"
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
               },
               "line": {
-                "type": "number",
-                "description": "Leg line, if applicable"
+                "description": "Leg line, if applicable",
+                "type": "number"
               }
             },
             "required": [
               "event",
               "selection"
-            ],
-            "additionalProperties": false
-          },
-          "description": "Parlay legs (market=parlay)"
+            ]
+          }
         },
         "notes": {
-          "type": "string",
-          "description": "Freeform notes"
+          "description": "Freeform notes",
+          "type": "string"
         }
       },
       "required": [
@@ -385,7 +389,6 @@
         "stake",
         "source"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -399,46 +402,45 @@
           "description": "Book title"
         },
         "status": {
+          "description": "Book status (e.g., Not started, In progress, Completed)",
           "type": "string",
           "enum": [
             "NOT_STARTED",
             "IN_PROGRESS",
             "COMPLETED"
-          ],
-          "description": "Book status (e.g., Not started, In progress, Completed)"
+          ]
         },
         "description": {
-          "type": "string",
-          "description": "Book description"
+          "description": "Book description",
+          "type": "string"
         },
         "isbn": {
-          "type": "string",
-          "description": "ISBN (optional, must be unique)"
+          "description": "ISBN (optional, must be unique)",
+          "type": "string"
         },
         "publishedAt": {
-          "type": "string",
-          "description": "Publication date (ISO 8601 format)"
+          "description": "Publication date (ISO 8601 format)",
+          "type": "string"
         },
         "rating": {
-          "type": "number",
-          "description": "Your rating (1-10 scale, optional)"
+          "description": "Your rating (1-10 scale, optional)",
+          "type": "number"
         },
         "review": {
-          "type": "string",
-          "description": "Your review text (optional)"
+          "description": "Your review text (optional)",
+          "type": "string"
         },
         "authorIds": {
+          "description": "Array of author IDs to associate with this book",
           "type": "array",
           "items": {
             "type": "number"
-          },
-          "description": "Array of author IDs to associate with this book"
+          }
         }
       },
       "required": [
         "title"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -452,18 +454,17 @@
           "description": "Content creator name"
         },
         "description": {
-          "type": "string",
-          "description": "Description of content creator"
+          "description": "Description of content creator",
+          "type": "string"
         },
         "website": {
-          "type": "string",
-          "description": "Website URL"
+          "description": "Website URL",
+          "type": "string"
         }
       },
       "required": [
         "name"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -483,35 +484,35 @@
           "description": "Issue title"
         },
         "body": {
-          "type": "string",
-          "description": "Issue body/description (Markdown allowed)"
+          "description": "Issue body/description (Markdown allowed)",
+          "type": "string"
         },
         "bodyFile": {
-          "type": "string",
-          "description": "Path to a Markdown file to use as the issue body"
+          "description": "Path to a Markdown file to use as the issue body",
+          "type": "string"
         },
         "bodyJson": {
           "description": "JSON payload to convert to Markdown for the issue body"
         },
         "labels": {
-          "type": "string",
-          "description": "Comma-separated labels to add"
+          "description": "Comma-separated labels to add",
+          "type": "string"
         },
         "assignees": {
-          "type": "string",
-          "description": "Comma-separated GitHub usernames to assign to the issue"
+          "description": "Comma-separated GitHub usernames to assign to the issue",
+          "type": "string"
         },
         "milestone": {
+          "description": "Milestone number to assign to the issue",
           "type": "integer",
           "exclusiveMinimum": 0,
-          "description": "Milestone number to assign to the issue"
+          "maximum": 9007199254740991
         }
       },
       "required": [
         "repo",
         "title"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -533,6 +534,7 @@
         "projectNumber": {
           "type": "integer",
           "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
           "description": "Project number (e.g., 2 for Project #2)"
         },
         "title": {
@@ -541,16 +543,16 @@
           "description": "Issue title"
         },
         "body": {
-          "type": "string",
-          "description": "Issue body (Markdown allowed)"
+          "description": "Issue body (Markdown allowed)",
+          "type": "string"
         },
         "labels": {
-          "type": "string",
-          "description": "Comma-separated labels to add to the issue"
+          "description": "Comma-separated labels to add to the issue",
+          "type": "string"
         },
         "status": {
-          "type": "string",
-          "description": "Status column name to place the issue in (e.g. 'Todo', 'In Progress')"
+          "description": "Status column name to place the issue in (e.g. 'Todo', 'In Progress')",
+          "type": "string"
         }
       },
       "required": [
@@ -559,7 +561,6 @@
         "projectNumber",
         "title"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -573,35 +574,34 @@
           "description": "Movie title"
         },
         "status": {
+          "description": "Movie status (e.g., Not started, In progress, Completed)",
           "type": "string",
           "enum": [
             "NOT_STARTED",
             "IN_PROGRESS",
             "COMPLETED"
-          ],
-          "description": "Movie status (e.g., Not started, In progress, Completed)"
+          ]
         },
         "description": {
-          "type": "string",
-          "description": "Movie description"
+          "description": "Movie description",
+          "type": "string"
         },
         "iasn": {
-          "type": "string",
-          "description": "IASN (optional, must be unique)"
+          "description": "IASN (optional, must be unique)",
+          "type": "string"
         },
         "imdbId": {
-          "type": "string",
-          "description": "IMDB ID (optional, must be unique)"
+          "description": "IMDB ID (optional, must be unique)",
+          "type": "string"
         },
         "releasedAt": {
-          "type": "string",
-          "description": "Release date (ISO 8601 format)"
+          "description": "Release date (ISO 8601 format)",
+          "type": "string"
         }
       },
       "required": [
         "title"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -618,6 +618,7 @@
         "projectNumber": {
           "type": "integer",
           "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
           "description": "Project number (e.g., 2 for Project #2)"
         },
         "name": {
@@ -637,11 +638,11 @@
           "description": "Field type: TEXT, NUMBER, DATE, SINGLE_SELECT, or ITERATION"
         },
         "options": {
+          "description": "Options for SINGLE_SELECT field (required if dataType is SINGLE_SELECT)",
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "description": "Options for SINGLE_SELECT field (required if dataType is SINGLE_SELECT)"
+          }
         }
       },
       "required": [
@@ -650,7 +651,6 @@
         "name",
         "dataType"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -668,15 +668,14 @@
           "description": "Requesting user email"
         },
         "reason": {
-          "type": "string",
-          "description": "Optional note from the user explaining the request"
+          "description": "Optional note from the user explaining the request",
+          "type": "string"
         }
       },
       "required": [
         "userId",
         "userEmail"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -699,32 +698,31 @@
           "description": "Platform (PlayStation, Xbox, PC)"
         },
         "status": {
+          "description": "Status",
           "type": "string",
           "enum": [
             "NOT_STARTED",
             "IN_PROGRESS",
             "COMPLETED"
-          ],
-          "description": "Status"
+          ]
         },
         "description": {
-          "type": "string",
-          "description": "Game description"
+          "description": "Game description",
+          "type": "string"
         },
         "igdbId": {
-          "type": "string",
-          "description": "IGDB ID (optional, unique)"
+          "description": "IGDB ID (optional, unique)",
+          "type": "string"
         },
         "releasedAt": {
-          "type": "string",
-          "description": "Release date (ISO 8601)"
+          "description": "Release date (ISO 8601)",
+          "type": "string"
         }
       },
       "required": [
         "title",
         "platform"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -741,7 +739,6 @@
       "required": [
         "slug"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -758,7 +755,6 @@
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -769,13 +765,14 @@
       "properties": {
         "id": {
           "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991,
           "description": "Bet ID to delete"
         }
       },
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -792,7 +789,6 @@
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -809,7 +805,6 @@
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -826,7 +821,6 @@
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -843,6 +837,7 @@
         "projectNumber": {
           "type": "integer",
           "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
           "description": "Project number (e.g., 2 for Project #2)"
         },
         "fieldName": {
@@ -856,7 +851,6 @@
         "projectNumber",
         "fieldName"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -873,7 +867,6 @@
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -887,14 +880,13 @@
           "description": "Request id to deny"
         },
         "adminNote": {
-          "type": "string",
-          "description": "Optional internal admin note"
+          "description": "Optional internal admin note",
+          "type": "string"
         }
       },
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -904,18 +896,17 @@
       "type": "object",
       "properties": {
         "oddsAmerican": {
+          "minItems": 2,
           "type": "array",
           "items": {
             "type": "number"
           },
-          "minItems": 2,
           "description": "American prices for all outcomes of ONE market (e.g. [-110,-110])"
         }
       },
       "required": [
         "oddsAmerican"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -929,18 +920,17 @@
           "description": "Sport key (e.g. basketball_nba)"
         },
         "markets": {
-          "type": "string",
-          "description": "Markets; default h2h"
+          "description": "Markets; default h2h",
+          "type": "string"
         },
         "regions": {
-          "type": "string",
-          "description": "Regions (default us)"
+          "description": "Regions (default us)",
+          "type": "string"
         }
       },
       "required": [
         "sport"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -954,22 +944,21 @@
           "description": "Sport key (e.g. basketball_nba)"
         },
         "markets": {
-          "type": "string",
-          "description": "Markets; default h2h"
+          "description": "Markets; default h2h",
+          "type": "string"
         },
         "regions": {
-          "type": "string",
-          "description": "Regions (default us)"
+          "description": "Regions (default us)",
+          "type": "string"
         },
         "threshold": {
-          "type": "number",
-          "description": "Minimum EV per unit to report (default 0.02 = +2%)"
+          "description": "Minimum EV per unit to report (default 0.02 = +2%)",
+          "type": "number"
         }
       },
       "required": [
         "sport"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -983,19 +972,18 @@
           "description": "Slug of the article to retrieve"
         },
         "status": {
+          "description": "Visibility filter (default published). draft/all require admin context.",
           "type": "string",
           "enum": [
             "draft",
             "published",
             "all"
-          ],
-          "description": "Visibility filter (default published). draft/all require admin context."
+          ]
         }
       },
       "required": [
         "slug"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1012,7 +1000,6 @@
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1023,13 +1010,14 @@
       "properties": {
         "id": {
           "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991,
           "description": "Bet ID"
         }
       },
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1046,7 +1034,6 @@
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1063,7 +1050,6 @@
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1080,6 +1066,7 @@
         "issueNumber": {
           "type": "integer",
           "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
           "description": "Issue number"
         }
       },
@@ -1087,7 +1074,6 @@
         "repo",
         "issueNumber"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1104,7 +1090,6 @@
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1118,22 +1103,21 @@
           "description": "Sport key (e.g. basketball_nba)"
         },
         "markets": {
-          "type": "string",
-          "description": "Comma-separated markets (h2h,spreads,totals); default h2h"
+          "description": "Comma-separated markets (h2h,spreads,totals); default h2h",
+          "type": "string"
         },
         "regions": {
-          "type": "string",
-          "description": "Regions (default us)"
+          "description": "Regions (default us)",
+          "type": "string"
         },
         "eventId": {
-          "type": "string",
-          "description": "Single event id (richer markets/props) instead of all events"
+          "description": "Single event id (richer markets/props) instead of all events",
+          "type": "string"
         }
       },
       "required": [
         "sport"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1148,20 +1132,20 @@
           "description": "Repository in owner/repo format (e.g., 'owner/repo')"
         },
         "labels": {
-          "type": "string",
-          "description": "Comma-separated labels to filter by"
+          "description": "Comma-separated labels to filter by",
+          "type": "string"
         },
         "limit": {
+          "default": 10,
+          "description": "Maximum number of issues to return (default: 10)",
           "type": "integer",
           "exclusiveMinimum": 0,
-          "default": 10,
-          "description": "Maximum number of issues to return (default: 10)"
+          "maximum": 9007199254740991
         }
       },
       "required": [
         "repo"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1178,6 +1162,7 @@
         "projectNumber": {
           "type": "integer",
           "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
           "description": "Project number (e.g., 2 for Project #2)"
         }
       },
@@ -1185,7 +1170,6 @@
         "owner",
         "projectNumber"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1202,6 +1186,7 @@
         "projectNumber": {
           "type": "integer",
           "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
           "description": "Project number (e.g., 2 for Project #2)"
         }
       },
@@ -1209,7 +1194,6 @@
         "owner",
         "projectNumber"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1219,11 +1203,10 @@
       "type": "object",
       "properties": {
         "includePrivate": {
-          "type": "boolean",
-          "description": "Include basics.privateContact (email/phone). Default false — public reads are stripped."
+          "description": "Include basics.privateContact (email/phone). Default false — public reads are stripped.",
+          "type": "boolean"
         }
       },
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1240,7 +1223,6 @@
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1254,16 +1236,15 @@
           "description": "Sport key (e.g. basketball_nba)"
         },
         "daysFrom": {
+          "description": "Include completed games from the last N days (1-3)",
           "type": "integer",
           "minimum": 1,
-          "maximum": 3,
-          "description": "Include completed games from the last N days (1-3)"
+          "maximum": 3
         }
       },
       "required": [
         "sport"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1273,16 +1254,18 @@
       "type": "object",
       "properties": {
         "id": {
+          "description": "User id",
           "type": "integer",
-          "description": "User id"
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
         },
         "email": {
+          "description": "User email",
           "type": "string",
           "format": "email",
-          "description": "User email"
+          "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
         }
       },
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1299,7 +1282,6 @@
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1309,32 +1291,31 @@
       "type": "object",
       "properties": {
         "status": {
+          "description": "Visibility filter (default published). draft/all require admin context.",
           "type": "string",
           "enum": [
             "draft",
             "published",
             "all"
-          ],
-          "description": "Visibility filter (default published). draft/all require admin context."
+          ]
         },
         "tag": {
-          "type": "string",
-          "description": "Filter by a single tag"
+          "description": "Filter by a single tag",
+          "type": "string"
         },
         "search": {
-          "type": "string",
-          "description": "Search in title and summary"
+          "description": "Search in title and summary",
+          "type": "string"
         },
         "limit": {
-          "type": "number",
-          "description": "Maximum number of results (default 50)"
+          "description": "Maximum number of results (default 50)",
+          "type": "number"
         },
         "offset": {
-          "type": "number",
-          "description": "Number of results to skip (default 0)"
+          "description": "Number of results to skip (default 0)",
+          "type": "number"
         }
       },
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1344,19 +1325,18 @@
       "type": "object",
       "properties": {
         "search": {
-          "type": "string",
-          "description": "Search in author name and bio"
+          "description": "Search in author name and bio",
+          "type": "string"
         },
         "limit": {
-          "type": "number",
-          "description": "Maximum number of results (default 50)"
+          "description": "Maximum number of results (default 50)",
+          "type": "number"
         },
         "offset": {
-          "type": "number",
-          "description": "Number of results to skip (default 0)"
+          "description": "Number of results to skip (default 0)",
+          "type": "number"
         }
       },
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1366,14 +1346,15 @@
       "type": "object",
       "properties": {
         "source": {
+          "description": "Filter by source",
           "type": "string",
           "enum": [
             "INTUITION",
             "AI_ASSISTED"
-          ],
-          "description": "Filter by source"
+          ]
         },
         "status": {
+          "description": "Filter by status",
           "type": "string",
           "enum": [
             "PENDING",
@@ -1381,14 +1362,14 @@
             "LOST",
             "PUSH",
             "VOID"
-          ],
-          "description": "Filter by status"
+          ]
         },
         "sport": {
-          "type": "string",
-          "description": "Filter by sport"
+          "description": "Filter by sport",
+          "type": "string"
         },
         "market": {
+          "description": "Filter by market",
           "type": "string",
           "enum": [
             "moneyline",
@@ -1396,19 +1377,21 @@
             "total",
             "prop",
             "parlay"
-          ],
-          "description": "Filter by market"
+          ]
         },
         "limit": {
+          "description": "Max results (default 100)",
           "type": "integer",
-          "description": "Max results (default 100)"
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
         },
         "offset": {
+          "description": "Results to skip (default 0)",
           "type": "integer",
-          "description": "Results to skip (default 0)"
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
         }
       },
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1418,36 +1401,35 @@
       "type": "object",
       "properties": {
         "authorId": {
-          "type": "number",
-          "description": "Filter by author ID"
+          "description": "Filter by author ID",
+          "type": "number"
         },
         "minRating": {
-          "type": "number",
-          "description": "Minimum average rating (1-10)"
+          "description": "Minimum average rating (1-10)",
+          "type": "number"
         },
         "search": {
-          "type": "string",
-          "description": "Search in title and description"
+          "description": "Search in title and description",
+          "type": "string"
         },
         "status": {
+          "description": "Filter by status (Not started, In progress, Completed)",
           "type": "string",
           "enum": [
             "NOT_STARTED",
             "IN_PROGRESS",
             "COMPLETED"
-          ],
-          "description": "Filter by status (Not started, In progress, Completed)"
+          ]
         },
         "limit": {
-          "type": "number",
-          "description": "Maximum number of results (default 50)"
+          "description": "Maximum number of results (default 50)",
+          "type": "number"
         },
         "offset": {
-          "type": "number",
-          "description": "Number of results to skip (default 0)"
+          "description": "Number of results to skip (default 0)",
+          "type": "number"
         }
       },
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1457,19 +1439,18 @@
       "type": "object",
       "properties": {
         "search": {
-          "type": "string",
-          "description": "Search in name and description"
+          "description": "Search in name and description",
+          "type": "string"
         },
         "limit": {
-          "type": "number",
-          "description": "Maximum number of results (default 50)"
+          "description": "Maximum number of results (default 50)",
+          "type": "number"
         },
         "offset": {
-          "type": "number",
-          "description": "Number of results to skip (default 0)"
+          "description": "Number of results to skip (default 0)",
+          "type": "number"
         }
       },
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1486,7 +1467,6 @@
       "required": [
         "sport"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1504,7 +1484,6 @@
       "required": [
         "repo"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1514,32 +1493,31 @@
       "type": "object",
       "properties": {
         "minRating": {
-          "type": "number",
-          "description": "Minimum average rating (1-10)"
+          "description": "Minimum average rating (1-10)",
+          "type": "number"
         },
         "search": {
-          "type": "string",
-          "description": "Search in title and description"
+          "description": "Search in title and description",
+          "type": "string"
         },
         "status": {
+          "description": "Filter by status",
           "type": "string",
           "enum": [
             "NOT_STARTED",
             "IN_PROGRESS",
             "COMPLETED"
-          ],
-          "description": "Filter by status"
+          ]
         },
         "limit": {
-          "type": "number",
-          "description": "Maximum number of results (default 50)"
+          "description": "Maximum number of results (default 50)",
+          "type": "number"
         },
         "offset": {
-          "type": "number",
-          "description": "Number of results to skip (default 0)"
+          "description": "Number of results to skip (default 0)",
+          "type": "number"
         }
       },
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1556,6 +1534,7 @@
         "projectNumber": {
           "type": "integer",
           "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
           "description": "Project number (e.g., 2 for Project #2)"
         }
       },
@@ -1563,7 +1542,6 @@
         "owner",
         "projectNumber"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1573,6 +1551,7 @@
       "type": "object",
       "properties": {
         "status": {
+          "description": "Filter by stored status (default: all)",
           "type": "string",
           "enum": [
             "pending",
@@ -1581,23 +1560,21 @@
             "fulfilled",
             "expired",
             "all"
-          ],
-          "description": "Filter by stored status (default: all)"
+          ]
         },
         "userId": {
-          "type": "string",
-          "description": "Filter to a single user"
+          "description": "Filter to a single user",
+          "type": "string"
         },
         "limit": {
-          "type": "number",
-          "description": "Maximum number of results (default 50)"
+          "description": "Maximum number of results (default 50)",
+          "type": "number"
         },
         "offset": {
-          "type": "number",
-          "description": "Number of results to skip (default 0)"
+          "description": "Number of results to skip (default 0)",
+          "type": "number"
         }
       },
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1623,32 +1600,31 @@
       "type": "object",
       "properties": {
         "platform": {
+          "description": "Filter by platform",
           "type": "string",
           "enum": [
             "PlayStation",
             "Xbox",
             "PC"
-          ],
-          "description": "Filter by platform"
+          ]
         },
         "minRating": {
-          "type": "number",
-          "description": "Minimum average rating (1-10)"
+          "description": "Minimum average rating (1-10)",
+          "type": "number"
         },
         "search": {
-          "type": "string",
-          "description": "Search in title and description"
+          "description": "Search in title and description",
+          "type": "string"
         },
         "limit": {
-          "type": "number",
-          "description": "Maximum number of results (default 50)"
+          "description": "Maximum number of results (default 50)",
+          "type": "number"
         },
         "offset": {
-          "type": "number",
-          "description": "Number of results to skip (default 0)"
+          "description": "Number of results to skip (default 0)",
+          "type": "number"
         }
       },
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1662,6 +1638,7 @@
           "description": "Event description (e.g. \"Lakers @ Celtics\")"
         },
         "market": {
+          "description": "Market (defaults to parlay when legs given, else moneyline)",
           "type": "string",
           "enum": [
             "moneyline",
@@ -1669,20 +1646,21 @@
             "total",
             "prop",
             "parlay"
-          ],
-          "description": "Market (defaults to parlay when legs given, else moneyline)"
+          ]
         },
         "selection": {
-          "type": "string",
-          "description": "Selection for a single bet"
+          "description": "Selection for a single bet",
+          "type": "string"
         },
         "line": {
-          "type": "number",
-          "description": "Spread/total line, if applicable"
+          "description": "Spread/total line, if applicable",
+          "type": "number"
         },
         "oddsAmerican": {
+          "description": "Required for a single bet; computed from legs for a parlay",
           "type": "integer",
-          "description": "Required for a single bet; computed from legs for a parlay"
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
         },
         "stake": {
           "type": "number",
@@ -1690,50 +1668,51 @@
           "description": "Amount to risk"
         },
         "legs": {
+          "description": "Parlay legs (≥2) instead of a single selection",
+          "minItems": 2,
           "type": "array",
           "items": {
             "type": "object",
             "properties": {
               "label": {
-                "type": "string",
-                "description": "Leg label"
+                "description": "Leg label",
+                "type": "string"
               },
               "event": {
-                "type": "string",
-                "description": "Leg event"
+                "description": "Leg event",
+                "type": "string"
               },
               "selection": {
-                "type": "string",
-                "description": "Leg selection"
+                "description": "Leg selection",
+                "type": "string"
               },
               "oddsAmerican": {
+                "description": "Leg American odds (optional; SGPs omit it)",
                 "type": "integer",
-                "description": "Leg American odds (optional; SGPs omit it)"
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
               },
               "line": {
                 "type": "number"
               },
               "fairProb": {
-                "type": "number",
-                "description": "Leg fair win prob (0..1) → enables EV"
+                "description": "Leg fair win prob (0..1) → enables EV",
+                "type": "number"
               }
-            },
-            "additionalProperties": false
-          },
-          "minItems": 2,
-          "description": "Parlay legs (≥2) instead of a single selection"
+            }
+          }
         },
         "sport": {
-          "type": "string",
-          "description": "Sport key for the DK link (e.g. basketball_nba)"
+          "description": "Sport key for the DK link (e.g. basketball_nba)",
+          "type": "string"
         },
         "source": {
+          "description": "INTUITION or AI_ASSISTED",
           "type": "string",
           "enum": [
             "INTUITION",
             "AI_ASSISTED"
-          ],
-          "description": "INTUITION or AI_ASSISTED"
+          ]
         },
         "aiModel": {
           "type": "string"
@@ -1745,19 +1724,18 @@
           "type": "number"
         },
         "fairProb": {
-          "type": "number",
-          "description": "Fair win prob for a single bet → enables EV"
+          "description": "Fair win prob for a single bet → enables EV",
+          "type": "number"
         },
         "book": {
-          "type": "string",
-          "description": "Sportsbook (default DraftKings)"
+          "description": "Sportsbook (default DraftKings)",
+          "type": "string"
         }
       },
       "required": [
         "event",
         "stake"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1774,7 +1752,6 @@
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1796,11 +1773,13 @@
         "projectNumber": {
           "type": "integer",
           "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
           "description": "Project number (e.g., 2 for Project #2)"
         },
         "issueNumber": {
           "type": "integer",
           "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
           "description": "Issue number"
         },
         "fieldName": {
@@ -1809,9 +1788,13 @@
           "description": "Field name"
         },
         "value": {
-          "type": [
-            "string",
-            "number"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            }
           ],
           "description": "Field value (string or number)"
         }
@@ -1824,7 +1807,6 @@
         "fieldName",
         "value"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1835,6 +1817,8 @@
       "properties": {
         "id": {
           "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991,
           "description": "Bet ID"
         },
         "status": {
@@ -1848,15 +1832,14 @@
           "description": "Outcome: WON | LOST | PUSH | VOID"
         },
         "payout": {
-          "type": "number",
-          "description": "Total returned on a win (incl. stake); computed if omitted"
+          "description": "Total returned on a win (incl. stake); computed if omitted",
+          "type": "number"
         }
       },
       "required": [
         "id",
         "status"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1870,45 +1853,44 @@
           "description": "Slug of the article to update"
         },
         "title": {
-          "type": "string",
-          "description": "Article title"
+          "description": "Article title",
+          "type": "string"
         },
         "summary": {
-          "type": "string",
-          "description": "Short summary / excerpt"
+          "description": "Short summary / excerpt",
+          "type": "string"
         },
         "body": {
-          "type": "string",
-          "description": "Article body (Markdown source)"
+          "description": "Article body (Markdown source)",
+          "type": "string"
         },
         "status": {
+          "description": "Publication status (draft | published)",
           "type": "string",
           "enum": [
             "draft",
             "published"
-          ],
-          "description": "Publication status (draft | published)"
+          ]
         },
         "tags": {
+          "description": "Tags",
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "description": "Tags"
+          }
         },
         "publishedAt": {
-          "type": "string",
-          "description": "Publication date (ISO 8601)"
+          "description": "Publication date (ISO 8601)",
+          "type": "string"
         },
         "newSlug": {
-          "type": "string",
-          "description": "Rename the slug (must stay unique)"
+          "description": "Rename the slug (must stay unique)",
+          "type": "string"
         }
       },
       "required": [
         "slug"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1922,22 +1904,21 @@
           "description": "Author ID"
         },
         "name": {
-          "type": "string",
-          "description": "Author name"
+          "description": "Author name",
+          "type": "string"
         },
         "bio": {
-          "type": "string",
-          "description": "Author biography"
+          "description": "Author biography",
+          "type": "string"
         },
         "website": {
-          "type": "string",
-          "description": "Author website URL"
+          "description": "Author website URL",
+          "type": "string"
         }
       },
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -1948,6 +1929,8 @@
       "properties": {
         "id": {
           "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991,
           "description": "Bet ID"
         },
         "sport": {
@@ -1976,7 +1959,9 @@
           "type": "number"
         },
         "oddsAmerican": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
         },
         "stake": {
           "type": "number",
@@ -2005,12 +1990,14 @@
           "type": "number"
         },
         "closingLine": {
-          "type": "number",
-          "description": "Closing line (Phase 2 / #129)"
+          "description": "Closing line (Phase 2 / #129)",
+          "type": "number"
         },
         "closingOddsAmerican": {
+          "description": "Closing American odds (for CLV)",
           "type": "integer",
-          "description": "Closing American odds (for CLV)"
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
         },
         "legs": {
           "type": "array",
@@ -2026,19 +2013,20 @@
                 "description": "Leg selection"
               },
               "oddsAmerican": {
+                "description": "Leg American odds (optional; SGPs omit it)",
                 "type": "integer",
-                "description": "Leg American odds (optional; SGPs omit it)"
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
               },
               "line": {
-                "type": "number",
-                "description": "Leg line, if applicable"
+                "description": "Leg line, if applicable",
+                "type": "number"
               }
             },
             "required": [
               "event",
               "selection"
-            ],
-            "additionalProperties": false
+            ]
           }
         },
         "notes": {
@@ -2048,7 +2036,6 @@
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -2062,50 +2049,49 @@
           "description": "Book ID"
         },
         "title": {
-          "type": "string",
-          "description": "Book title"
+          "description": "Book title",
+          "type": "string"
         },
         "status": {
+          "description": "Book status (e.g., Not started, In progress, Completed)",
           "type": "string",
           "enum": [
             "NOT_STARTED",
             "IN_PROGRESS",
             "COMPLETED"
-          ],
-          "description": "Book status (e.g., Not started, In progress, Completed)"
+          ]
         },
         "description": {
-          "type": "string",
-          "description": "Book description"
+          "description": "Book description",
+          "type": "string"
         },
         "rating": {
-          "type": "number",
-          "description": "Your rating (1-10 scale, optional)"
+          "description": "Your rating (1-10 scale, optional)",
+          "type": "number"
         },
         "review": {
-          "type": "string",
-          "description": "Your review text (optional)"
+          "description": "Your review text (optional)",
+          "type": "string"
         },
         "isbn": {
-          "type": "string",
-          "description": "ISBN (must be unique)"
+          "description": "ISBN (must be unique)",
+          "type": "string"
         },
         "publishedAt": {
-          "type": "string",
-          "description": "Publication date (ISO 8601 format)"
+          "description": "Publication date (ISO 8601 format)",
+          "type": "string"
         },
         "authorIds": {
+          "description": "Array of author IDs to associate with this book",
           "type": "array",
           "items": {
             "type": "number"
-          },
-          "description": "Array of author IDs to associate with this book"
+          }
         }
       },
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -2119,22 +2105,21 @@
           "description": "Content creator ID"
         },
         "name": {
-          "type": "string",
-          "description": "Content creator name"
+          "description": "Content creator name",
+          "type": "string"
         },
         "description": {
-          "type": "string",
-          "description": "Description of content creator"
+          "description": "Description of content creator",
+          "type": "string"
         },
         "website": {
-          "type": "string",
-          "description": "Website URL"
+          "description": "Website URL",
+          "type": "string"
         }
       },
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -2151,67 +2136,68 @@
         "issueNumber": {
           "type": "integer",
           "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
           "description": "Issue number"
         },
         "title": {
-          "type": "string",
-          "description": "New issue title"
+          "description": "New issue title",
+          "type": "string"
         },
         "body": {
-          "type": "string",
-          "description": "New issue body (Markdown allowed)"
+          "description": "New issue body (Markdown allowed)",
+          "type": "string"
         },
         "bodyFile": {
-          "type": "string",
-          "description": "Path to a Markdown file to use as the issue body"
+          "description": "Path to a Markdown file to use as the issue body",
+          "type": "string"
         },
         "bodyJson": {
           "description": "JSON payload to convert to Markdown for the issue body"
         },
         "labels": {
-          "type": "string",
-          "description": "Comma-separated labels to add to the issue"
+          "description": "Comma-separated labels to add to the issue",
+          "type": "string"
         },
         "removeLabels": {
-          "type": "string",
-          "description": "Comma-separated labels to remove from the issue"
+          "description": "Comma-separated labels to remove from the issue",
+          "type": "string"
         },
         "assignees": {
-          "type": "string",
-          "description": "Comma-separated GitHub usernames to assign to the issue"
+          "description": "Comma-separated GitHub usernames to assign to the issue",
+          "type": "string"
         },
         "milestone": {
+          "description": "Milestone number to assign (use 0 to clear)",
           "type": "integer",
           "exclusiveMinimum": 0,
-          "description": "Milestone number to assign (use 0 to clear)"
+          "maximum": 9007199254740991
         },
         "state": {
+          "description": "Set issue state to open or closed",
           "type": "string",
           "enum": [
             "open",
             "closed"
-          ],
-          "description": "Set issue state to open or closed"
+          ]
         },
         "stateReason": {
+          "description": "Reason for closing: completed or not_planned (ignored when opening)",
           "type": "string",
           "enum": [
             "completed",
             "not_planned",
             "reopened"
-          ],
-          "description": "Reason for closing: completed or not_planned (ignored when opening)"
+          ]
         },
         "comment": {
-          "type": "string",
-          "description": "Comment to add to the issue"
+          "description": "Comment to add to the issue",
+          "type": "string"
         }
       },
       "required": [
         "repo",
         "issueNumber"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -2225,39 +2211,38 @@
           "description": "Movie ID"
         },
         "title": {
-          "type": "string",
-          "description": "Movie title"
+          "description": "Movie title",
+          "type": "string"
         },
         "status": {
+          "description": "Movie status (e.g., Not started, In progress, Completed)",
           "type": "string",
           "enum": [
             "NOT_STARTED",
             "IN_PROGRESS",
             "COMPLETED"
-          ],
-          "description": "Movie status (e.g., Not started, In progress, Completed)"
+          ]
         },
         "description": {
-          "type": "string",
-          "description": "Movie description"
+          "description": "Movie description",
+          "type": "string"
         },
         "iasn": {
-          "type": "string",
-          "description": "IASN (must be unique)"
+          "description": "IASN (must be unique)",
+          "type": "string"
         },
         "imdbId": {
-          "type": "string",
-          "description": "IMDB ID (must be unique)"
+          "description": "IMDB ID (must be unique)",
+          "type": "string"
         },
         "releasedAt": {
-          "type": "string",
-          "description": "Release date (ISO 8601 format)"
+          "description": "Release date (ISO 8601 format)",
+          "type": "string"
         }
       },
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -2274,6 +2259,7 @@
         "projectNumber": {
           "type": "integer",
           "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
           "description": "Project number (e.g., 2 for Project #2)"
         },
         "fieldName": {
@@ -2282,23 +2268,23 @@
           "description": "Current field name to update"
         },
         "newName": {
+          "description": "New field name",
           "type": "string",
-          "minLength": 1,
-          "description": "New field name"
+          "minLength": 1
         },
         "addOptions": {
+          "description": "Options to add (for SINGLE_SELECT fields)",
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "description": "Options to add (for SINGLE_SELECT fields)"
+          }
         },
         "removeOptions": {
+          "description": "Options to remove (for SINGLE_SELECT fields)",
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "description": "Options to remove (for SINGLE_SELECT fields)"
+          }
         }
       },
       "required": [
@@ -2306,7 +2292,6 @@
         "projectNumber",
         "fieldName"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -2335,7 +2320,8 @@
                 },
                 "location": {},
                 "profiles": {
-                  "type": "array"
+                  "type": "array",
+                  "items": {}
                 },
                 "privateContact": {
                   "type": "object",
@@ -2347,38 +2333,41 @@
                       "type": "string"
                     }
                   },
-                  "additionalProperties": true
+                  "additionalProperties": {}
                 }
               },
               "required": [
                 "name"
               ],
-              "additionalProperties": true
+              "additionalProperties": {}
             },
             "work": {
-              "type": "array"
+              "type": "array",
+              "items": {}
             },
             "education": {
-              "type": "array"
+              "type": "array",
+              "items": {}
             },
             "skills": {
-              "type": "array"
+              "type": "array",
+              "items": {}
             },
             "projects": {
-              "type": "array"
+              "type": "array",
+              "items": {}
             }
           },
           "required": [
             "basics"
           ],
-          "additionalProperties": true,
+          "additionalProperties": {},
           "description": "The full JSON Resume document to store (replaces the singleton)."
         }
       },
       "required": [
         "document"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
@@ -2392,44 +2381,43 @@
           "description": "Video game ID"
         },
         "title": {
-          "type": "string",
-          "description": "Video game title"
+          "description": "Video game title",
+          "type": "string"
         },
         "status": {
+          "description": "Status",
           "type": "string",
           "enum": [
             "NOT_STARTED",
             "IN_PROGRESS",
             "COMPLETED"
-          ],
-          "description": "Status"
+          ]
         },
         "description": {
-          "type": "string",
-          "description": "Game description"
+          "description": "Game description",
+          "type": "string"
         },
         "platform": {
+          "description": "Platform (PlayStation, Xbox, PC)",
           "type": "string",
           "enum": [
             "PlayStation",
             "Xbox",
             "PC"
-          ],
-          "description": "Platform (PlayStation, Xbox, PC)"
+          ]
         },
         "igdbId": {
-          "type": "string",
-          "description": "IGDB ID (optional, unique)"
+          "description": "IGDB ID (optional, unique)",
+          "type": "string"
         },
         "releasedAt": {
-          "type": "string",
-          "description": "Release date (ISO 8601)"
+          "description": "Release date (ISO 8601)",
+          "type": "string"
         }
       },
       "required": [
         "id"
       ],
-      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   }
