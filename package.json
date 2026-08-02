@@ -94,7 +94,7 @@
         "tsx": "^4.23.1",
         "typescript": "^5.4.0",
         "vitest": "^3.2.4",
-        "yargs": "^17.7.2"
+        "yargs": "^18.1.0"
     },
     "prisma": {
         "schema": "prisma/schema.prisma"
