@@ -31,6 +31,13 @@ updates:
       # deliberate, tested change rather than an automated one.
       - dependency-name: '@tsoa/runtime'
       - dependency-name: tsoa
+      # @types/node tracks the Dockerfile's Node major, not npm's latest.
+      # Types AHEAD of the runtime are the dangerous direction: tsc accepts an
+      # API that does not exist on the deployed Node, every gate passes, and it
+      # throws in production. The type layer is the only thing that could have
+      # known, so nothing else catches it. Move this with the Dockerfile.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
     # Majors still arrive as individual PRs — those genuinely need reading.
 
   - package-ecosystem: github-actions
@@ -52,3 +59,12 @@ updates:
     labels:
       - 'project:mcp-server'
       - 'type:chore'
+    ignore:
+      # The Node major is an LTS-cadence decision, not an automated bump.
+      # Odd-numbered lines are never LTS: Dependabot proposed node:25-alpine in
+      # #162, which had been end-of-life since 2026-06-01. It also has to move
+      # in lockstep with the `node-version` pins in every workflow, or the
+      # container runs a major that CI never tested.
+      # v24 is supported until 2028-04-30; v26 becomes LTS on 2026-10-28.
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
