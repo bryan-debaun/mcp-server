@@ -1,8 +1,8 @@
 #!/usr/bin/env tsx
 import fs from 'fs'
 import path from 'path'
-import process from 'process'
 import { Client } from 'pg'
+import process from 'process'
 
 async function main() {
     const args = process.argv.slice(2)
@@ -12,7 +12,9 @@ async function main() {
     }
     const file = path.resolve(args[0])
     const sql = fs.readFileSync(file, 'utf8')
-    const conn = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/mcp_dev'
+    const conn =
+        process.env.DATABASE_URL ||
+        'postgres://postgres:postgres@localhost:5432/mcp_dev'
 
     const client = new Client({ connectionString: conn })
     await client.connect()
@@ -27,4 +29,7 @@ async function main() {
     }
 }
 
-main().catch(err => { console.error(err); process.exit(99) })
+main().catch((err) => {
+    console.error(err)
+    process.exit(99)
+})

@@ -1,23 +1,33 @@
-import { initPrisma, prisma } from '../../src/db/index.js'
 import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
+import { initPrisma, prisma } from '../../src/db/index.js'
 
 const argv = yargs(hideBin(process.argv))
     .option('dry-run', { type: 'boolean', default: false })
     .option('force', { type: 'boolean', default: false })
     .option('confirm-token', { type: 'string' })
-    .help()
-    .argv as any
+    .help().argv as any
 
-const isProd = (process.env.DATABASE_URL || '').includes('supabase.co') || process.env.NODE_ENV === 'production'
+const isProd =
+    (process.env.DATABASE_URL || '').includes('supabase.co') ||
+    process.env.NODE_ENV === 'production'
 
 if (isProd && !argv.force) {
-    console.error('Refusing to run against production without --force. Pass --force and --confirm-token=REALLY_I_AGREE to proceed.')
+    console.error(
+        'Refusing to run against production without --force. Pass --force and --confirm-token=REALLY_I_AGREE to proceed.',
+    )
     process.exit(1)
 }
 
-if (isProd && argv.force && (argv['confirm-token'] !== 'REALLY_I_AGREE' && process.env.CONFIRM !== 'REALLY_I_AGREE')) {
-    console.error('Production run requires confirm token. Provide --confirm-token=REALLY_I_AGREE or set CONFIRM=REALLY_I_AGREE in the environment.')
+if (
+    isProd &&
+    argv.force &&
+    argv['confirm-token'] !== 'REALLY_I_AGREE' &&
+    process.env.CONFIRM !== 'REALLY_I_AGREE'
+) {
+    console.error(
+        'Production run requires confirm token. Provide --confirm-token=REALLY_I_AGREE or set CONFIRM=REALLY_I_AGREE in the environment.',
+    )
     process.exit(1)
 }
 
@@ -25,7 +35,9 @@ export default async function run() {
     await initPrisma()
 
     if (argv['dry-run']) {
-        console.log('[dry-run] Would run SQL-based aggregate backfill (no writes)')
+        console.log(
+            '[dry-run] Would run SQL-based aggregate backfill (no writes)',
+        )
         return
     }
 
@@ -42,5 +54,8 @@ export default async function run() {
 }
 
 if (process.argv[1] && process.argv[1].endsWith('sql-backfill-aggregates.ts')) {
-    run().catch(err => { console.error('SQL backfill failed', err); process.exit(1) })
+    run().catch((err) => {
+        console.error('SQL backfill failed', err)
+        process.exit(1)
+    })
 }
