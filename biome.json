@@ -111,7 +111,13 @@
 	},
 	"overrides": [
 		{
-			"includes": ["src/config.ts", "src/logger.ts", "test/**/*.ts"],
+			"includes": [
+				"src/config.ts",
+				"src/logger.ts",
+				"test/**/*.ts",
+				"scripts/**/*.ts",
+				"prisma/**/*.ts"
+			],
 			"linter": { "rules": { "suspicious": { "noConsole": "off" } } }
 		},
 		{
