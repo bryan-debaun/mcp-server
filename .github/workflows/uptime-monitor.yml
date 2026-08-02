@@ -3,19 +3,29 @@ name: Uptime Monitor
 # ORR gap #1 — the highest value/effort item on the list, and the one that would
 # have caught the month of unapplied migrations far sooner.
 #
-# Deliberately GitHub Actions rather than UptimeRobot/cron-job.org: no external
-# account to create or remember, the schedule lives in the repo next to the thing
-# it watches, and GitHub already emails the repo owner when a scheduled workflow
-# fails. That last part is the entire alerting mechanism — no extra wiring.
+# This workflow ALERTS. It does not keep the service warm — see #119.
 #
-# It doubles as the keep-warm ping from #119: `?deep=1` touches the database, so
-# one request holds off BOTH Render's ~15min spin-down and Supabase's 7-day
-# auto-pause.
+# It used to claim both jobs, and that combination is what made it cry wolf.
+# The cron below says every 10 minutes; measured over 14 consecutive runs, GitHub
+# actually delivered it every 50-211 minutes, averaging ~95. Render's free tier
+# spins down after ~15 minutes idle, so at that cadence EVERY probe hit a fully
+# cold service, and a cold start slower than the curl budget reported `000` and
+# emailed an outage that was not happening. The monitor was alerting on a
+# condition its own missed schedule created.
+#
+# The original note here said "treat ~10min as roughly every 10-20 minutes".
+# That was optimistic by 5-10x. Do not rely on GitHub's scheduler for anything
+# that needs to actually happen on time.
+#
+# Keep-warm therefore lives outside this repo now (an external pinger on a
+# schedule that is honoured). That is the reverse of the original call — which
+# rejected external services to avoid an account to remember — because the
+# assumption it rested on turned out to be false.
 #
 # Known limits, stated rather than discovered later:
-#   * GitHub's cron is best-effort and can lag by several minutes under load, so
-#     treat ~10min as "roughly every 10-20 minutes". Fine for keep-warm and for
-#     noticing an outage; not a latency SLO instrument.
+#   * The schedule is best-effort and heavily throttled. This tells you "the
+#     service was reachable at some point in the last hour or two". It is not a
+#     latency instrument and not a keep-warm.
 #   * Scheduled workflows are disabled automatically after 60 days with no repo
 #     activity. A repo you have stopped touching stops being monitored — worth
 #     knowing before trusting it.
@@ -32,32 +42,52 @@ concurrency:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Must exceed the two curl budgets below (240s warm-up + 120s measured =
+    # 360s) plus the metrics snapshot, or the job gets killed mid-probe and
+    # reports a failure that says nothing. 5 minutes was enough for the old
+    # single request and is not enough now.
+    timeout-minutes: 10
     env:
       BASE: https://bad-mcp.onrender.com
     steps:
       - name: Probe /healthz?deep=1
         id: probe
         run: |
-          # Generous timeout: a cold Render instance legitimately takes ~30-60s
-          # to answer, and treating that as an outage would make this cry wolf
-          # every idle period.
+          # WARM FIRST, THEN MEASURE.
+          #
+          # The first request may have to boot a spun-down instance, and that is
+          # not an outage — it is Render's free tier behaving as documented. A
+          # measured cold start took over 150s, so the old single 120s attempt
+          # failed on a service that was perfectly healthy 30 seconds later.
+          #
+          # So: request one wakes the instance and its result is discarded
+          # entirely. Request two is the one that decides pass/fail. If the
+          # service is genuinely down, both fail and this still reports it —
+          # this suppresses the false positive, not the real signal.
+          warm_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 240 "$BASE/healthz?deep=1" || true)
+          echo "Warm-up request returned ${warm_code:-000} (ignored; boots a spun-down instance)"
+
           body=$(mktemp)
-          code=$(curl -s -o "$body" -w '%{http_code}' --max-time 120 "$BASE/healthz?deep=1" || echo 000)
+          # `|| echo 000` on its own appends to curl's own '000' on failure,
+          # which is where the confusing `returned 000000` in the old alerts
+          # came from. Capture the exit status separately instead.
+          code=$(curl -s -o "$body" -w '%{http_code}' --max-time 120 "$BASE/healthz?deep=1") || code=000
           echo "http_code=$code" >> "$GITHUB_OUTPUT"
           echo "### Health probe" >> "$GITHUB_STEP_SUMMARY"
+          echo "Warm-up: \`${warm_code:-000}\` · Measured: \`$code\`" >> "$GITHUB_STEP_SUMMARY"
           echo '```json' >> "$GITHUB_STEP_SUMMARY"
           head -c 2000 "$body" >> "$GITHUB_STEP_SUMMARY"
           echo '' >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
           if [ "$code" != "200" ]; then
-            echo "::error::/healthz?deep=1 returned $code"
+            echo "::error::/healthz?deep=1 returned $code on the measured request (warm-up: ${warm_code:-000})"
             # Name the usual suspects so the failure email is actionable on its
             # own, without needing to open the runbook first.
             echo "  - 503 with db:error      -> Supabase project paused or unreachable"
             echo "  - 503 with migrations    -> schema behind the code; check Render's Docker Command field is empty"
-            echo "  - 000 / timeout          -> service down, or a cold start slower than 120s"
+            echo "  - 000 on BOTH requests   -> genuinely down; a cold start alone can no longer cause this"
+            echo "  - 000 measured, 200 warm -> instance died between requests, or a >120s stall while warm"
             echo "  - HTML instead of JSON   -> Cloudflare challenge page, not the app"
             echo "See docs/runbooks/incident-response.md"
             exit 1
