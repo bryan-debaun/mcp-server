@@ -20,7 +20,7 @@ COPY . .
 RUN pnpm run build
 
 # Compile seed script to JavaScript for production use
-RUN pnpm exec tsc prisma/seed.ts --outDir dist --module NodeNext --moduleResolution NodeNext --target ES2022 --esModuleInterop --skipLibCheck
+RUN pnpm exec tsc prisma/seed.ts --ignoreConfig --outDir dist --module NodeNext --moduleResolution NodeNext --target ES2022 --esModuleInterop --skipLibCheck
 
 # Reduce to production dependencies in place. pnpm's content-addressed node_modules
 # stays self-contained: the generated @prisma/client (with its embedded WASM query

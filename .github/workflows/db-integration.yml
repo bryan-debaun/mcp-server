@@ -50,7 +50,7 @@ jobs:
       # repository already performs a syntax check (`pnpm run sql:parse`) and
       # migrations are validated by `prisma migrate deploy` above.
       - name: Build TypeScript (including seed script)
-        run: pnpm run build && pnpm exec tsc prisma/seed.ts --outDir dist --module NodeNext --moduleResolution NodeNext --target ES2022 --esModuleInterop --skipLibCheck
+        run: pnpm run build && pnpm exec tsc prisma/seed.ts --ignoreConfig --outDir dist --module NodeNext --moduleResolution NodeNext --target ES2022 --esModuleInterop --skipLibCheck
       - name: Seed DB
         run: pnpm run prisma:seed
       - name: Run tests
