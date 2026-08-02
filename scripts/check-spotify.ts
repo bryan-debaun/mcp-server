@@ -84,7 +84,9 @@ async function run() {
 
         // Try adapter helpers (getPlaylists / getLikedTracks) if available
         try {
-            const mod = await import('../src/adapters/spotify/spotify-adapter')
+            const mod = await import(
+                '../src/adapters/spotify/spotify-adapter.js'
+            )
             const { getPlaylists, getLikedTracks } = mod
 
             console.error('\nCalling getPlaylists()')

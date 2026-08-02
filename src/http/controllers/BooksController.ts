@@ -15,7 +15,7 @@ import {
     SuccessResponse,
     Tags,
 } from 'tsoa'
-import type { ItemStatus } from '../../tools/db/books/status'
+import type { ItemStatus } from '../../tools/db/books/status.js'
 import { callTool } from '../../tools/local.js'
 import { httpError, isNotFound, isUniqueViolation } from './_http-errors.js'
 
