@@ -169,8 +169,24 @@ const envSchema = z.object({
             return Number.isFinite(n) && n >= 0 && n <= 1 ? n : 0
         }),
 
+    // ── Logto (user provisioning — ADR 0001 Stage 2, #154) ────────────────
+    // Only the Management-API side lives here. Token *verification* stays on
+    // the provider-neutral OIDC_* vars above: ADR 0001 rules out an identity
+    // abstraction because OIDC discovery already is one. Provisioning is the
+    // sanctioned exception, because that is where lock-in actually bites.
+    LOGTO_TENANT_ID: z.string().optional(),
+    LOGTO_ISSUER: z.string().url().optional(),
+    LOGTO_M2M_CLIENT_ID: z.string().optional(),
+    LOGTO_M2M_CLIENT_SECRET: z.string().optional(),
+    // The client application that performs impersonation token exchange. The
+    // M2M app cannot: Logto rejects it with "requested grant type is not
+    // allowed for this client" (#153).
+    LOGTO_WEB_CLIENT_ID: z.string().optional(),
+    LOGTO_WEB_CLIENT_SECRET: z.string().optional(),
+
     // ── Test / CI flags ───────────────────────────────────────────────────
     RUN_DB_INTEGRATION: boolFlag,
+    RUN_LOGTO_INTEGRATION: boolFlag,
     RUN_GITHUB_PROJECTS_INTEGRATION: boolFlag,
     GITHUB_TEST_OWNER: z.string().optional(),
     GITHUB_TEST_REPO: z.string().optional(),
@@ -360,6 +376,32 @@ export const config = {
         scopesSupported: env.OAUTH_SCOPES_SUPPORTED,
     },
 
+    // Logto user provisioning (#154). `enabled` is true only when everything a
+    // Management API call needs is present, so callers can degrade cleanly
+    // instead of discovering a missing secret mid-request.
+    logto: {
+        tenantId: env.LOGTO_TENANT_ID,
+        // Derivable from the tenant id — verified against the discovery
+        // document during the #153 spike — but overridable for custom domains.
+        issuer:
+            env.LOGTO_ISSUER ??
+            (env.LOGTO_TENANT_ID
+                ? `https://${env.LOGTO_TENANT_ID}.logto.app/oidc`
+                : undefined),
+        managementApi: env.LOGTO_TENANT_ID
+            ? `https://${env.LOGTO_TENANT_ID}.logto.app/api`
+            : undefined,
+        m2mClientId: env.LOGTO_M2M_CLIENT_ID,
+        m2mClientSecret: env.LOGTO_M2M_CLIENT_SECRET,
+        webClientId: env.LOGTO_WEB_CLIENT_ID,
+        webClientSecret: env.LOGTO_WEB_CLIENT_SECRET,
+        enabled: Boolean(
+            env.LOGTO_TENANT_ID &&
+                env.LOGTO_M2M_CLIENT_ID &&
+                env.LOGTO_M2M_CLIENT_SECRET,
+        ),
+    },
+
     github: {
         token: env.GITHUB_TOKEN,
     },
@@ -373,6 +415,7 @@ export const config = {
 
     ci: {
         runDbIntegration: env.RUN_DB_INTEGRATION,
+        runLogtoIntegration: env.RUN_LOGTO_INTEGRATION,
         runGithubProjectsIntegration: env.RUN_GITHUB_PROJECTS_INTEGRATION,
         githubTestOwner: env.GITHUB_TEST_OWNER,
         githubTestRepo: env.GITHUB_TEST_REPO,

@@ -33,6 +33,7 @@
         "prisma:generate": "prisma generate",
         "db:deploy": "prisma migrate deploy && node dist/seed.js",
         "db:snapshot": "tsx scripts/db-snapshot.ts",
+        "logto:users": "tsx scripts/logto-test-users.ts",
         "env:pull": "doppler secrets download --no-file --format env > .env.local"
     },
     "keywords": [
