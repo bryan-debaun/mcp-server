@@ -111,7 +111,7 @@ export const BulkSetProjectFieldValuesInputSchema = {
                     .positive()
                     .describe('Issue number'),
                 fields: z
-                    .record(z.union([z.string(), z.number()]))
+                    .record(z.string(), z.union([z.string(), z.number()]))
                     .describe('Map of field names to values'),
             }),
         )

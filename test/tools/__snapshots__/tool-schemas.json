@@ -1,0 +1,2424 @@
+[
+  {
+    "name": "approve-resume-download-request",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Request id to approve"
+        },
+        "adminNote": {
+          "description": "Optional internal admin note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "bet-analytics",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "description": "Restrict to one source",
+          "type": "string",
+          "enum": [
+            "INTUITION",
+            "AI_ASSISTED"
+          ]
+        },
+        "sport": {
+          "description": "Restrict to one sport",
+          "type": "string"
+        },
+        "market": {
+          "description": "Restrict to one market",
+          "type": "string",
+          "enum": [
+            "moneyline",
+            "spread",
+            "total",
+            "prop",
+            "parlay"
+          ]
+        },
+        "from": {
+          "description": "Only bets placed on/after (ISO 8601)",
+          "type": "string"
+        },
+        "to": {
+          "description": "Only bets placed on/before (ISO 8601)",
+          "type": "string"
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "build-parlay",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "legs": {
+          "minItems": 2,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "description": "Leg label (e.g. \"Celtics ML\")",
+                "type": "string"
+              },
+              "oddsAmerican": {
+                "type": "number",
+                "description": "Leg American odds"
+              },
+              "fairProb": {
+                "description": "Fair win prob (0..1) — enables combined EV",
+                "type": "number"
+              }
+            },
+            "required": [
+              "oddsAmerican"
+            ]
+          },
+          "description": "Two or more parlay legs"
+        }
+      },
+      "required": [
+        "legs"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "bulk-set-project-field-values",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "description": "GitHub username or organization name"
+        },
+        "repo": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Repository name (just the name, not owner/repo)"
+        },
+        "projectNumber": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Project number (e.g., 2 for Project #2)"
+        },
+        "updates": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "issueNumber": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Issue number"
+              },
+              "fields": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                "description": "Map of field names to values"
+              }
+            },
+            "required": [
+              "issueNumber",
+              "fields"
+            ]
+          },
+          "description": "Array of updates, each with issueNumber and fields"
+        }
+      },
+      "required": [
+        "owner",
+        "repo",
+        "projectNumber",
+        "updates"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "close-issue",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "repo": {
+          "type": "string",
+          "pattern": "^[^/]+\\/[^/]+$",
+          "description": "Repository in owner/repo format (e.g., 'owner/repo')"
+        },
+        "issueNumber": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Issue number"
+        },
+        "comment": {
+          "description": "Comment to add before closing",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repo",
+        "issueNumber"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "create-article",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "slug": {
+          "type": "string",
+          "description": "URL slug (unique, e.g. \"cptsd\")"
+        },
+        "title": {
+          "type": "string",
+          "description": "Article title"
+        },
+        "summary": {
+          "description": "Short summary / excerpt",
+          "type": "string"
+        },
+        "body": {
+          "type": "string",
+          "description": "Article body (Markdown source)"
+        },
+        "status": {
+          "description": "Publication status (draft | published); defaults to draft",
+          "type": "string",
+          "enum": [
+            "draft",
+            "published"
+          ]
+        },
+        "tags": {
+          "description": "Tags",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "publishedAt": {
+          "description": "Publication date (ISO 8601); set when publishing",
+          "type": "string"
+        }
+      },
+      "required": [
+        "slug",
+        "title",
+        "body"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "create-author",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Author name"
+        },
+        "bio": {
+          "description": "Author biography",
+          "type": "string"
+        },
+        "website": {
+          "description": "Author website URL",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "create-bet",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sport": {
+          "type": "string",
+          "description": "Sport (e.g. NBA, NFL)"
+        },
+        "league": {
+          "description": "League/competition",
+          "type": "string"
+        },
+        "event": {
+          "type": "string",
+          "description": "Event description (e.g. \"Lakers @ Celtics\")"
+        },
+        "market": {
+          "type": "string",
+          "enum": [
+            "moneyline",
+            "spread",
+            "total",
+            "prop",
+            "parlay"
+          ],
+          "description": "moneyline | spread | total | prop | parlay"
+        },
+        "selection": {
+          "type": "string",
+          "description": "What was bet (team / over / player prop)"
+        },
+        "line": {
+          "description": "Spread/total line, if applicable",
+          "type": "number"
+        },
+        "oddsAmerican": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991,
+          "description": "American odds (e.g. -110, +150)"
+        },
+        "stake": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Amount risked"
+        },
+        "book": {
+          "description": "Sportsbook (default DraftKings)",
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "INTUITION",
+            "AI_ASSISTED"
+          ],
+          "description": "INTUITION (gut) or AI_ASSISTED"
+        },
+        "placedAt": {
+          "description": "Placement time (ISO 8601)",
+          "type": "string"
+        },
+        "aiModel": {
+          "description": "AI model, if AI_ASSISTED",
+          "type": "string"
+        },
+        "aiRationale": {
+          "description": "AI reasoning captured at decision time",
+          "type": "string"
+        },
+        "aiEstProb": {
+          "description": "AI's estimated win probability (0..1)",
+          "type": "number"
+        },
+        "aiEV": {
+          "description": "AI's estimated EV at placement",
+          "type": "number"
+        },
+        "legs": {
+          "description": "Parlay legs (market=parlay)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "event": {
+                "type": "string",
+                "description": "Leg event description"
+              },
+              "selection": {
+                "type": "string",
+                "description": "Leg selection"
+              },
+              "oddsAmerican": {
+                "description": "Leg American odds (optional; SGPs omit it)",
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "line": {
+                "description": "Leg line, if applicable",
+                "type": "number"
+              }
+            },
+            "required": [
+              "event",
+              "selection"
+            ]
+          }
+        },
+        "notes": {
+          "description": "Freeform notes",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sport",
+        "event",
+        "market",
+        "selection",
+        "oddsAmerican",
+        "stake",
+        "source"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "create-book",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Book title"
+        },
+        "status": {
+          "description": "Book status (e.g., Not started, In progress, Completed)",
+          "type": "string",
+          "enum": [
+            "NOT_STARTED",
+            "IN_PROGRESS",
+            "COMPLETED"
+          ]
+        },
+        "description": {
+          "description": "Book description",
+          "type": "string"
+        },
+        "isbn": {
+          "description": "ISBN (optional, must be unique)",
+          "type": "string"
+        },
+        "publishedAt": {
+          "description": "Publication date (ISO 8601 format)",
+          "type": "string"
+        },
+        "rating": {
+          "description": "Your rating (1-10 scale, optional)",
+          "type": "number"
+        },
+        "review": {
+          "description": "Your review text (optional)",
+          "type": "string"
+        },
+        "authorIds": {
+          "description": "Array of author IDs to associate with this book",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "create-content-creator",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Content creator name"
+        },
+        "description": {
+          "description": "Description of content creator",
+          "type": "string"
+        },
+        "website": {
+          "description": "Website URL",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "create-issue",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "repo": {
+          "type": "string",
+          "pattern": "^[^/]+\\/[^/]+$",
+          "description": "Repository in owner/repo format (e.g., 'owner/repo')"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Issue title"
+        },
+        "body": {
+          "description": "Issue body/description (Markdown allowed)",
+          "type": "string"
+        },
+        "bodyFile": {
+          "description": "Path to a Markdown file to use as the issue body",
+          "type": "string"
+        },
+        "bodyJson": {
+          "description": "JSON payload to convert to Markdown for the issue body"
+        },
+        "labels": {
+          "description": "Comma-separated labels to add",
+          "type": "string"
+        },
+        "assignees": {
+          "description": "Comma-separated GitHub usernames to assign to the issue",
+          "type": "string"
+        },
+        "milestone": {
+          "description": "Milestone number to assign to the issue",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "repo",
+        "title"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "create-issue-in-project",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "description": "GitHub username or organization name"
+        },
+        "repo": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Repository name (just the repo name, not owner/repo)"
+        },
+        "projectNumber": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Project number (e.g., 2 for Project #2)"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Issue title"
+        },
+        "body": {
+          "description": "Issue body (Markdown allowed)",
+          "type": "string"
+        },
+        "labels": {
+          "description": "Comma-separated labels to add to the issue",
+          "type": "string"
+        },
+        "status": {
+          "description": "Status column name to place the issue in (e.g. 'Todo', 'In Progress')",
+          "type": "string"
+        }
+      },
+      "required": [
+        "owner",
+        "repo",
+        "projectNumber",
+        "title"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "create-movie",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Movie title"
+        },
+        "status": {
+          "description": "Movie status (e.g., Not started, In progress, Completed)",
+          "type": "string",
+          "enum": [
+            "NOT_STARTED",
+            "IN_PROGRESS",
+            "COMPLETED"
+          ]
+        },
+        "description": {
+          "description": "Movie description",
+          "type": "string"
+        },
+        "iasn": {
+          "description": "IASN (optional, must be unique)",
+          "type": "string"
+        },
+        "imdbId": {
+          "description": "IMDB ID (optional, must be unique)",
+          "type": "string"
+        },
+        "releasedAt": {
+          "description": "Release date (ISO 8601 format)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "create-project-field",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "description": "GitHub username or organization name"
+        },
+        "projectNumber": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Project number (e.g., 2 for Project #2)"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Field name"
+        },
+        "dataType": {
+          "type": "string",
+          "enum": [
+            "TEXT",
+            "NUMBER",
+            "DATE",
+            "SINGLE_SELECT",
+            "ITERATION"
+          ],
+          "description": "Field type: TEXT, NUMBER, DATE, SINGLE_SELECT, or ITERATION"
+        },
+        "options": {
+          "description": "Options for SINGLE_SELECT field (required if dataType is SINGLE_SELECT)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "owner",
+        "projectNumber",
+        "name",
+        "dataType"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "create-resume-download-request",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Requesting user id (Supabase auth UUID / JWT sub)"
+        },
+        "userEmail": {
+          "type": "string",
+          "description": "Requesting user email"
+        },
+        "reason": {
+          "description": "Optional note from the user explaining the request",
+          "type": "string"
+        }
+      },
+      "required": [
+        "userId",
+        "userEmail"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "create-videogame",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Video game title"
+        },
+        "platform": {
+          "type": "string",
+          "enum": [
+            "PlayStation",
+            "Xbox",
+            "PC"
+          ],
+          "description": "Platform (PlayStation, Xbox, PC)"
+        },
+        "status": {
+          "description": "Status",
+          "type": "string",
+          "enum": [
+            "NOT_STARTED",
+            "IN_PROGRESS",
+            "COMPLETED"
+          ]
+        },
+        "description": {
+          "description": "Game description",
+          "type": "string"
+        },
+        "igdbId": {
+          "description": "IGDB ID (optional, unique)",
+          "type": "string"
+        },
+        "releasedAt": {
+          "description": "Release date (ISO 8601)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "platform"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "delete-article",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "slug": {
+          "type": "string",
+          "description": "Slug of the article to delete"
+        }
+      },
+      "required": [
+        "slug"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "delete-author",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number",
+          "description": "Author ID to delete"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "delete-bet",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991,
+          "description": "Bet ID to delete"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "delete-book",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number",
+          "description": "Book ID to delete"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "delete-content-creator",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number",
+          "description": "ContentCreator ID to delete"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "delete-movie",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number",
+          "description": "Movie ID to delete"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "delete-project-field",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "description": "GitHub username or organization name"
+        },
+        "projectNumber": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Project number (e.g., 2 for Project #2)"
+        },
+        "fieldName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Field name to delete"
+        }
+      },
+      "required": [
+        "owner",
+        "projectNumber",
+        "fieldName"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "delete-videogame",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number",
+          "description": "Video game ID to delete"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "deny-resume-download-request",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Request id to deny"
+        },
+        "adminNote": {
+          "description": "Optional internal admin note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "devig",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "oddsAmerican": {
+          "minItems": 2,
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "American prices for all outcomes of ONE market (e.g. [-110,-110])"
+        }
+      },
+      "required": [
+        "oddsAmerican"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "find-arbitrage",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sport": {
+          "type": "string",
+          "description": "Sport key (e.g. basketball_nba)"
+        },
+        "markets": {
+          "description": "Markets; default h2h",
+          "type": "string"
+        },
+        "regions": {
+          "description": "Regions (default us)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sport"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "find-positive-ev",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sport": {
+          "type": "string",
+          "description": "Sport key (e.g. basketball_nba)"
+        },
+        "markets": {
+          "description": "Markets; default h2h",
+          "type": "string"
+        },
+        "regions": {
+          "description": "Regions (default us)",
+          "type": "string"
+        },
+        "threshold": {
+          "description": "Minimum EV per unit to report (default 0.02 = +2%)",
+          "type": "number"
+        }
+      },
+      "required": [
+        "sport"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get-article",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "slug": {
+          "type": "string",
+          "description": "Slug of the article to retrieve"
+        },
+        "status": {
+          "description": "Visibility filter (default published). draft/all require admin context.",
+          "type": "string",
+          "enum": [
+            "draft",
+            "published",
+            "all"
+          ]
+        }
+      },
+      "required": [
+        "slug"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get-author",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number",
+          "description": "Author ID to retrieve"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get-bet",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991,
+          "description": "Bet ID"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get-book",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number",
+          "description": "Book ID to retrieve"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get-content-creator",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number",
+          "description": "ContentCreator ID to retrieve"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get-issue",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "repo": {
+          "type": "string",
+          "pattern": "^[^/]+\\/[^/]+$",
+          "description": "Repository in owner/repo format (e.g., 'owner/repo')"
+        },
+        "issueNumber": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Issue number"
+        }
+      },
+      "required": [
+        "repo",
+        "issueNumber"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get-movie",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number",
+          "description": "Movie ID to retrieve"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get-odds",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sport": {
+          "type": "string",
+          "description": "Sport key (e.g. basketball_nba)"
+        },
+        "markets": {
+          "description": "Comma-separated markets (h2h,spreads,totals); default h2h",
+          "type": "string"
+        },
+        "regions": {
+          "description": "Regions (default us)",
+          "type": "string"
+        },
+        "eventId": {
+          "description": "Single event id (richer markets/props) instead of all events",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sport"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get-open-issues",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "repo": {
+          "type": "string",
+          "pattern": "^[^/]+\\/[^/]+$",
+          "description": "Repository in owner/repo format (e.g., 'owner/repo')"
+        },
+        "labels": {
+          "description": "Comma-separated labels to filter by",
+          "type": "string"
+        },
+        "limit": {
+          "default": 10,
+          "description": "Maximum number of issues to return (default: 10)",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "repo"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get-project-fields",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "description": "GitHub username or organization name"
+        },
+        "projectNumber": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Project number (e.g., 2 for Project #2)"
+        }
+      },
+      "required": [
+        "owner",
+        "projectNumber"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get-project-status-options",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "description": "GitHub username or organization name"
+        },
+        "projectNumber": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Project number (e.g., 2 for Project #2)"
+        }
+      },
+      "required": [
+        "owner",
+        "projectNumber"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get-resume",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "includePrivate": {
+          "description": "Include basics.privateContact (email/phone). Default false — public reads are stripped.",
+          "type": "boolean"
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get-resume-download-request",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Request id"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get-scores",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sport": {
+          "type": "string",
+          "description": "Sport key (e.g. basketball_nba)"
+        },
+        "daysFrom": {
+          "description": "Include completed games from the last N days (1-3)",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        }
+      },
+      "required": [
+        "sport"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get-user",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "User id",
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "email": {
+          "description": "User email",
+          "type": "string",
+          "format": "email",
+          "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get-videogame",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number",
+          "description": "Video game ID to retrieve"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list-articles",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "description": "Visibility filter (default published). draft/all require admin context.",
+          "type": "string",
+          "enum": [
+            "draft",
+            "published",
+            "all"
+          ]
+        },
+        "tag": {
+          "description": "Filter by a single tag",
+          "type": "string"
+        },
+        "search": {
+          "description": "Search in title and summary",
+          "type": "string"
+        },
+        "limit": {
+          "description": "Maximum number of results (default 50)",
+          "type": "number"
+        },
+        "offset": {
+          "description": "Number of results to skip (default 0)",
+          "type": "number"
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list-authors",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "search": {
+          "description": "Search in author name and bio",
+          "type": "string"
+        },
+        "limit": {
+          "description": "Maximum number of results (default 50)",
+          "type": "number"
+        },
+        "offset": {
+          "description": "Number of results to skip (default 0)",
+          "type": "number"
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list-bets",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "description": "Filter by source",
+          "type": "string",
+          "enum": [
+            "INTUITION",
+            "AI_ASSISTED"
+          ]
+        },
+        "status": {
+          "description": "Filter by status",
+          "type": "string",
+          "enum": [
+            "PENDING",
+            "WON",
+            "LOST",
+            "PUSH",
+            "VOID"
+          ]
+        },
+        "sport": {
+          "description": "Filter by sport",
+          "type": "string"
+        },
+        "market": {
+          "description": "Filter by market",
+          "type": "string",
+          "enum": [
+            "moneyline",
+            "spread",
+            "total",
+            "prop",
+            "parlay"
+          ]
+        },
+        "limit": {
+          "description": "Max results (default 100)",
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "offset": {
+          "description": "Results to skip (default 0)",
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list-books",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "authorId": {
+          "description": "Filter by author ID",
+          "type": "number"
+        },
+        "minRating": {
+          "description": "Minimum average rating (1-10)",
+          "type": "number"
+        },
+        "search": {
+          "description": "Search in title and description",
+          "type": "string"
+        },
+        "status": {
+          "description": "Filter by status (Not started, In progress, Completed)",
+          "type": "string",
+          "enum": [
+            "NOT_STARTED",
+            "IN_PROGRESS",
+            "COMPLETED"
+          ]
+        },
+        "limit": {
+          "description": "Maximum number of results (default 50)",
+          "type": "number"
+        },
+        "offset": {
+          "description": "Number of results to skip (default 0)",
+          "type": "number"
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list-content-creators",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "search": {
+          "description": "Search in name and description",
+          "type": "string"
+        },
+        "limit": {
+          "description": "Maximum number of results (default 50)",
+          "type": "number"
+        },
+        "offset": {
+          "description": "Number of results to skip (default 0)",
+          "type": "number"
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list-events",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sport": {
+          "type": "string",
+          "description": "Sport key (e.g. basketball_nba) — see list-sports"
+        }
+      },
+      "required": [
+        "sport"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list-labels",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "repo": {
+          "type": "string",
+          "pattern": "^[^/]+\\/[^/]+$",
+          "description": "Repository in owner/repo format (e.g., 'owner/repo')"
+        }
+      },
+      "required": [
+        "repo"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list-movies",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "minRating": {
+          "description": "Minimum average rating (1-10)",
+          "type": "number"
+        },
+        "search": {
+          "description": "Search in title and description",
+          "type": "string"
+        },
+        "status": {
+          "description": "Filter by status",
+          "type": "string",
+          "enum": [
+            "NOT_STARTED",
+            "IN_PROGRESS",
+            "COMPLETED"
+          ]
+        },
+        "limit": {
+          "description": "Maximum number of results (default 50)",
+          "type": "number"
+        },
+        "offset": {
+          "description": "Number of results to skip (default 0)",
+          "type": "number"
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list-project-items",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "description": "GitHub username or organization name"
+        },
+        "projectNumber": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Project number (e.g., 2 for Project #2)"
+        }
+      },
+      "required": [
+        "owner",
+        "projectNumber"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list-resume-download-requests",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "description": "Filter by stored status (default: all)",
+          "type": "string",
+          "enum": [
+            "pending",
+            "approved",
+            "denied",
+            "fulfilled",
+            "expired",
+            "all"
+          ]
+        },
+        "userId": {
+          "description": "Filter to a single user",
+          "type": "string"
+        },
+        "limit": {
+          "description": "Maximum number of results (default 50)",
+          "type": "number"
+        },
+        "offset": {
+          "description": "Number of results to skip (default 0)",
+          "type": "number"
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list-sports",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list-users",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list-videogames",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "platform": {
+          "description": "Filter by platform",
+          "type": "string",
+          "enum": [
+            "PlayStation",
+            "Xbox",
+            "PC"
+          ]
+        },
+        "minRating": {
+          "description": "Minimum average rating (1-10)",
+          "type": "number"
+        },
+        "search": {
+          "description": "Search in title and description",
+          "type": "string"
+        },
+        "limit": {
+          "description": "Maximum number of results (default 50)",
+          "type": "number"
+        },
+        "offset": {
+          "description": "Number of results to skip (default 0)",
+          "type": "number"
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "prepare-bet-slip",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "event": {
+          "type": "string",
+          "description": "Event description (e.g. \"Lakers @ Celtics\")"
+        },
+        "market": {
+          "description": "Market (defaults to parlay when legs given, else moneyline)",
+          "type": "string",
+          "enum": [
+            "moneyline",
+            "spread",
+            "total",
+            "prop",
+            "parlay"
+          ]
+        },
+        "selection": {
+          "description": "Selection for a single bet",
+          "type": "string"
+        },
+        "line": {
+          "description": "Spread/total line, if applicable",
+          "type": "number"
+        },
+        "oddsAmerican": {
+          "description": "Required for a single bet; computed from legs for a parlay",
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "stake": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Amount to risk"
+        },
+        "legs": {
+          "description": "Parlay legs (≥2) instead of a single selection",
+          "minItems": 2,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "description": "Leg label",
+                "type": "string"
+              },
+              "event": {
+                "description": "Leg event",
+                "type": "string"
+              },
+              "selection": {
+                "description": "Leg selection",
+                "type": "string"
+              },
+              "oddsAmerican": {
+                "description": "Leg American odds (optional; SGPs omit it)",
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "line": {
+                "type": "number"
+              },
+              "fairProb": {
+                "description": "Leg fair win prob (0..1) → enables EV",
+                "type": "number"
+              }
+            }
+          }
+        },
+        "sport": {
+          "description": "Sport key for the DK link (e.g. basketball_nba)",
+          "type": "string"
+        },
+        "source": {
+          "description": "INTUITION or AI_ASSISTED",
+          "type": "string",
+          "enum": [
+            "INTUITION",
+            "AI_ASSISTED"
+          ]
+        },
+        "aiModel": {
+          "type": "string"
+        },
+        "aiRationale": {
+          "type": "string"
+        },
+        "aiEstProb": {
+          "type": "number"
+        },
+        "fairProb": {
+          "description": "Fair win prob for a single bet → enables EV",
+          "type": "number"
+        },
+        "book": {
+          "description": "Sportsbook (default DraftKings)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "event",
+        "stake"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "record-resume-download",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Request id to record a download against"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "set-project-field-value",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "description": "GitHub username or organization name"
+        },
+        "repo": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Repository name (just the name, not owner/repo)"
+        },
+        "projectNumber": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Project number (e.g., 2 for Project #2)"
+        },
+        "issueNumber": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Issue number"
+        },
+        "fieldName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Field name"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "description": "Field value (string or number)"
+        }
+      },
+      "required": [
+        "owner",
+        "repo",
+        "projectNumber",
+        "issueNumber",
+        "fieldName",
+        "value"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "settle-bet",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991,
+          "description": "Bet ID"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "WON",
+            "LOST",
+            "PUSH",
+            "VOID"
+          ],
+          "description": "Outcome: WON | LOST | PUSH | VOID"
+        },
+        "payout": {
+          "description": "Total returned on a win (incl. stake); computed if omitted",
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "status"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "update-article",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "slug": {
+          "type": "string",
+          "description": "Slug of the article to update"
+        },
+        "title": {
+          "description": "Article title",
+          "type": "string"
+        },
+        "summary": {
+          "description": "Short summary / excerpt",
+          "type": "string"
+        },
+        "body": {
+          "description": "Article body (Markdown source)",
+          "type": "string"
+        },
+        "status": {
+          "description": "Publication status (draft | published)",
+          "type": "string",
+          "enum": [
+            "draft",
+            "published"
+          ]
+        },
+        "tags": {
+          "description": "Tags",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "publishedAt": {
+          "description": "Publication date (ISO 8601)",
+          "type": "string"
+        },
+        "newSlug": {
+          "description": "Rename the slug (must stay unique)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "slug"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "update-author",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number",
+          "description": "Author ID"
+        },
+        "name": {
+          "description": "Author name",
+          "type": "string"
+        },
+        "bio": {
+          "description": "Author biography",
+          "type": "string"
+        },
+        "website": {
+          "description": "Author website URL",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "update-bet",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991,
+          "description": "Bet ID"
+        },
+        "sport": {
+          "type": "string"
+        },
+        "league": {
+          "type": "string"
+        },
+        "event": {
+          "type": "string"
+        },
+        "market": {
+          "type": "string",
+          "enum": [
+            "moneyline",
+            "spread",
+            "total",
+            "prop",
+            "parlay"
+          ]
+        },
+        "selection": {
+          "type": "string"
+        },
+        "line": {
+          "type": "number"
+        },
+        "oddsAmerican": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "stake": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "book": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "INTUITION",
+            "AI_ASSISTED"
+          ]
+        },
+        "aiModel": {
+          "type": "string"
+        },
+        "aiRationale": {
+          "type": "string"
+        },
+        "aiEstProb": {
+          "type": "number"
+        },
+        "aiEV": {
+          "type": "number"
+        },
+        "closingLine": {
+          "description": "Closing line (Phase 2 / #129)",
+          "type": "number"
+        },
+        "closingOddsAmerican": {
+          "description": "Closing American odds (for CLV)",
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "legs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "event": {
+                "type": "string",
+                "description": "Leg event description"
+              },
+              "selection": {
+                "type": "string",
+                "description": "Leg selection"
+              },
+              "oddsAmerican": {
+                "description": "Leg American odds (optional; SGPs omit it)",
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "line": {
+                "description": "Leg line, if applicable",
+                "type": "number"
+              }
+            },
+            "required": [
+              "event",
+              "selection"
+            ]
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "update-book",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number",
+          "description": "Book ID"
+        },
+        "title": {
+          "description": "Book title",
+          "type": "string"
+        },
+        "status": {
+          "description": "Book status (e.g., Not started, In progress, Completed)",
+          "type": "string",
+          "enum": [
+            "NOT_STARTED",
+            "IN_PROGRESS",
+            "COMPLETED"
+          ]
+        },
+        "description": {
+          "description": "Book description",
+          "type": "string"
+        },
+        "rating": {
+          "description": "Your rating (1-10 scale, optional)",
+          "type": "number"
+        },
+        "review": {
+          "description": "Your review text (optional)",
+          "type": "string"
+        },
+        "isbn": {
+          "description": "ISBN (must be unique)",
+          "type": "string"
+        },
+        "publishedAt": {
+          "description": "Publication date (ISO 8601 format)",
+          "type": "string"
+        },
+        "authorIds": {
+          "description": "Array of author IDs to associate with this book",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "update-content-creator",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number",
+          "description": "Content creator ID"
+        },
+        "name": {
+          "description": "Content creator name",
+          "type": "string"
+        },
+        "description": {
+          "description": "Description of content creator",
+          "type": "string"
+        },
+        "website": {
+          "description": "Website URL",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "update-issue",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "repo": {
+          "type": "string",
+          "pattern": "^[^/]+\\/[^/]+$",
+          "description": "Repository in owner/repo format (e.g., 'owner/repo')"
+        },
+        "issueNumber": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Issue number"
+        },
+        "title": {
+          "description": "New issue title",
+          "type": "string"
+        },
+        "body": {
+          "description": "New issue body (Markdown allowed)",
+          "type": "string"
+        },
+        "bodyFile": {
+          "description": "Path to a Markdown file to use as the issue body",
+          "type": "string"
+        },
+        "bodyJson": {
+          "description": "JSON payload to convert to Markdown for the issue body"
+        },
+        "labels": {
+          "description": "Comma-separated labels to add to the issue",
+          "type": "string"
+        },
+        "removeLabels": {
+          "description": "Comma-separated labels to remove from the issue",
+          "type": "string"
+        },
+        "assignees": {
+          "description": "Comma-separated GitHub usernames to assign to the issue",
+          "type": "string"
+        },
+        "milestone": {
+          "description": "Milestone number to assign (use 0 to clear)",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "state": {
+          "description": "Set issue state to open or closed",
+          "type": "string",
+          "enum": [
+            "open",
+            "closed"
+          ]
+        },
+        "stateReason": {
+          "description": "Reason for closing: completed or not_planned (ignored when opening)",
+          "type": "string",
+          "enum": [
+            "completed",
+            "not_planned",
+            "reopened"
+          ]
+        },
+        "comment": {
+          "description": "Comment to add to the issue",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repo",
+        "issueNumber"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "update-movie",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number",
+          "description": "Movie ID"
+        },
+        "title": {
+          "description": "Movie title",
+          "type": "string"
+        },
+        "status": {
+          "description": "Movie status (e.g., Not started, In progress, Completed)",
+          "type": "string",
+          "enum": [
+            "NOT_STARTED",
+            "IN_PROGRESS",
+            "COMPLETED"
+          ]
+        },
+        "description": {
+          "description": "Movie description",
+          "type": "string"
+        },
+        "iasn": {
+          "description": "IASN (must be unique)",
+          "type": "string"
+        },
+        "imdbId": {
+          "description": "IMDB ID (must be unique)",
+          "type": "string"
+        },
+        "releasedAt": {
+          "description": "Release date (ISO 8601 format)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "update-project-field",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "description": "GitHub username or organization name"
+        },
+        "projectNumber": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Project number (e.g., 2 for Project #2)"
+        },
+        "fieldName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Current field name to update"
+        },
+        "newName": {
+          "description": "New field name",
+          "type": "string",
+          "minLength": 1
+        },
+        "addOptions": {
+          "description": "Options to add (for SINGLE_SELECT fields)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "removeOptions": {
+          "description": "Options to remove (for SINGLE_SELECT fields)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "owner",
+        "projectNumber",
+        "fieldName"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "update-resume",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "document": {
+          "type": "object",
+          "properties": {
+            "basics": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "location": {},
+                "profiles": {
+                  "type": "array",
+                  "items": {}
+                },
+                "privateContact": {
+                  "type": "object",
+                  "properties": {
+                    "email": {
+                      "type": "string"
+                    },
+                    "phone": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": {}
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "additionalProperties": {}
+            },
+            "work": {
+              "type": "array",
+              "items": {}
+            },
+            "education": {
+              "type": "array",
+              "items": {}
+            },
+            "skills": {
+              "type": "array",
+              "items": {}
+            },
+            "projects": {
+              "type": "array",
+              "items": {}
+            }
+          },
+          "required": [
+            "basics"
+          ],
+          "additionalProperties": {},
+          "description": "The full JSON Resume document to store (replaces the singleton)."
+        }
+      },
+      "required": [
+        "document"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "update-videogame",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number",
+          "description": "Video game ID"
+        },
+        "title": {
+          "description": "Video game title",
+          "type": "string"
+        },
+        "status": {
+          "description": "Status",
+          "type": "string",
+          "enum": [
+            "NOT_STARTED",
+            "IN_PROGRESS",
+            "COMPLETED"
+          ]
+        },
+        "description": {
+          "description": "Game description",
+          "type": "string"
+        },
+        "platform": {
+          "description": "Platform (PlayStation, Xbox, PC)",
+          "type": "string",
+          "enum": [
+            "PlayStation",
+            "Xbox",
+            "PC"
+          ]
+        },
+        "igdbId": {
+          "description": "IGDB ID (optional, unique)",
+          "type": "string"
+        },
+        "releasedAt": {
+          "description": "Release date (ISO 8601)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  }
+]
