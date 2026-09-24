@@ -19,6 +19,7 @@ pnpm run start:http     # force HTTP transport (MCP_TRANSPORT=http)
 
 pnpm test               # vitest run (all)
 pnpm run test:watch     # vitest watch
+pnpm run test:bdd       # the BDD contract (features/*.feature) against the real Express app, no DB; CI runs it after vitest
 pnpm run typecheck      # tsc -p tsconfig.test.json --noEmit  (type-checks src + test)
 pnpm run lint           # eslint src/**/*.ts test/**/*.ts
 pnpm run lint:fix
@@ -37,6 +38,8 @@ $env:RUN_DB_INTEGRATION='true'; pnpm test               # enables test/integrati
 $env:RUN_GITHUB_PROJECTS_INTEGRATION='true'; pnpm test   # hits real GitHub Projects (needs GITHUB_TEST_* vars)
 ```
 `vitest.config.ts` loads `.env.local` for tests.
+
+**The BDD contract** ([features/](features/), [cucumber.mjs](cucumber.mjs), issue #196) is the server's externally visible contract as executable Gherkin, the constellation recipe (Cucumber-js, TypeScript steps through tsx): the dependency-free `/healthz`, the `MCP_API_KEY` gate and its two header shapes, RFC 9728 discovery, and the MCP `initialize` / `tools/list` handshake. The steps start the real app with `startHttpServer()` on a random port and talk to it over HTTP, nothing mocked. It is **DB-free by construction**: `features/support/world.ts` clears `DATABASE_URL` and the Spotify credentials from the loaded config before the first server starts, so the run describes the same server on a laptop with `.env.local`, in CI, and on a fresh clone. DB-backed scenarios are follow-on work behind a tag. A `/` inside a step text is alternation in a Cucumber expression (`tools\/list`).
 
 Database / migrations / SQL tooling:
 ```powershell

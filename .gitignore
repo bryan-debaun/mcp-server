@@ -58,3 +58,6 @@ tmp/
 
 # Local DB snapshots (real data - never commit)
 backups/
+
+# BDD HTML report (pnpm run test:bdd:report)
+reports/
