@@ -73,6 +73,12 @@ jobs:
         run: pnpm run verify
       - name: Run tests
         run: pnpm test
+      # The BDD contract (#196): the DB-free HTTP surface — health, the
+      # MCP_API_KEY gate, RFC 9728 discovery, the MCP handshake — driven
+      # against the real Express app. Needs the generated tsoa routes, so it
+      # runs after build:spec.
+      - name: BDD contract
+        run: pnpm run test:bdd
       - name: Build
         run: pnpm run build
 

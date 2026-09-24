@@ -3,9 +3,10 @@
   "entry": [
     "src/http/controllers/**/*Controller.ts",
     "src/http/authentication.ts",
-    "scripts/**/*.ts"
+    "scripts/**/*.ts",
+    "features/**/*.ts"
   ],
-  "project": ["src/**/*.ts"],
+  "project": ["src/**/*.ts", "features/**/*.ts"],
   "ignoreExportsUsedInFile": true,
   "ignoreDependencies": ["@tsoa/runtime"]
 }
